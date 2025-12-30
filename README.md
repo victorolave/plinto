@@ -69,7 +69,7 @@ This section will be updated as soon as Plinto becomes something you can actuall
 
 As an open-source project, **Plinto** welcomes contributions from the community. While the project is still in its early development stage and actively defining its foundations, ideas, feedback, and future contributions are appreciated.
 
-If you're interested in contributing—whether through code, documentation, design, or suggestions—feel free to explore the project and reach out. As Plinto matures, more structured contribution guidelines will be added to help guide the process.
+If you're interested in contributing—whether through code, documentation, design, or suggestions—please see our [Contributing Guidelines](CONTRIBUTING.md) for more information.
 
 ---
 
