@@ -16,6 +16,7 @@
 - [What does Plinto do?](#-what-does-plinto-do)
 - [Getting Started](#-getting-started)
 - [Contributing](#-contributing)
+- [Code of Conduct](#-code-of-conduct)
 
 ---
 
@@ -69,6 +70,12 @@ This section will be updated as soon as Plinto becomes something you can actuall
 As an open-source project, **Plinto** welcomes contributions from the community. While the project is still in its early development stage and actively defining its foundations, ideas, feedback, and future contributions are appreciated.
 
 If you're interested in contributing—whether through code, documentation, design, or suggestions—feel free to explore the project and reach out. As Plinto matures, more structured contribution guidelines will be added to help guide the process.
+
+---
+
+## 📜 Code of Conduct
+
+This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md) version 3.0. By participating in this project, you are expected to uphold this code. Please report unacceptable behavior to victorolave1131@gmail.com.
 
 ---
 
