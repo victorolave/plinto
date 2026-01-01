@@ -15,6 +15,7 @@
 - [Why Plinto?](#-why-plinto)
 - [What does Plinto do?](#-what-does-plinto-do)
 - [Getting Started](#-getting-started)
+- [Specs (Spec Kit)](#-specs-spec-kit)
 - [Contributing](#-contributing)
 - [Code of Conduct](#-code-of-conduct)
 
@@ -62,6 +63,16 @@ Beyond basic financial tracking, Plinto is designed as a supportive tool that he
 > Plinto is still in its early days, so there is currently no setup or onboarding process available. At this stage, the project is focused on defining its direction, ideas, and foundations—before any code is ready to run without complaints.
 
 This section will be updated as soon as Plinto becomes something you can actually install, configure, and use without guessing. Until then, consider this documentation a preview of what's coming, rather than a set of instructions you can follow today.
+
+---
+
+## 🧭 Specs (Spec Kit)
+
+Plinto includes **Spec Kit** to support a cleaner, more responsible use of AI agents (repeatable prompts, structured specs, and checklists) while keeping project decisions transparent.
+
+The upstream Spec Kit project is maintained here: https://github.com/github/spec-kit
+
+Using AI agents (or any Spec Kit automation) is **optional**—contributors can participate normally via issues and PRs without running agent workflows. If you prefer, just edit the Markdown docs in `docs/` and ignore `.codex/` and `.specify/`.
 
 ---
 
