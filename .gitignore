@@ -1,0 +1,35 @@
+# Node
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.*
+!.env.example
+
+# TypeScript compiled output (in source directories)
+*.js
+*.js.map
+*.d.ts
+!*.config.js
+!jest.config.js
+!next.config.js
+!tailwind.config.js
+!postcss.config.js
+
+# Turborepo
+.turbo/
+
+# Prisma
+apps/api/src/infrastructure/database/prisma/dev.db
+apps/api/src/infrastructure/database/prisma/dev.db-journal
+
+# Next.js
+.next/
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/

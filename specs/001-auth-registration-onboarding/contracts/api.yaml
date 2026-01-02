@@ -1,0 +1,377 @@
+openapi: 3.0.3
+info:
+  title: Plinto Auth and Onboarding API
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+
+security:
+  - CookieAuth: []
+
+paths:
+  /auth/session:
+    post:
+      summary: Create application session from OIDC identity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "200":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSessionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      summary: Revoke the current session
+      responses:
+        "200":
+          description: Session revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /me:
+    get:
+      summary: Get current user context
+      responses:
+        "200":
+          description: Current user context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /tenants:
+    get:
+      summary: List tenants for the current user
+      responses:
+        "200":
+          description: Tenant memberships
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      summary: Create a new tenant and owner membership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTenantRequest"
+      responses:
+        "201":
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantCreateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /tenants/active:
+    get:
+      summary: Get the active tenant context
+      responses:
+        "200":
+          description: Active tenant context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveTenantResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      summary: Set the active tenant context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectTenantRequest"
+      responses:
+        "200":
+          description: Active tenant set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveTenantResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: plinto_session
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing or invalid session
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Valid session but not authorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: UNAUTHORIZED
+        message:
+          type: string
+          example: Authentication required
+        details:
+          type: array
+          items:
+            type: object
+        traceId:
+          type: string
+      required: [code, message]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+      required: [error]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, email, createdAt]
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        baseCurrency:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, baseCurrency, createdAt]
+
+    Membership:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [owner, member, viewer]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, tenantId, userId, role, createdAt]
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
+    CreateTenantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        baseCurrency:
+          type: string
+          default: COP
+      required: [name]
+
+    SelectTenantRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+      required: [tenantId]
+
+    CreateSessionRequest:
+      type: object
+      properties:
+        idpSub:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+          nullable: true
+      required: [idpSub, email]
+
+    MeResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            user:
+              $ref: "#/components/schemas/User"
+            memberships:
+              type: array
+              items:
+                $ref: "#/components/schemas/Membership"
+            activeTenantId:
+              type: string
+              nullable: true
+          required: [user, memberships]
+      required: [data]
+
+    UserResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/User"
+      required: [data]
+
+    TenantListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            tenants:
+              type: array
+              items:
+                $ref: "#/components/schemas/Tenant"
+            memberships:
+              type: array
+              items:
+                $ref: "#/components/schemas/Membership"
+          required: [tenants, memberships]
+      required: [data]
+
+    TenantCreateResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            tenant:
+              $ref: "#/components/schemas/Tenant"
+            membership:
+              $ref: "#/components/schemas/Membership"
+          required: [tenant, membership]
+      required: [data]
+
+    ActiveTenantResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            activeTenantId:
+              type: string
+              nullable: true
+          required: [activeTenantId]
+      required: [data]
+
+    CreateSessionResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            sessionId:
+              type: string
+            expiresAt:
+              type: string
+              format: date-time
+            user:
+              $ref: "#/components/schemas/User"
+            memberships:
+              type: array
+              items:
+                $ref: "#/components/schemas/Membership"
+            activeTenantId:
+              type: string
+              nullable: true
+            needsOnboarding:
+              type: boolean
+          required: [sessionId, expiresAt, user, memberships, needsOnboarding]
+      required: [data]
+
+    LogoutResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            success:
+              type: boolean
+          required: [success]
+      required: [data]

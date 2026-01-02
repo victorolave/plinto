@@ -1,0 +1,97 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  idpSub    String   @unique @map("idp_sub")
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memberships Membership[]
+  sessions    Session[]
+
+  @@map("users")
+}
+
+model Tenant {
+  id           String       @id @default(uuid())
+  name         String
+  baseCurrency String       @default("COP") @map("base_currency")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  memberships Membership[]
+  sessions    Session[]
+  auditEvents AuditEvent[]
+
+  @@map("tenants")
+}
+
+model Membership {
+  id        String         @id @default(uuid())
+  tenantId  String         @map("tenant_id")
+  userId    String         @map("user_id")
+  role      MembershipRole @default(owner)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@map("memberships")
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  tenantId   String?  @map("tenant_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  expiresAt  DateTime @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  lastSeenAt DateTime? @map("last_seen_at")
+  userAgent  String?  @map("user_agent")
+  ipAddress  String?  @map("ip_address")
+
+  user   User   @relation(fields: [userId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@map("sessions")
+}
+
+model AuditEvent {
+  id            String      @id @default(uuid())
+  tenantId      String      @map("tenant_id")
+  actorUserId   String?     @map("actor_user_id")
+  action        String
+  resourceType  String      @map("resource_type")
+  resourceId    String?     @map("resource_id")
+  source        AuditSource @default(manual)
+  correlationId String      @map("correlation_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  metadata      Json?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("audit_events")
+}
+
+enum MembershipRole {
+  owner
+  member
+  viewer
+}
+
+enum AuditSource {
+  manual
+  job
+  import
+}
