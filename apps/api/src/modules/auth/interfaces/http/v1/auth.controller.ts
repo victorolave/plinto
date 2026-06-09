@@ -8,9 +8,12 @@ import {
   UsePipes,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { z } from 'zod'
 import { RequestContext } from '../../../../../common/types/request-context'
 import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pipe'
 import { CreateSessionSchema } from '../../../../../common/shared-schemas'
+
+type CreateSessionBody = z.infer<typeof CreateSessionSchema>
 import { AuthService } from '../../../application/auth.service'
 import { AuthGuard } from '../../../../../common/guards/auth.guard'
 
@@ -23,7 +26,7 @@ export class AuthController {
 
   @Post('session')
   @UsePipes(new ZodValidationPipe(CreateSessionSchema))
-  async createSession(@Req() req: RequestContext, @Body() body: any) {
+  async createSession(@Req() req: RequestContext, @Body() body: CreateSessionBody) {
     const internalKeyHeader = req.headers['x-internal-key']
     const internalKey = Array.isArray(internalKeyHeader)
       ? internalKeyHeader[0]

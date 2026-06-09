@@ -7,30 +7,15 @@ const STATE_COOKIE = 'plinto_oidc_state'
 const VERIFIER_COOKIE = 'plinto_oidc_verifier'
 
 export async function GET(request: Request) {
-  console.log('[Callback] Starting callback handler', {
-    url: request.url,
-    hasCookies: !!request.headers.get('cookie'),
-  })
-  
   const client = await getOidcClient()
   const params = client.callbackParams(request.url)
   const cookieStore = cookies()
   const storedState = cookieStore.get(STATE_COOKIE)?.value
   const codeVerifier = cookieStore.get(VERIFIER_COOKIE)?.value
-  
-  console.log('[Callback] Cookie check', {
-    hasStateCookie: !!storedState,
-    hasVerifierCookie: !!codeVerifier,
-    allCookies: cookieStore.getAll().map(c => c.name),
-  })
-  
+
   const redirectTo = (path: string) => NextResponse.redirect(new URL(path, request.url))
 
   if (!storedState || !codeVerifier) {
-    console.error('[Callback] Missing state or verifier cookies', {
-      hasState: !!storedState,
-      hasVerifier: !!codeVerifier,
-    })
     return redirectTo('/login')
   }
 
@@ -47,33 +32,17 @@ export async function GET(request: Request) {
   const internalKey = process.env.INTERNAL_API_KEY
 
   if (!apiBase || !internalKey) {
-    console.error('[Callback] Missing API configuration', {
-      hasApiBase: !!apiBase,
-      hasInternalKey: !!internalKey,
-    })
     throw new Error('Missing API configuration')
   }
 
   if (!claims.sub || !claims.email) {
-    console.error('[Callback] Missing claims', {
-      hasSub: !!claims.sub,
-      hasEmail: !!claims.email,
-      claims: Object.keys(claims),
-    })
     return redirectTo('/login')
   }
 
-  // Construct the full URL - if apiBase is relative, make it absolute
-  // Try v1 route first, fallback to direct route if v1 doesn't work
-  let sessionUrl = apiBase.startsWith('http')
+  // Build an absolute session URL when apiBase is configured as a relative path.
+  const sessionUrl = apiBase.startsWith('http')
     ? `${apiBase}/auth/session`
     : new URL(`${apiBase}/auth/session`, request.url).toString()
-
-  console.log('[Callback] Creating session', {
-    apiBase,
-    sessionUrl,
-    hasInternalKey: !!internalKey,
-  })
 
   const sessionResponse = await fetch(sessionUrl, {
     method: 'POST',
@@ -89,12 +58,7 @@ export async function GET(request: Request) {
   })
 
   if (!sessionResponse.ok) {
-    const errorText = await sessionResponse.text().catch(() => 'Unable to read error')
-    console.error('[Callback] Session creation failed', {
-      status: sessionResponse.status,
-      statusText: sessionResponse.statusText,
-      error: errorText,
-    })
+    console.error('[Callback] Session creation failed', sessionResponse.status)
     return redirectTo('/login')
   }
 
@@ -106,9 +70,7 @@ export async function GET(request: Request) {
   const user = sessionPayload?.data?.user
 
   if (!sessionId || !user) {
-    console.error('[Callback] Missing sessionId or user in response', {
-      payload: sessionPayload,
-    })
+    console.error('[Callback] Missing sessionId or user in session response')
     return redirectTo('/login')
   }
 

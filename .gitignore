@@ -27,6 +27,9 @@ apps/api/src/infrastructure/database/prisma/dev.db-journal
 # Next.js
 .next/
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # OS/Editor
 .DS_Store
 Thumbs.db

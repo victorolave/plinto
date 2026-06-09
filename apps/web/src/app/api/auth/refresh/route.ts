@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { verifyPlintoJwt, PlintoJwtPayload } from '../../../lib/auth/jwt'
-import { refreshSession } from '../../../lib/auth/session-refresh'
+import { verifyPlintoJwt, PlintoJwtPayload } from '../../../../lib/auth/jwt'
+import { refreshSession } from '../../../../lib/auth/session-refresh'
 
 export async function POST(request: Request) {
   const cookieStore = cookies()
