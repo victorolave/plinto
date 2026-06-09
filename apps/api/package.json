@@ -6,6 +6,7 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "lint": "echo 'lint not configured'",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },
