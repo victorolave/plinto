@@ -39,7 +39,7 @@ export class AuthService {
     }
 
     if (!user.name && params.name) {
-      await this.userRepository.updateName(user.id, params.name)
+      user = await this.userRepository.updateName(user.id, params.name)
     }
 
     let memberships
