@@ -8,7 +8,9 @@
     "lint": "eslint \"src/**/*.ts\"",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "prisma": {
     "schema": "src/infrastructure/database/prisma/schema.prisma"

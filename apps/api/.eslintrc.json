@@ -14,5 +14,13 @@
     "node": true,
     "es2022": true
   },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/__tests__/**"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["dist", "node_modules", "**/*.js"]
 }

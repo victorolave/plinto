@@ -30,6 +30,9 @@ apps/api/src/infrastructure/database/prisma/dev.db-journal
 # TypeScript incremental build info
 *.tsbuildinfo
 
+# Test coverage
+coverage/
+
 # OS/Editor
 .DS_Store
 Thumbs.db
