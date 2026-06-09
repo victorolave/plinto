@@ -12,7 +12,9 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "eslint \"**/*.ts\""
+    "lint": "eslint \"**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.18.0",
