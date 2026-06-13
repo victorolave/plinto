@@ -30,13 +30,16 @@ export async function POST() {
   // Always clear the session cookie, even if API call failed
   // This ensures the user is logged out from the web app perspective
   const response = NextResponse.json({ success: true })
-  response.cookies.set('plinto_session', '', {
+  const clearedCookie = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     maxAge: 0,
     path: '/',
-  })
+  }
+  response.cookies.set('plinto_session', '', clearedCookie)
+  // Also clear the refresh token so logout cannot be silently undone via /api/auth/refresh.
+  response.cookies.set('plinto_refresh_token', '', clearedCookie)
 
   return response
 }

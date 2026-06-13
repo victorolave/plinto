@@ -48,6 +48,7 @@ export function getRefreshTokenFromCookie(cookieHeader: string | null): string |
   const cookies = cookieHeader.split(';').map((c) => c.trim())
   const refreshCookie = cookies.find((c) => c.startsWith(`${REFRESH_TOKEN_COOKIE}=`))
   if (!refreshCookie) return null
-  return refreshCookie.split('=')[1]
+  // slice (not split('=')[1]) so values containing '=' (base64 padding) are preserved.
+  return refreshCookie.slice(REFRESH_TOKEN_COOKIE.length + 1)
 }
 
