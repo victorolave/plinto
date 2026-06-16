@@ -33,11 +33,16 @@
 
 ### Nota de base de datos
 
-El repo todavía no versiona migraciones Prisma bajo `apps/api/src/infrastructure/database`. Para probar este slice contra una base local existente, sincronizar el schema antes del smoke test:
+El repo ahora versiona migraciones Prisma con un baseline inicial en
+`apps/api/src/infrastructure/database/prisma/migrations/0_init/`, que incluye la tabla
+`accounts`. La política completa está en `docs/delivery/prisma-migrations.md`.
 
-```bash
-pnpm --filter @plinto/api prisma:generate
-pnpm --filter @plinto/api prisma:migrate -- --name add_accounts
-```
+Para probar este slice:
 
-Si se adopta una política formal de migraciones, este documento debe actualizarse para referenciar el archivo de migración versionado.
+- **Base de datos nueva**: `pnpm --filter @plinto/api prisma:deploy` (crea todo desde el historial).
+- **Base local existente con las tablas ya creadas**: `pnpm --filter @plinto/api prisma:baseline`
+  una sola vez para marcar `0_init` como aplicada, luego `pnpm --filter @plinto/api prisma:status`
+  debe reportar que está al día.
+
+A partir de aquí, cualquier cambio de schema (por ejemplo el slice de transacciones) debe
+generar su propia migración versionada con `prisma:migrate -- --name <intención>`.
