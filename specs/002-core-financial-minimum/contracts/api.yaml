@@ -1,0 +1,158 @@
+openapi: 3.0.3
+info:
+  title: Plinto Minimum Financial Core API
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+
+security:
+  - CookieAuth: []
+
+paths:
+  /accounts:
+    get:
+      summary: List accounts for the active tenant
+      description: Returns the financial accounts that belong to the selected tenant context.
+      responses:
+        "200":
+          description: Active tenant accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create an account for the active tenant
+      description: Creates a financial account scoped to the selected tenant context.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountRequest"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountCreateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: plinto_session
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing or invalid session
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Valid session but not authorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: UNAUTHORIZED
+        message:
+          type: string
+          example: Authentication required
+        details:
+          type: array
+          items:
+            type: object
+        traceId:
+          type: string
+      required: [code, message]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+      required: [error]
+
+    Account:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [cash, bank, credit, savings]
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, tenantId, name, type, currency, createdAt]
+
+    CreateAccountRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [cash, bank, credit, savings]
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+      required: [name, type, currency]
+
+    AccountListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            accounts:
+              type: array
+              items:
+                $ref: "#/components/schemas/Account"
+          required: [accounts]
+      required: [data]
+
+    AccountCreateResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            account:
+              $ref: "#/components/schemas/Account"
+          required: [account]
+      required: [data]

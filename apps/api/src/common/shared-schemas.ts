@@ -3,4 +3,5 @@ export {
   CreateTenantSchema,
   SelectTenantSchema,
   CreateSessionSchema,
+  CreateAccountSchema,
 } from '@plinto/shared'

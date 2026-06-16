@@ -4,6 +4,7 @@ import { UsersModule } from '../modules/users/users.module'
 import { TenantsModule } from '../modules/tenants/tenants.module'
 import { SessionsModule } from '../modules/sessions/sessions.module'
 import { MembershipsModule } from '../modules/memberships/memberships.module'
+import { AccountsModule } from '../modules/accounts/accounts.module'
 
 export const v1Routes: Routes = [
   {
@@ -14,6 +15,7 @@ export const v1Routes: Routes = [
       { path: '', module: TenantsModule },
       { path: '', module: SessionsModule },
       { path: '', module: MembershipsModule },
+      { path: '', module: AccountsModule },
     ],
   },
 ]

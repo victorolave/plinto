@@ -31,8 +31,24 @@ model Tenant {
   memberships Membership[]
   sessions    Session[]
   auditEvents AuditEvent[]
+  accounts    Account[]
 
   @@map("tenants")
+}
+
+model Account {
+  id        String      @id @default(uuid())
+  tenantId  String      @map("tenant_id")
+  name      String
+  type      AccountType
+  currency  String
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("accounts")
 }
 
 model Membership {
@@ -88,6 +104,13 @@ enum MembershipRole {
   owner
   member
   viewer
+}
+
+enum AccountType {
+  cash
+  bank
+  credit
+  savings
 }
 
 enum AuditSource {

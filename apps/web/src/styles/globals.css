@@ -43,7 +43,6 @@ main {
 }
 
 .card {
-  width: min(420px, 100%);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -117,5 +116,15 @@ main {
   align-items: center;
   padding: 1rem 2rem;
   border-bottom: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
   background: #ffffff;
 }
