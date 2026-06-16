@@ -13,6 +13,19 @@ paths:
   /auth/session:
     post:
       summary: Create application session from OIDC identity
+      description: >
+        Internal endpoint used by the Web BFF after validating the OIDC
+        callback. This endpoint is authenticated with x-internal-key, not with
+        the public Plinto session cookie.
+      security:
+        - InternalKeyAuth: []
+      parameters:
+        - name: x-internal-key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Internal API key shared between Web and API services.
       requestBody:
         required: true
         content:
@@ -150,6 +163,10 @@ components:
       type: apiKey
       in: cookie
       name: plinto_session
+    InternalKeyAuth:
+      type: apiKey
+      in: header
+      name: x-internal-key
 
   responses:
     BadRequest:

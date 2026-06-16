@@ -79,9 +79,15 @@ Este documento ahora separa tres cosas que NO son lo mismo:
 
 ### 2. Documentación de contratos
 
-**Estado**: ⚠️ Requiere revisión antes de declarar cierre total
+**Estado**: ✅ Revisado el 2026-06-16
 
-Los endpoints principales existen, pero antes de volver a marcar esta feature como “completa” hay que comparar contrato OpenAPI, DTOs reales y tests de integración/contrato.
+Se compararon endpoints principales, DTOs Zod compartidos y controllers reales. La revisión detectó y corrigió una omisión en OpenAPI: `POST /auth/session` es un endpoint interno protegido por `x-internal-key`, no por la cookie pública `plinto_session`.
+
+**Evidencia**:
+
+- `specs/001-auth-registration-onboarding/contracts/api.yaml` declara ahora `InternalKeyAuth`.
+- `POST /auth/session` documenta el header requerido `x-internal-key`.
+- Los schemas OpenAPI de `UpdateProfileRequest`, `CreateTenantRequest`, `SelectTenantRequest` y `CreateSessionRequest` están alineados con los schemas Zod compartidos.
 
 ### 3. Verificación recurrente
 
@@ -105,6 +111,6 @@ Notas de verificación:
 
 ## Conclusión
 
-**Estado real**: la implementación está avanzada y funcional, y la discrepancia de permisos de selección de tenant ya fue cerrada. Todavía NO debe documentarse como “completa” hasta ejecutar el smoke test local del flujo OIDC/onboarding y cerrar la revisión de contratos.
+**Estado real**: la implementación está avanzada y funcional, y las discrepancias conocidas de permisos y contrato ya fueron cerradas. Todavía NO debe documentarse como “completa” hasta ejecutar el smoke test local del flujo OIDC/onboarding.
 
 Esto no es burocracia. Es ingeniería responsable: si el documento dice “completo”, tiene que poder defenderlo con evidencia actual, no con optimismo.
