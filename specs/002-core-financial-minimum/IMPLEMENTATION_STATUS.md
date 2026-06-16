@@ -46,3 +46,57 @@ Para probar este slice:
 
 A partir de aquí, cualquier cambio de schema (por ejemplo el slice de transacciones) debe
 generar su propia migración versionada con `prisma:migrate -- --name <intención>`.
+
+## Slice 2 — Registrar ingresos/gastos y ver balances
+
+**Estado**: ✅ Implementado y verificado técnicamente
+
+**Outcome**: un miembro del tenant puede registrar transacciones de ingreso/gasto contra una
+cuenta y ver los balances por cuenta y moneda.
+
+### Incluye
+
+- Modelo `Transaction` (`tenant_id`, `account_id`, `type`, `amount_minor`, `currency`,
+  `description`, `occurred_at`, timestamps) + enum `TransactionType` (`income`/`expense`).
+- Migración versionada `*_add_transactions` generada offline (solo la tabla `transactions`).
+- Schemas Zod compartidos: `TransactionSchema`, `CreateTransactionSchema`, `AccountBalanceSchema`.
+- API `POST /transactions`, `GET /transactions` (filtro opcional `?accountId`) y
+  `GET /transactions/balances`, protegida por sesión, tenant activo y permisos
+  `transaction:write` / `transaction:read`.
+- Cálculo de balance por cuenta: Σ ingresos − Σ gastos (aritmética entera en `amount_minor`).
+- Evento de auditoría `transaction.income` / `transaction.expense` vía `AuditService`.
+- UI en `/dashboard` para registrar transacciones y ver balances e historial.
+- Tests de schemas, servicio (derivación de moneda, aislamiento de tenant, auditoría,
+  balances) y metadata de permisos del controller.
+
+### Decisiones de diseño
+
+- **Moneda derivada, no recibida**: `CreateTransaction` no acepta `currency`. El servicio
+  resuelve la cuenta, valida que pertenece al tenant activo y copia `account.currency`. Esto
+  hace estructural (imposible de violar) el invariante de ADR 0004 §6: una transacción nunca
+  puede tener una moneda distinta a la de su cuenta.
+- **`amount_minor` entero positivo** (ADR 0004 §5): nunca float/decimal. El signo lo aporta
+  `type`, no el monto.
+- **Aislamiento de tenant**: crear una transacción contra una cuenta de otro tenant devuelve
+  `NotFound` (la cuenta no existe para ese tenant). Cubierto por test.
+
+### Excluye
+
+- Edición/borrado de transacciones (Slice 3).
+- Transferencias y FX (Slices 4–5).
+- Categorías y reportes (Slice 7).
+
+### Verificación técnica
+
+- [x] `pnpm lint`
+- [x] `pnpm test` (238 tests)
+- [x] `pnpm build`
+- [x] Review adversarial en contexto fresco (must-fix aplicados: aserción de auditoría en el
+  camino de error, filtro `accountId` a nivel DB, código muerto y guard de monto en la UI).
+- [ ] Smoke test manual: registrar ingreso/gasto y ver el balance actualizado en `/dashboard`.
+
+### Deuda técnica diferida (MVP, registrada en el review)
+
+- `getBalances` agrega en memoria; antes de escala migrar a `prisma.transaction.groupBy`.
+- Sin paginación en el listado de transacciones; agregar cursor antes de producción.
+- UX cuando el tenant no tiene cuentas: deshabilitar el formulario y guiar a crear una cuenta.

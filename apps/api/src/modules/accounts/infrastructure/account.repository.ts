@@ -21,4 +21,10 @@ export class AccountRepository {
       orderBy: { createdAt: 'asc' },
     })
   }
+
+  async findByIdForTenant(id: string, tenantId: string): Promise<Account | null> {
+    return this.prisma.account.findFirst({
+      where: { id, tenantId },
+    })
+  }
 }

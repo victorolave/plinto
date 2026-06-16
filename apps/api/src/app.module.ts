@@ -12,6 +12,7 @@ import { MembershipsModule } from './modules/memberships/memberships.module'
 import { SessionsModule } from './modules/sessions/sessions.module'
 import { AuditModule } from './modules/audit/audit.module'
 import { AccountsModule } from './modules/accounts/accounts.module'
+import { TransactionsModule } from './modules/transactions/transactions.module'
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AccountsModule } from './modules/accounts/accounts.module'
     SessionsModule,
     AuditModule,
     AccountsModule,
+    TransactionsModule,
   ],
 })
 export class AppModule {}

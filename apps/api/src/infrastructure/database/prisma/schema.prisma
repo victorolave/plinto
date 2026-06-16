@@ -28,10 +28,11 @@ model Tenant {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  memberships Membership[]
-  sessions    Session[]
-  auditEvents AuditEvent[]
-  accounts    Account[]
+  memberships  Membership[]
+  sessions     Session[]
+  auditEvents  AuditEvent[]
+  accounts     Account[]
+  transactions Transaction[]
 
   @@map("tenants")
 }
@@ -45,7 +46,8 @@ model Account {
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  transactions Transaction[]
 
   @@index([tenantId])
   @@map("accounts")
@@ -98,6 +100,31 @@ model AuditEvent {
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@map("audit_events")
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  tenantId    String          @map("tenant_id")
+  accountId   String          @map("account_id")
+  type        TransactionType
+  amountMinor Int             @map("amount_minor")
+  currency    String
+  description String?
+  occurredAt  DateTime        @map("occurred_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  income
+  expense
 }
 
 enum MembershipRole {
