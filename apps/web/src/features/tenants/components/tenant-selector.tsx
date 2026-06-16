@@ -28,7 +28,7 @@ export function TenantSelector() {
   const handleSelect = async (tenantId: string) => {
     try {
       await selectTenant(tenantId)
-      window.location.href = '/(dashboard)'
+      window.location.href = '/dashboard'
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to select tenant')
     }

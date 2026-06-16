@@ -18,7 +18,7 @@ export function OnboardingForm() {
     try {
       await updateProfile(name)
       await createTenant(tenantName, baseCurrency)
-      window.location.href = '/'
+      window.location.href = '/dashboard'
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unexpected error')
     } finally {

@@ -20,7 +20,7 @@
 2. Confirm you are redirected to the IdP login/registration screen.
 3. Complete login as a new user and return to the app.
 4. Complete profile name and create a tenant with a base currency.
-5. Verify the dashboard loads with an active tenant context.
+5. Verify `/dashboard` loads with an active tenant context.
 6. If multiple tenants exist, ensure the tenant selection screen appears.
 7. Log out and confirm protected routes require sign-in again.
 
@@ -28,7 +28,8 @@
 
 1. Create a second tenant for the same user (if enabled for testing).
 2. Sign in again and confirm the last active tenant auto-selects.
-3. Switch active tenant and confirm the change persists for the next sign-in.
+3. Switch active tenant and confirm the app redirects to `/dashboard`.
+4. Confirm the active tenant change persists for the next sign-in.
 
 ## Session Refresh Verification
 

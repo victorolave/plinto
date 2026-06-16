@@ -83,7 +83,7 @@ export async function GET(request: Request) {
   })
 
   const response = redirectTo(
-    needsOnboarding ? '/onboarding' : activeTenantId ? '/' : '/select-tenant',
+    needsOnboarding ? '/onboarding' : activeTenantId ? '/dashboard' : '/select-tenant',
   )
   response.cookies.set('plinto_session', jwtToken, {
     httpOnly: true,

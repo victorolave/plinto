@@ -426,13 +426,13 @@ describe('GET /callback', () => {
     expect(response._redirectUrl).toBe('/onboarding')
   })
 
-  it('redirects to / when user has an active tenant and no onboarding needed', async () => {
-    const redirectResp = makeMockRedirectResponse('/')
+  it('redirects to /dashboard when user has an active tenant and no onboarding needed', async () => {
+    const redirectResp = makeMockRedirectResponse('/dashboard')
     mockNextResponseRedirect.mockReturnValue(redirectResp as any)
 
     const response = await GET(makeRequest()) as unknown as MockRedirectResponse
 
-    expect(response._redirectUrl).toBe('/')
+    expect(response._redirectUrl).toBe('/dashboard')
   })
 
   it('redirects to /select-tenant when activeTenantId is null and no onboarding needed', async () => {

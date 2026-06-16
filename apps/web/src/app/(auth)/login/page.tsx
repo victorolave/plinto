@@ -41,7 +41,7 @@ async function checkSession() {
       }
       // If has active tenant, go to dashboard
       if (activeTenantId) {
-        redirect('/')
+        redirect('/dashboard')
       }
       // Otherwise, go to tenant selection
       redirect('/select-tenant')

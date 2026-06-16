@@ -37,7 +37,7 @@ async function checkOnboardingStatus() {
     if (user?.name && memberships.length > 0) {
       // Redirect to dashboard or tenant selection
       if (activeTenantId) {
-        redirect('/')
+        redirect('/dashboard')
       } else {
         redirect('/select-tenant')
       }

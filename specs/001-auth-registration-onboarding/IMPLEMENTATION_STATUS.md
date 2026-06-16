@@ -22,6 +22,7 @@ Este documento ahora separa tres cosas que NO son lo mismo:
 | BFF auth web | ✅ Corregido | Tests detectaron y se corrigieron bugs de logout y parsing del refresh token. |
 | Setup local web + API | ✅ Validado | `pnpm dev` levanta web en `:3000` y API en `:3001`; OIDC BFF redirige correctamente a Auth0. |
 | Archivos `.env.example` | ✅ Corregido | Redirect URI y API base path fueron ajustados a los valores reales del entorno local. |
+| Navegación post-auth | ✅ Corregido | El dashboard vive ahora en `/dashboard`; la selección de tenant y los redirects post-login/onboarding ya no apuntan a `/(dashboard)` ni a la home placeholder. |
 
 ## Flujo Funcional Cubierto
 
@@ -102,6 +103,7 @@ Verificación local ejecutada el 2026-06-15:
 - [x] `pnpm build`
 - [ ] Smoke test local del flujo OIDC/onboarding
 - [x] Revisión explícita de permisos de `POST /tenants/active`
+- [x] Corrección de navegación post-auth hacia `/dashboard`
 
 Notas de verificación:
 
