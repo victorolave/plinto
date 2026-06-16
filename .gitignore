@@ -39,3 +39,8 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+# Agent/local tooling
+.atl/
+
+# Package manager local store
+.pnpm-store/
