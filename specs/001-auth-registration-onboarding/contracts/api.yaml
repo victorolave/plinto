@@ -120,6 +120,10 @@ paths:
           $ref: "#/components/responses/Unauthorized"
     post:
       summary: Set the active tenant context
+      description: >
+        Selects the tenant context for subsequent requests. Any authenticated
+        user with an active membership in the requested tenant may select it;
+        tenant administration permission is not required.
       requestBody:
         required: true
         content:

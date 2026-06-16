@@ -65,18 +65,17 @@ Este documento ahora separa tres cosas que NO son lo mismo:
 
 ### 1. Permiso para seleccionar tenant activo
 
-**Estado**: ⚠️ Pendiente de decisión
+**Estado**: ✅ Resuelto el 2026-06-16
 
-`POST /tenants/active` requiere actualmente permisos de administración (`tenant:manage`). Según la intención del producto, seleccionar el tenant activo debería estar permitido para cualquier miembro válido del tenant.
+`POST /tenants/active` usa ahora el permiso explícito `tenant:select`, permitido para `owner`, `member` y `viewer`, junto con `TenantGuard` para validar membresía activa en el tenant solicitado.
 
-**Por qué importa**: seleccionar contexto no es lo mismo que administrar el tenant. Mezclar esas responsabilidades fuerza permisos más altos de lo necesario.
+**Por qué importa**: seleccionar contexto no es lo mismo que administrar el tenant. Mezclar esas responsabilidades fuerza permisos más altos de lo necesario y contradice el principio de menor privilegio de ADR 0007.
 
-**Opciones**:
+**Evidencia**:
 
-| Opción | Tradeoff |
-| --- | --- |
-| Permitir a cualquier miembro seleccionar tenant activo | Mejor UX y menor privilegio; requiere ajustar policy/guard y tests. |
-| Mantener solo owners/admins | Más restrictivo, pero contradice el flujo esperado para usuarios multi-tenant. |
+- `AuthorizationPolicy` define `tenant:select` para todos los roles con membresía.
+- `ActiveTenantController.setActiveTenant` requiere `tenant:select`, no `tenant:manage`.
+- Tests cubren que `member` y `viewer` pueden seleccionar tenant sin recibir permiso de administración.
 
 ### 2. Documentación de contratos
 
@@ -96,7 +95,7 @@ Verificación local ejecutada el 2026-06-15:
 - [x] `pnpm test`
 - [x] `pnpm build`
 - [ ] Smoke test local del flujo OIDC/onboarding
-- [ ] Revisión explícita de permisos de `POST /tenants/active`
+- [x] Revisión explícita de permisos de `POST /tenants/active`
 
 Notas de verificación:
 
@@ -106,6 +105,6 @@ Notas de verificación:
 
 ## Conclusión
 
-**Estado real**: la implementación está avanzada y funcional, pero NO debe documentarse como “completa” hasta cerrar la discrepancia de permisos y ejecutar la verificación completa de release.
+**Estado real**: la implementación está avanzada y funcional, y la discrepancia de permisos de selección de tenant ya fue cerrada. Todavía NO debe documentarse como “completa” hasta ejecutar el smoke test local del flujo OIDC/onboarding y cerrar la revisión de contratos.
 
 Esto no es burocracia. Es ingeniería responsable: si el documento dice “completo”, tiene que poder defenderlo con evidencia actual, no con optimismo.

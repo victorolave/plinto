@@ -1,6 +1,7 @@
 import { MembershipRole } from '../../modules/memberships/domain/membership.entity'
 
 export type Permission =
+  | 'tenant:select'
   | 'tenant:manage'
   | 'member:invite'
   | 'member:remove'
@@ -14,6 +15,7 @@ export type Permission =
 // Map roles to allowed permissions
 const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
   owner: [
+    'tenant:select',
     'tenant:manage',
     'member:invite',
     'member:remove',
@@ -25,6 +27,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'report:read',
   ],
   member: [
+    'tenant:select',
     'account:write',
     'account:read',
     'transaction:write',
@@ -32,6 +35,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'report:read',
   ],
   viewer: [
+    'tenant:select',
     'account:read',
     'transaction:read',
     'report:read',
@@ -54,4 +58,3 @@ export class AuthorizationPolicy {
     }
   }
 }
-
