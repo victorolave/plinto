@@ -3,6 +3,7 @@ import {
   TransactionSchema,
   TransactionTypeSchema,
   CreateTransactionSchema,
+  UpdateTransactionSchema,
 } from '../transaction.schema'
 
 describe('TransactionSchema', () => {
@@ -90,6 +91,56 @@ describe('CreateTransactionSchema', () => {
       type: 'expense',
       amountMinor: 10.5,
     })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('UpdateTransactionSchema', () => {
+  it('parses a partial transaction correction', () => {
+    const result = UpdateTransactionSchema.safeParse({
+      type: 'expense',
+      amountMinor: 7500,
+      description: 'Corrected grocery amount',
+    })
+
+    expect(result.success).toBe(true)
+  })
+
+  it('allows clearing the description explicitly', () => {
+    const result = UpdateTransactionSchema.safeParse({
+      description: null,
+    })
+
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects an empty correction payload', () => {
+    const result = UpdateTransactionSchema.safeParse({})
+
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects a correction payload with only undefined values', () => {
+    const result = UpdateTransactionSchema.safeParse({
+      amountMinor: undefined,
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects non-positive amountMinor', () => {
+    const result = UpdateTransactionSchema.safeParse({
+      amountMinor: 0,
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects blank description while still allowing null clear', () => {
+    const result = UpdateTransactionSchema.safeParse({
+      description: '   ',
+    })
+
     expect(result.success).toBe(false)
   })
 })

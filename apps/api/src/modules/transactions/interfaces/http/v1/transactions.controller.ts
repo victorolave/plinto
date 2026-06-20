@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -17,10 +19,14 @@ import {
   RoleGuard,
 } from '../../../../../common/guards/role.guard'
 import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pipe'
-import { CreateTransactionSchema } from '../../../../../common/shared-schemas'
+import {
+  CreateTransactionSchema,
+  UpdateTransactionSchema,
+} from '../../../../../common/shared-schemas'
 import { TransactionService } from '../../../application/transaction.service'
 
 type CreateTransactionBody = z.infer<typeof CreateTransactionSchema>
+type UpdateTransactionBody = z.infer<typeof UpdateTransactionSchema>
 
 @Controller('transactions')
 @UseGuards(AuthGuard, TenantGuard, RoleGuard)
@@ -60,6 +66,27 @@ export class TransactionsController {
       tenantId: req.tenantId as string,
       actorUserId: req.user?.id ?? null,
       requestId: req.requestId ?? 'unknown',
+      accountId: body.accountId,
+      type: body.type,
+      amountMinor: body.amountMinor,
+      description: body.description,
+      occurredAt: body.occurredAt,
+    })
+    return { data: { transaction } }
+  }
+
+  @Patch(':id')
+  @RequirePermission('transaction:write')
+  async updateTransaction(
+    @Req() req: RequestContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpdateTransactionSchema)) body: UpdateTransactionBody,
+  ) {
+    const transaction = await this.transactionService.updateTransaction({
+      tenantId: req.tenantId as string,
+      actorUserId: req.user?.id ?? null,
+      requestId: req.requestId ?? 'unknown',
+      transactionId: id,
       accountId: body.accountId,
       type: body.type,
       amountMinor: body.amountMinor,

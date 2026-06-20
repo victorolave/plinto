@@ -22,6 +22,16 @@ export const CreateTransactionSchema = z.object({
   occurredAt: z.string().datetime().optional(),
 })
 
+export const UpdateTransactionSchema = z.object({
+  accountId: z.string().trim().min(1).optional(),
+  type: TransactionTypeSchema.optional(),
+  amountMinor: z.number().int().positive().optional(),
+  description: z.string().trim().min(1).nullable().optional(),
+  occurredAt: z.string().datetime().optional(),
+}).refine((value) => Object.values(value).some((field) => field !== undefined), {
+  message: 'At least one field must be provided',
+})
+
 export const AccountBalanceSchema = z.object({
   accountId: z.string(),
   accountName: z.string(),
@@ -32,4 +42,5 @@ export const AccountBalanceSchema = z.object({
 export type TransactionTypeDto = z.infer<typeof TransactionTypeSchema>
 export type TransactionDto = z.infer<typeof TransactionSchema>
 export type CreateTransactionDto = z.infer<typeof CreateTransactionSchema>
+export type UpdateTransactionDto = z.infer<typeof UpdateTransactionSchema>
 export type AccountBalanceDto = z.infer<typeof AccountBalanceSchema>

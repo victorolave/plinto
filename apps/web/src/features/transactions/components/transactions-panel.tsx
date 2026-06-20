@@ -10,6 +10,7 @@ import {
   createTransaction,
   listBalances,
   listTransactions,
+  updateTransaction,
 } from '../services/transactions'
 
 const transactionTypeOptions: Array<{ value: TransactionType; label: string }> = [
@@ -28,6 +29,8 @@ export function TransactionsPanel() {
   // pending a per-currency minor-units table (ADR 0004).
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
+  const [occurredAt, setOccurredAt] = useState('')
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +42,32 @@ export function TransactionsPanel() {
     ])
     setBalances(balancesRes.data.balances)
     setTransactions(transactionsRes.data.transactions)
+  }
+
+  const resetForm = () => {
+    setType('income')
+    setAmount('')
+    setDescription('')
+    setOccurredAt('')
+    setEditingTransactionId(null)
+    if (accounts.length > 0) {
+      setSelectedAccountId(accounts[0].id)
+    }
+  }
+
+  const startEditing = (transaction: Transaction) => {
+    setEditingTransactionId(transaction.id)
+    setSelectedAccountId(transaction.accountId)
+    setType(transaction.type)
+    setAmount((transaction.amountMinor / 100).toFixed(2))
+    setDescription(transaction.description ?? '')
+    setOccurredAt(transaction.occurredAt.slice(0, 10))
+    setError(null)
+  }
+
+  const toOccurredAtIso = (value: string) => {
+    if (!value) return undefined
+    return new Date(`${value}T00:00:00.000Z`).toISOString()
   }
 
   useEffect(() => {
@@ -81,18 +110,31 @@ export function TransactionsPanel() {
 
     try {
       const amountMinor = Math.round(parsedAmount * 100)
-      await createTransaction({
+      const trimmedDescription = description.trim()
+      const transactionInput = {
         accountId: selectedAccountId,
         type,
         amountMinor,
-        description: description.trim() || undefined,
-      })
-      setAmount('')
-      setDescription('')
+        occurredAt: toOccurredAtIso(occurredAt),
+      }
+
+      if (editingTransactionId) {
+        await updateTransaction(editingTransactionId, {
+          ...transactionInput,
+          description: trimmedDescription || null,
+        })
+      } else {
+        await createTransaction({
+          ...transactionInput,
+          description: trimmedDescription || undefined,
+        })
+      }
+
+      resetForm()
       await loadData()
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Failed to create transaction',
+        err instanceof Error ? err.message : 'Failed to save transaction',
       )
     } finally {
       setSubmitting(false)
@@ -109,7 +151,7 @@ export function TransactionsPanel() {
       </div>
 
       <form onSubmit={handleSubmit} className="card stack">
-        <h2>Record transaction</h2>
+        <h2>{editingTransactionId ? 'Edit transaction' : 'Record transaction'}</h2>
         <label className="label">
           Account
           <select
@@ -160,10 +202,39 @@ export function TransactionsPanel() {
             onChange={(event) => setDescription(event.target.value)}
           />
         </label>
+        <label className="label">
+          Date (optional)
+          <input
+            className="input"
+            type="date"
+            value={occurredAt}
+            onChange={(event) => setOccurredAt(event.target.value)}
+          />
+        </label>
         {error ? <p className="error">{error}</p> : null}
-        <button type="submit" className="button" disabled={submitting}>
-          {submitting ? 'Recording...' : 'Record transaction'}
-        </button>
+        <div className="inline-actions">
+          <button
+            type="submit"
+            className="button"
+            disabled={submitting || !selectedAccountId}
+          >
+            {submitting
+              ? 'Saving...'
+              : editingTransactionId
+                ? 'Save correction'
+                : 'Record transaction'}
+          </button>
+          {editingTransactionId ? (
+            <button
+              type="button"
+              className="button secondary"
+              disabled={submitting}
+              onClick={resetForm}
+            >
+              Cancel edit
+            </button>
+          ) : null}
+        </div>
       </form>
 
       <div className="card stack">
@@ -212,6 +283,13 @@ export function TransactionsPanel() {
                     {new Date(transaction.occurredAt).toLocaleDateString()}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => startEditing(transaction)}
+                >
+                  Edit
+                </button>
               </article>
             ))}
           </div>

@@ -32,6 +32,15 @@ describe('TransactionsController', () => {
     expect(permission).toBe('transaction:write')
   })
 
+  it('requires write permission to update a transaction', () => {
+    const reflector = new Reflector()
+    const permission = reflector.get(
+      PERMISSION_KEY,
+      TransactionsController.prototype.updateTransaction,
+    )
+    expect(permission).toBe('transaction:write')
+  })
+
   it('lists transactions using the resolved tenant context', async () => {
     const transactionService = {
       listTransactions: vi.fn().mockResolvedValue([{ id: 'tx-1' }]),
@@ -84,6 +93,35 @@ describe('TransactionsController', () => {
       type: 'income',
       amountMinor: 10000,
       description: undefined,
+      occurredAt: undefined,
+    })
+    expect(result).toEqual({ data: { transaction: { id: 'tx-1' } } })
+  })
+
+  it('updates a transaction using the resolved tenant context', async () => {
+    const transactionService = {
+      updateTransaction: vi.fn().mockResolvedValue({ id: 'tx-1' }),
+    }
+    const controller = new TransactionsController(transactionService as any)
+
+    const result = await controller.updateTransaction(
+      { tenantId: 'tenant-1', user: { id: 'user-1' }, requestId: 'req-1' } as any,
+      'tx-1',
+      {
+        amountMinor: 12500,
+        description: 'Corrected amount',
+      },
+    )
+
+    expect(transactionService.updateTransaction).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      actorUserId: 'user-1',
+      requestId: 'req-1',
+      transactionId: 'tx-1',
+      accountId: undefined,
+      type: undefined,
+      amountMinor: 12500,
+      description: 'Corrected amount',
       occurredAt: undefined,
     })
     expect(result).toEqual({ data: { transaction: { id: 'tx-1' } } })

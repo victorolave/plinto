@@ -29,7 +29,7 @@
 - [x] `pnpm lint`
 - [x] `pnpm test`
 - [x] `pnpm build`
-- [ ] Smoke test manual: crear cuenta y verla listada en `/dashboard`.
+- [x] Smoke test manual: crear cuenta y verla listada en `/dashboard` (confirmado por el usuario).
 
 ### Nota de base de datos
 
@@ -82,7 +82,7 @@ cuenta y ver los balances por cuenta y moneda.
 
 ### Excluye
 
-- Edición/borrado de transacciones (Slice 3).
+- Edición/borrado de transacciones (la edición queda cubierta por Slice 3; el borrado sigue fuera).
 - Transferencias y FX (Slices 4–5).
 - Categorías y reportes (Slice 7).
 
@@ -93,10 +93,68 @@ cuenta y ver los balances por cuenta y moneda.
 - [x] `pnpm build`
 - [x] Review adversarial en contexto fresco (must-fix aplicados: aserción de auditoría en el
   camino de error, filtro `accountId` a nivel DB, código muerto y guard de monto en la UI).
-- [ ] Smoke test manual: registrar ingreso/gasto y ver el balance actualizado en `/dashboard`.
+- [x] Smoke test manual: registrar ingreso/gasto y ver el balance actualizado en `/dashboard` (confirmado por el usuario).
 
 ### Deuda técnica diferida (MVP, registrada en el review)
 
 - `getBalances` agrega en memoria; antes de escala migrar a `prisma.transaction.groupBy`.
 - Sin paginación en el listado de transacciones; agregar cursor antes de producción.
 - UX cuando el tenant no tiene cuentas: deshabilitar el formulario y guiar a crear una cuenta.
+
+## Slice 3 — Editar transacciones con audit trail
+
+**Estado**: ✅ Implementado y verificado técnicamente
+
+**Outcome**: un miembro del tenant puede corregir una transacción existente mientras Plinto
+preserva trazabilidad mediante auditoría con valores antes/después.
+
+### Incluye
+
+- Schema compartido `UpdateTransactionSchema` para correcciones parciales.
+- API `PATCH /transactions/{id}` protegida por sesión, tenant activo y permiso
+  `transaction:write`.
+- Revalidación de aislamiento de tenant: la transacción y la cuenta destino deben pertenecer
+  al tenant activo; si no, se devuelve `NotFound`.
+- Moneda derivada nuevamente desde la cuenta cuando se mueve una transacción entre cuentas.
+- Evento de auditoría `transaction.updated` con metadata `before`/`after`.
+- UI en `/dashboard` para editar una transacción desde el historial.
+- Actualización del contrato OpenAPI del core financiero.
+
+### Decisiones de diseño
+
+- **No hay borrado en Slice 3**: la política de deletion queda fuera del slice, como indica
+  `docs/delivery/vertical-slices.md`.
+- **Corrección parcial, no reemplazo ciego**: el payload exige al menos un campo y permite
+  limpiar `description` con `null`.
+- **Audit trail explícito**: el evento guarda snapshot antes/después de campos financieros
+  relevantes (`accountId`, `type`, `amountMinor`, `currency`, `description`, `occurredAt`).
+
+### Excluye
+
+- Borrado de transacciones.
+- Bulk edits.
+- Transferencias.
+- Paginación del historial.
+
+### Verificación técnica
+
+- [x] `pnpm lint`
+- [x] `pnpm test` (250 tests)
+- [x] `pnpm build`
+- [x] Smoke backend reversible: corrección temporal de `amountMinor`, balance actualizado y
+  restaurado, y dos eventos `transaction.updated` con metadata `before`/`after`.
+- [x] Smoke HTTP reversible contra API local: `GET /api/transactions`,
+  `GET /api/transactions/balances` y `PATCH /api/transactions/:id` con sesión temporal,
+  balance restaurado y audit trail verificado; sesión temporal revocada.
+- [x] Smoke test manual: editar una transacción y confirmar balance/historial actualizado en
+  `/dashboard` (confirmado por el usuario).
+- [x] Review adversarial en contexto fresco (must-fix aplicado: `updateForTenant` envuelve
+  `updateMany` + re-lectura en `prisma.$transaction` para que el snapshot `after` del audit no
+  pueda corromperse por un PATCH concurrente).
+
+### Deuda técnica diferida (MVP, registrada en el review)
+
+- La UI solo captura fecha (`type="date"`), por lo que `occurredAt` siempre queda en medianoche
+  UTC. Editar por UI una transacción creada vía API con hora real truncaría el time-of-day;
+  agregar input de hora (o preservar `occurredAt` cuando el usuario no lo cambia) antes de exponer
+  creación con hora.

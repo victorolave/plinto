@@ -61,6 +61,97 @@ export class TransactionService {
     return transaction
   }
 
+  async updateTransaction(params: {
+    tenantId: string
+    actorUserId: string | null
+    requestId: string
+    transactionId: string
+    accountId?: string
+    type?: TransactionType
+    amountMinor?: number
+    description?: string | null
+    occurredAt?: string
+  }): Promise<Transaction> {
+    const existing = await this.transactionRepository.findByIdForTenant(
+      params.transactionId,
+      params.tenantId,
+    )
+
+    if (!existing) {
+      throw new NotFoundException({
+        code: 'TRANSACTION_NOT_FOUND',
+        message: 'Transaction not found for the active tenant',
+      })
+    }
+
+    let currency = existing.currency
+    if (params.accountId) {
+      const account = await this.accountRepository.findByIdForTenant(
+        params.accountId,
+        params.tenantId,
+      )
+
+      if (!account) {
+        throw new NotFoundException({
+          code: 'ACCOUNT_NOT_FOUND',
+          message: 'Account not found for the active tenant',
+        })
+      }
+
+      currency = account.currency
+    }
+
+    const updated = await this.transactionRepository.updateForTenant(
+      params.transactionId,
+      params.tenantId,
+      {
+        accountId: params.accountId,
+        type: params.type,
+        amountMinor: params.amountMinor,
+        currency: params.accountId ? currency : undefined,
+        description:
+          params.description === undefined ? undefined : params.description,
+        occurredAt: params.occurredAt ? new Date(params.occurredAt) : undefined,
+      },
+    )
+
+    if (!updated) {
+      throw new NotFoundException({
+        code: 'TRANSACTION_NOT_FOUND',
+        message: 'Transaction not found for the active tenant',
+      })
+    }
+
+    await this.auditService.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'transaction.updated',
+      resourceType: 'transaction',
+      resourceId: updated.id,
+      correlationId: params.requestId,
+      metadata: {
+        before: {
+          accountId: existing.accountId,
+          type: existing.type,
+          amountMinor: existing.amountMinor,
+          currency: existing.currency,
+          description: existing.description,
+          occurredAt: existing.occurredAt.toISOString(),
+        },
+        after: {
+          accountId: updated.accountId,
+          type: updated.type,
+          amountMinor: updated.amountMinor,
+          currency: updated.currency,
+          description: updated.description,
+          occurredAt: updated.occurredAt.toISOString(),
+        },
+      },
+    })
+
+    return updated
+  }
+
   async listTransactions(tenantId: string, accountId?: string): Promise<Transaction[]> {
     if (accountId) {
       return this.transactionRepository.listByAccountId(tenantId, accountId)

@@ -29,6 +29,8 @@ const makeTransaction = (overrides = {}) => ({
 
 const makeTransactionRepo = () => ({
   create: vi.fn(),
+  findByIdForTenant: vi.fn(),
+  updateForTenant: vi.fn(),
   listByTenantId: vi.fn(),
   listByAccountId: vi.fn(),
 })
@@ -141,6 +143,133 @@ describe('TransactionService', () => {
       expect(auditService.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'transaction.expense' }),
       )
+    })
+  })
+
+  describe('updateTransaction', () => {
+    it('updates a transaction and records before/after audit metadata', async () => {
+      const existing = makeTransaction({
+        amountMinor: 10000,
+        description: 'Initial amount',
+      })
+      const updated = makeTransaction({
+        amountMinor: 12500,
+        description: 'Corrected amount',
+      })
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      transactionRepository.updateForTenant.mockResolvedValue(updated)
+      auditService.record.mockResolvedValue(undefined)
+
+      const result = await service.updateTransaction({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        requestId: 'req-1',
+        transactionId: 'tx-1',
+        amountMinor: 12500,
+        description: 'Corrected amount',
+      })
+
+      expect(transactionRepository.updateForTenant).toHaveBeenCalledWith(
+        'tx-1',
+        'tenant-1',
+        expect.objectContaining({
+          amountMinor: 12500,
+          description: 'Corrected amount',
+        }),
+      )
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'transaction.updated',
+          resourceType: 'transaction',
+          resourceId: 'tx-1',
+          metadata: {
+            before: expect.objectContaining({
+              amountMinor: 10000,
+              description: 'Initial amount',
+            }),
+            after: expect.objectContaining({
+              amountMinor: 12500,
+              description: 'Corrected amount',
+            }),
+          },
+        }),
+      )
+      expect(result).toBe(updated)
+    })
+
+    it('derives currency from the new account when moving a transaction', async () => {
+      const existing = makeTransaction({
+        accountId: 'account-1',
+        currency: 'COP',
+      })
+      const newAccount = makeAccount({
+        id: 'account-2',
+        currency: 'USD',
+      })
+      const updated = makeTransaction({
+        accountId: 'account-2',
+        currency: 'USD',
+      })
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      accountRepository.findByIdForTenant.mockResolvedValue(newAccount)
+      transactionRepository.updateForTenant.mockResolvedValue(updated)
+      auditService.record.mockResolvedValue(undefined)
+
+      await service.updateTransaction({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        requestId: 'req-1',
+        transactionId: 'tx-1',
+        accountId: 'account-2',
+      })
+
+      expect(accountRepository.findByIdForTenant).toHaveBeenCalledWith(
+        'account-2',
+        'tenant-1',
+      )
+      expect(transactionRepository.updateForTenant).toHaveBeenCalledWith(
+        'tx-1',
+        'tenant-1',
+        expect.objectContaining({
+          accountId: 'account-2',
+          currency: 'USD',
+        }),
+      )
+    })
+
+    it('throws NotFoundException when transaction is not in the active tenant', async () => {
+      transactionRepository.findByIdForTenant.mockResolvedValue(null)
+
+      await expect(
+        service.updateTransaction({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          requestId: 'req-1',
+          transactionId: 'tx-999',
+          amountMinor: 5000,
+        }),
+      ).rejects.toThrow(NotFoundException)
+
+      expect(transactionRepository.updateForTenant).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
+    })
+
+    it('throws NotFoundException and skips audit when target account is outside tenant', async () => {
+      transactionRepository.findByIdForTenant.mockResolvedValue(makeTransaction())
+      accountRepository.findByIdForTenant.mockResolvedValue(null)
+
+      await expect(
+        service.updateTransaction({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          requestId: 'req-1',
+          transactionId: 'tx-1',
+          accountId: 'account-999',
+        }),
+      ).rejects.toThrow(NotFoundException)
+
+      expect(transactionRepository.updateForTenant).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
     })
   })
 

@@ -95,6 +95,17 @@ main {
   border: 1px solid var(--border);
 }
 
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .muted {
   color: var(--muted);
   font-size: 0.9rem;

@@ -5,4 +5,5 @@ export {
   CreateSessionSchema,
   CreateAccountSchema,
   CreateTransactionSchema,
+  UpdateTransactionSchema,
 } from '@plinto/shared'

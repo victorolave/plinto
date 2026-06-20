@@ -48,6 +48,98 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /transactions:
+    get:
+      summary: List transactions for the active tenant
+      description: Returns transactions scoped to the selected tenant context, optionally filtered by account.
+      parameters:
+        - in: query
+          name: accountId
+          schema:
+            type: string
+          required: false
+      responses:
+        "200":
+          description: Active tenant transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Record a transaction for the active tenant
+      description: Creates an income or expense against an account in the selected tenant context. Currency is derived from the account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
+      responses:
+        "201":
+          description: Transaction recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /transactions/{id}:
+    patch:
+      summary: Correct a transaction for the active tenant
+      description: Updates transaction fields and records an audit event with before/after metadata.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTransactionRequest"
+      responses:
+        "200":
+          description: Transaction corrected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /transactions/balances:
+    get:
+      summary: List balances for the active tenant
+      description: Returns balances per account and currency for the selected tenant context.
+      responses:
+        "200":
+          description: Active tenant balances
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   securitySchemes:
     CookieAuth:
@@ -70,6 +162,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     Forbidden:
       description: Valid session but not authorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found for the active tenant
       content:
         application/json:
           schema:
@@ -155,4 +253,120 @@ components:
             account:
               $ref: "#/components/schemas/Account"
           required: [account]
+      required: [data]
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        accountId:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        amountMinor:
+          type: integer
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        description:
+          type: string
+          nullable: true
+        occurredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, tenantId, accountId, type, amountMinor, currency, occurredAt, createdAt]
+
+    CreateTransactionRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        amountMinor:
+          type: integer
+          minimum: 1
+        description:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+      required: [accountId, type, amountMinor]
+
+    UpdateTransactionRequest:
+      type: object
+      minProperties: 1
+      properties:
+        accountId:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        amountMinor:
+          type: integer
+          minimum: 1
+        description:
+          type: string
+          nullable: true
+        occurredAt:
+          type: string
+          format: date-time
+
+    TransactionResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            transaction:
+              $ref: "#/components/schemas/Transaction"
+          required: [transaction]
+      required: [data]
+
+    TransactionListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            transactions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Transaction"
+          required: [transactions]
+      required: [data]
+
+    AccountBalance:
+      type: object
+      properties:
+        accountId:
+          type: string
+        accountName:
+          type: string
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        balanceMinor:
+          type: integer
+      required: [accountId, accountName, currency, balanceMinor]
+
+    BalanceListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            balances:
+              type: array
+              items:
+                $ref: "#/components/schemas/AccountBalance"
+          required: [balances]
       required: [data]
