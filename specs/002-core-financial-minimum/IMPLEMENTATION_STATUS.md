@@ -227,3 +227,57 @@ cuando llegue la infra de jobs (Slice 6 recurring la requerirá).
   (ADR 0006) cuando llegue la infra de jobs.
 - Auditoría best-effort: las dos llamadas a `auditService.record` son secuenciales fuera de la
   transacción DB; si la primera falla, la segunda no corre.
+
+## Slice 5 — Transferir entre monedas distintas con FX explícito
+
+**Estado**: ✅ Implementado y verificado técnicamente
+
+**Outcome**: un miembro del tenant puede transferir entre cuentas de monedas distintas (ej. COP → USD)
+con un tipo de cambio explícito y movimientos resultantes claros, sin conversión implícita.
+
+### Decisión de modelado (evolución del Slice 4)
+
+Se introdujo una tabla `transfers` normalizada que guarda el registro de la transferencia + la
+metadata FX una sola vez; `transactions.transfer_id` pasó a ser **FK** a `transfers.id`. El camino
+misma-moneda del Slice 4 se **unificó** sobre esta tabla (cada transferencia —misma o distinta
+moneda— crea una fila `Transfer`, con `fx_rate` null en el caso simple).
+
+### Incluye
+
+- Tabla `transfers` (migración versionada `*_add_transfers_table` autorada offline, con FKs a
+  `tenants` y a `accounts` ×2 + índices; generada con `prisma migrate diff` para evitar drift).
+- `Transfer` lleva `source/destination` account+amount+currency, `fx_rate` (`DECIMAL(20,8)`,
+  nullable), `fee_minor`, `rate_source`.
+- `createTransfer` (repo) crea la fila `Transfer` + las dos `Transaction` (montos y monedas por pata)
+  en un único `prisma.$transaction`.
+- Sin conversión implícita: el cliente ingresa monto origen, monto destino y `fxRate` explícitos; el
+  servidor no calcula montos (PRD-003 §76-78). `rate_source` fijo `'manual'`.
+- Guards: same-currency rechaza `fxRate`/monto-destino-distinto/`feeMinor` (`TRANSFER_FX_NOT_ALLOWED`);
+  cross-currency exige `fxRate` + `destinationAmountMinor` (`TRANSFER_FX_REQUIRED`).
+- API `POST /transactions/transfers` (generalizada) con permiso `transaction:write`; contrato OpenAPI
+  documentado en su forma final.
+- UI: el form muestra campos FX (monto destino + rate + fee) sólo cuando las monedas difieren, con
+  hint no bloqueante del rate implícito; limpia el estado FX al volver a same-currency.
+- Tests de schema, servicio (sin recálculo implícito, ambos guards, aislamiento de tenant, fila
+  `Transfer` + dos patas) y controller.
+
+### Excluye
+
+- Proveedores de FX automáticos / rates históricos (fuera de PRD-003).
+- Idempotencia / ejecución vía jobs (diferido, igual que Slice 4).
+- Borrado o reverso de transferencias.
+
+### Verificación técnica
+
+- [x] `pnpm lint`
+- [x] `pnpm test` (280 tests)
+- [x] `pnpm build`
+- [x] Review adversarial en contexto fresco (must-fix aplicados: 3 FKs faltantes en `transfers` +
+  migración regenerada canónicamente con `migrate diff`; envelope de respuesta aplanado; should-fix:
+  cota del regex de `fxRate` a la precisión de la columna, rechazo de `feeMinor` en same-currency,
+  limpieza de estado FX stale en la UI, aserción de `Decimal` robusta en tests).
+- [ ] Migración aplicada a la DB remota (`prisma:deploy`). **Caveat**: verificar antes que no haya
+  `transactions.transfer_id` huérfano (la FK contra la tabla `transfers` vacía fallaría); como el
+  Slice 4 no se smoke-testeó, no debería haber ninguno.
+- [ ] Smoke test manual: transferencia cross-currency (COP→USD) en `/dashboard` — ambos balances se
+  ajustan en su moneda, sin conversión implícita; y una transferencia same-currency sigue funcionando.

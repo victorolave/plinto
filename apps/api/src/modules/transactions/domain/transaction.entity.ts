@@ -20,3 +20,19 @@ export interface AccountBalance {
   currency: string
   balanceMinor: number
 }
+
+export interface Transfer {
+  id: string
+  tenantId: string
+  sourceAccountId: string
+  destinationAccountId: string
+  sourceAmountMinor: number
+  destinationAmountMinor: number
+  sourceCurrency: string
+  destinationCurrency: string
+  fxRate: string | null  // decimal string, never Prisma.Decimal
+  feeMinor: number | null
+  rateSource: string | null
+  createdAt: Date
+  updatedAt: Date
+}

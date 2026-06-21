@@ -22,6 +22,21 @@ export interface AccountBalance {
   balanceMinor: number
 }
 
+export interface Transfer {
+  id: string
+  tenantId: string
+  sourceAccountId: string
+  destinationAccountId: string
+  sourceAmountMinor: number
+  destinationAmountMinor: number
+  sourceCurrency: string
+  destinationCurrency: string
+  fxRate: string | null
+  feeMinor: number | null
+  rateSource: string | null
+  createdAt: string
+}
+
 export async function listTransactions(accountId?: string): Promise<{ data: { transactions: Transaction[] } }> {
   const url = accountId ? `/transactions?accountId=${encodeURIComponent(accountId)}` : '/transactions'
   return apiFetch(url)
@@ -63,10 +78,13 @@ export async function listBalances(): Promise<{ data: { balances: AccountBalance
 export async function createTransfer(input: {
   sourceAccountId: string
   destinationAccountId: string
-  amountMinor: number
+  sourceAmountMinor: number
+  destinationAmountMinor?: number
+  fxRate?: string
+  feeMinor?: number
   description?: string
   occurredAt?: string
-}): Promise<{ data: { transfer: { transferId: string; debit: Transaction; credit: Transaction } } }> {
+}): Promise<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }> {
   return apiFetch('/transactions/transfers', {
     method: 'POST',
     body: JSON.stringify(input),

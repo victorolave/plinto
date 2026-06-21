@@ -138,7 +138,7 @@ describe('TransactionsController', () => {
 
   it('creates a transfer using the resolved tenant context', async () => {
     const transferResult = {
-      transferId: 'transfer-uuid',
+      transfer: { id: 'transfer-uuid' },
       debit: { id: 'tx-debit' },
       credit: { id: 'tx-credit' },
     }
@@ -152,7 +152,7 @@ describe('TransactionsController', () => {
       {
         sourceAccountId: 'account-1',
         destinationAccountId: 'account-2',
-        amountMinor: 5000,
+        sourceAmountMinor: 5000,
       },
     )
 
@@ -162,10 +162,13 @@ describe('TransactionsController', () => {
       correlationId: 'req-1',
       sourceAccountId: 'account-1',
       destinationAccountId: 'account-2',
-      amountMinor: 5000,
+      sourceAmountMinor: 5000,
+      destinationAmountMinor: undefined,
+      fxRate: undefined,
+      feeMinor: undefined,
       description: undefined,
       occurredAt: undefined,
     })
-    expect(result).toEqual({ data: { transfer: transferResult } })
+    expect(result).toEqual({ data: transferResult })
   })
 })

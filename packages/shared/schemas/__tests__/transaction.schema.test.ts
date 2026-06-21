@@ -176,44 +176,101 @@ describe('TransactionSchema with transferId', () => {
 })
 
 describe('CreateTransferSchema', () => {
-  const validTransfer = {
+  const validSameCurrencyTransfer = {
     sourceAccountId: 'account-1',
     destinationAccountId: 'account-2',
-    amountMinor: 5000,
+    sourceAmountMinor: 5000,
   }
 
-  it('parses a valid transfer', () => {
-    const result = CreateTransferSchema.safeParse(validTransfer)
+  const validCrossCurrencyTransfer = {
+    sourceAccountId: 'account-1',
+    destinationAccountId: 'account-2',
+    sourceAmountMinor: 100000,
+    destinationAmountMinor: 50,
+    fxRate: '4200.00',
+  }
+
+  it('parses a valid same-currency transfer (no fxRate/destinationAmountMinor)', () => {
+    const result = CreateTransferSchema.safeParse(validSameCurrencyTransfer)
     expect(result.success).toBe(true)
   })
 
-  it('rejects when source and destination are the same', () => {
-    const result = CreateTransferSchema.safeParse({
-      ...validTransfer,
-      destinationAccountId: 'account-1',
-    })
+  it('parses a valid cross-currency transfer (with fxRate + destinationAmountMinor)', () => {
+    const result = CreateTransferSchema.safeParse(validCrossCurrencyTransfer)
+    expect(result.success).toBe(true)
+  })
+
+  it('parses a cross-currency transfer with optional feeMinor', () => {
+    const result = CreateTransferSchema.safeParse({ ...validCrossCurrencyTransfer, feeMinor: 200 })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects fxRate with invalid format (not a decimal string)', () => {
+    const result = CreateTransferSchema.safeParse({ ...validCrossCurrencyTransfer, fxRate: 'abc' })
     expect(result.success).toBe(false)
   })
 
-  it('rejects zero amountMinor', () => {
-    const result = CreateTransferSchema.safeParse({ ...validTransfer, amountMinor: 0 })
+  it('rejects fxRate as a float number (must be string)', () => {
+    const result = CreateTransferSchema.safeParse({ ...validCrossCurrencyTransfer, fxRate: 4200 })
     expect(result.success).toBe(false)
   })
 
-  it('rejects negative amountMinor', () => {
-    const result = CreateTransferSchema.safeParse({ ...validTransfer, amountMinor: -100 })
+  it('rejects non-positive sourceAmountMinor (0)', () => {
+    const result = CreateTransferSchema.safeParse({ ...validSameCurrencyTransfer, sourceAmountMinor: 0 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects non-positive destinationAmountMinor (0)', () => {
+    const result = CreateTransferSchema.safeParse({ ...validCrossCurrencyTransfer, destinationAmountMinor: 0 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects negative sourceAmountMinor', () => {
+    const result = CreateTransferSchema.safeParse({ ...validSameCurrencyTransfer, sourceAmountMinor: -100 })
     expect(result.success).toBe(false)
   })
 
   it('rejects missing sourceAccountId', () => {
-    const { sourceAccountId: _s, ...rest } = validTransfer
+    const { sourceAccountId: _s, ...rest } = validSameCurrencyTransfer
     const result = CreateTransferSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
 
   it('rejects missing destinationAccountId', () => {
-    const { destinationAccountId: _d, ...rest } = validTransfer
+    const { destinationAccountId: _d, ...rest } = validSameCurrencyTransfer
     const result = CreateTransferSchema.safeParse(rest)
     expect(result.success).toBe(false)
+  })
+
+  it('rejects when source and destination are the same', () => {
+    const result = CreateTransferSchema.safeParse({
+      ...validSameCurrencyTransfer,
+      destinationAccountId: 'account-1',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects fxRate with more than 12 integer digits', () => {
+    const result = CreateTransferSchema.safeParse({
+      ...validCrossCurrencyTransfer,
+      fxRate: '1234567890123.00',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects fxRate with more than 8 decimal digits', () => {
+    const result = CreateTransferSchema.safeParse({
+      ...validCrossCurrencyTransfer,
+      fxRate: '4200.123456789',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts fxRate at the boundary of 12 integer digits and 8 decimal digits', () => {
+    const result = CreateTransferSchema.safeParse({
+      ...validCrossCurrencyTransfer,
+      fxRate: '123456789012.12345678',
+    })
+    expect(result.success).toBe(true)
   })
 })

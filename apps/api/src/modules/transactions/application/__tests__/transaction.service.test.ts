@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common'
+import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
 import { TransactionService } from '../transaction.service'
 
 const makeAccount = (overrides = {}) => ({
@@ -29,7 +29,7 @@ const makeTransaction = (overrides = {}) => ({
 
 const makeTransactionRepo = () => ({
   create: vi.fn(),
-  createTransferPair: vi.fn(),
+  createTransfer: vi.fn(),
   findByIdForTenant: vi.fn(),
   updateForTenant: vi.fn(),
   listByTenantId: vi.fn(),
@@ -148,6 +148,22 @@ describe('TransactionService', () => {
   })
 
   describe('createTransfer', () => {
+    const makeTransfer = (overrides = {}) => ({
+      id: 'transfer-uuid',
+      tenantId: 'tenant-1',
+      sourceAccountId: 'account-1',
+      destinationAccountId: 'account-2',
+      sourceAmountMinor: 5000,
+      destinationAmountMinor: 5000,
+      sourceCurrency: 'COP',
+      destinationCurrency: 'COP',
+      fxRate: null,
+      feeMinor: null,
+      rateSource: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...overrides,
+    })
     const makeDebitTx = (overrides = {}) => ({
       ...makeTransaction({ id: 'tx-debit', type: 'expense' as const, accountId: 'account-1' }),
       transferId: 'transfer-uuid',
@@ -159,15 +175,16 @@ describe('TransactionService', () => {
       ...overrides,
     })
 
-    it('creates exactly two movements sharing a transferId', async () => {
+    it('same-currency: creates a transfer row (fxRate null) and two legs with matching amounts', async () => {
       const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
       const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+      const transfer = makeTransfer()
       const debitTx = makeDebitTx()
       const creditTx = makeCreditTx()
       accountRepository.findByIdForTenant
         .mockResolvedValueOnce(sourceAccount)
         .mockResolvedValueOnce(destAccount)
-      transactionRepository.createTransferPair.mockResolvedValue({ debit: debitTx, credit: creditTx })
+      transactionRepository.createTransfer.mockResolvedValue({ transfer, debit: debitTx, credit: creditTx })
       auditService.record.mockResolvedValue(undefined)
 
       const result = await service.createTransfer({
@@ -176,45 +193,63 @@ describe('TransactionService', () => {
         correlationId: 'req-1',
         sourceAccountId: 'account-1',
         destinationAccountId: 'account-2',
-        amountMinor: 5000,
+        sourceAmountMinor: 5000,
       })
 
-      expect(transactionRepository.createTransferPair).toHaveBeenCalledTimes(1)
-      const [debitArg, creditArg] = transactionRepository.createTransferPair.mock.calls[0]
-      expect(debitArg.accountId).toBe('account-1')
-      expect(creditArg.accountId).toBe('account-2')
-      expect(debitArg.transferId).toBe(creditArg.transferId)
+      expect(transactionRepository.createTransfer).toHaveBeenCalledTimes(1)
+      const callArg = transactionRepository.createTransfer.mock.calls[0][0]
+      expect(callArg.sourceAmountMinor).toBe(5000)
+      expect(callArg.destinationAmountMinor).toBe(5000)
+      expect(callArg.fxRate).toBeNull()
+      expect(callArg.rateSource).toBeNull()
+      expect(callArg.sourceCurrency).toBe('COP')
+      expect(callArg.destinationCurrency).toBe('COP')
+      expect(result.transfer).toBe(transfer)
       expect(result.debit).toBe(debitTx)
       expect(result.credit).toBe(creditTx)
-      expect(result.transferId).toBe(debitArg.transferId)
     })
 
-    it('derives currency from the source account', async () => {
-      const sourceAccount = makeAccount({ id: 'account-1', currency: 'USD' })
+    it('cross-currency: creates a transfer row with fxRate and rateSource=manual, preserves exact amounts', async () => {
+      const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
       const destAccount = makeAccount({ id: 'account-2', currency: 'USD' })
-      const debitTx = makeDebitTx({ currency: 'USD' })
-      const creditTx = makeCreditTx({ currency: 'USD' })
+      const transfer = makeTransfer({
+        sourceCurrency: 'COP',
+        destinationCurrency: 'USD',
+        sourceAmountMinor: 420000,
+        destinationAmountMinor: 100,
+        fxRate: '4200.00',
+        rateSource: 'manual',
+      })
+      const debitTx = makeDebitTx({ currency: 'COP', amountMinor: 420000 })
+      const creditTx = makeCreditTx({ currency: 'USD', amountMinor: 100, accountId: 'account-2' })
       accountRepository.findByIdForTenant
         .mockResolvedValueOnce(sourceAccount)
         .mockResolvedValueOnce(destAccount)
-      transactionRepository.createTransferPair.mockResolvedValue({ debit: debitTx, credit: creditTx })
+      transactionRepository.createTransfer.mockResolvedValue({ transfer, debit: debitTx, credit: creditTx })
       auditService.record.mockResolvedValue(undefined)
 
-      await service.createTransfer({
+      const result = await service.createTransfer({
         tenantId: 'tenant-1',
         actorUserId: 'user-1',
         correlationId: 'req-1',
         sourceAccountId: 'account-1',
         destinationAccountId: 'account-2',
-        amountMinor: 5000,
+        sourceAmountMinor: 420000,
+        destinationAmountMinor: 100,
+        fxRate: '4200.00',
       })
 
-      const [debitArg, creditArg] = transactionRepository.createTransferPair.mock.calls[0]
-      expect(debitArg.currency).toBe('USD')
-      expect(creditArg.currency).toBe('USD')
+      const callArg = transactionRepository.createTransfer.mock.calls[0][0]
+      expect(callArg.sourceAmountMinor).toBe(420000)
+      expect(callArg.destinationAmountMinor).toBe(100)
+      expect(callArg.fxRate).toBe('4200.00')
+      expect(callArg.rateSource).toBe('manual')
+      expect(callArg.sourceCurrency).toBe('COP')
+      expect(callArg.destinationCurrency).toBe('USD')
+      expect(result.transfer).toBe(transfer)
     })
 
-    it('throws TRANSFER_CURRENCY_MISMATCH and creates no rows when currencies differ', async () => {
+    it('cross-currency: rejects when fxRate is missing', async () => {
       const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
       const destAccount = makeAccount({ id: 'account-2', currency: 'USD' })
       accountRepository.findByIdForTenant
@@ -228,12 +263,104 @@ describe('TransactionService', () => {
           correlationId: 'req-1',
           sourceAccountId: 'account-1',
           destinationAccountId: 'account-2',
-          amountMinor: 5000,
+          sourceAmountMinor: 420000,
+          destinationAmountMinor: 100,
         }),
       ).rejects.toThrow(UnprocessableEntityException)
 
-      expect(transactionRepository.createTransferPair).not.toHaveBeenCalled()
+      expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
       expect(auditService.record).not.toHaveBeenCalled()
+    })
+
+    it('cross-currency: rejects when destinationAmountMinor is missing', async () => {
+      const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+      const destAccount = makeAccount({ id: 'account-2', currency: 'USD' })
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(sourceAccount)
+        .mockResolvedValueOnce(destAccount)
+
+      await expect(
+        service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 420000,
+          fxRate: '4200.00',
+        }),
+      ).rejects.toThrow(UnprocessableEntityException)
+
+      expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
+    })
+
+    it('same-currency: rejects when fxRate is present', async () => {
+      const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+      const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(sourceAccount)
+        .mockResolvedValueOnce(destAccount)
+
+      await expect(
+        service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          fxRate: '1.0',
+        }),
+      ).rejects.toThrow(BadRequestException)
+
+      expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
+    })
+
+    it('same-currency: rejects when feeMinor is present', async () => {
+      const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+      const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(sourceAccount)
+        .mockResolvedValueOnce(destAccount)
+
+      await expect(
+        service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          feeMinor: 100,
+        }),
+      ).rejects.toThrow(BadRequestException)
+
+      expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
+    })
+
+    it('same-currency: rejects when destinationAmountMinor differs from sourceAmountMinor', async () => {
+      const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+      const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(sourceAccount)
+        .mockResolvedValueOnce(destAccount)
+
+      await expect(
+        service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          destinationAmountMinor: 9999,
+        }),
+      ).rejects.toThrow(BadRequestException)
+
+      expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
     })
 
     it('throws NotFoundException when source account is outside the tenant', async () => {
@@ -248,11 +375,11 @@ describe('TransactionService', () => {
           correlationId: 'req-1',
           sourceAccountId: 'account-999',
           destinationAccountId: 'account-2',
-          amountMinor: 5000,
+          sourceAmountMinor: 5000,
         }),
       ).rejects.toThrow(NotFoundException)
 
-      expect(transactionRepository.createTransferPair).not.toHaveBeenCalled()
+      expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
       expect(auditService.record).not.toHaveBeenCalled()
     })
 
@@ -268,11 +395,11 @@ describe('TransactionService', () => {
           correlationId: 'req-1',
           sourceAccountId: 'account-1',
           destinationAccountId: 'account-999',
-          amountMinor: 5000,
+          sourceAmountMinor: 5000,
         }),
       ).rejects.toThrow(NotFoundException)
 
-      expect(transactionRepository.createTransferPair).not.toHaveBeenCalled()
+      expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
       expect(auditService.record).not.toHaveBeenCalled()
     })
 
@@ -284,23 +411,24 @@ describe('TransactionService', () => {
           correlationId: 'req-1',
           sourceAccountId: 'account-1',
           destinationAccountId: 'account-1',
-          amountMinor: 5000,
+          sourceAmountMinor: 5000,
         }),
       ).rejects.toThrow(UnprocessableEntityException)
 
       expect(accountRepository.findByIdForTenant).not.toHaveBeenCalled()
-      expect(transactionRepository.createTransferPair).not.toHaveBeenCalled()
+      expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
     })
 
-    it('emits two transaction.transfer audit events with correct direction metadata', async () => {
+    it('emits two transaction.transfer audit events with FX metadata', async () => {
       const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
-      const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
-      const debitTx = makeDebitTx()
-      const creditTx = makeCreditTx()
+      const destAccount = makeAccount({ id: 'account-2', currency: 'USD' })
+      const transfer = makeTransfer({ sourceCurrency: 'COP', destinationCurrency: 'USD', fxRate: '4200.00', rateSource: 'manual', destinationAmountMinor: 100 })
+      const debitTx = makeDebitTx({ currency: 'COP' })
+      const creditTx = makeCreditTx({ currency: 'USD' })
       accountRepository.findByIdForTenant
         .mockResolvedValueOnce(sourceAccount)
         .mockResolvedValueOnce(destAccount)
-      transactionRepository.createTransferPair.mockResolvedValue({ debit: debitTx, credit: creditTx })
+      transactionRepository.createTransfer.mockResolvedValue({ transfer, debit: debitTx, credit: creditTx })
       auditService.record.mockResolvedValue(undefined)
 
       await service.createTransfer({
@@ -309,7 +437,9 @@ describe('TransactionService', () => {
         correlationId: 'req-1',
         sourceAccountId: 'account-1',
         destinationAccountId: 'account-2',
-        amountMinor: 5000,
+        sourceAmountMinor: 5000,
+        destinationAmountMinor: 100,
+        fxRate: '4200.00',
       })
 
       expect(auditService.record).toHaveBeenCalledTimes(2)
@@ -317,14 +447,14 @@ describe('TransactionService', () => {
         expect.objectContaining({
           action: 'transaction.transfer',
           resourceId: 'tx-debit',
-          metadata: expect.objectContaining({ direction: 'debit' }),
+          metadata: expect.objectContaining({ direction: 'debit', fxRate: expect.stringMatching(/^4200(\.0+)?$/) }),
         }),
       )
       expect(auditService.record).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'transaction.transfer',
           resourceId: 'tx-credit',
-          metadata: expect.objectContaining({ direction: 'credit' }),
+          metadata: expect.objectContaining({ direction: 'credit', fxRate: expect.stringMatching(/^4200(\.0+)?$/) }),
         }),
       )
     })

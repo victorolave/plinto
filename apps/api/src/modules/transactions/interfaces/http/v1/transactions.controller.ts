@@ -83,17 +83,20 @@ export class TransactionsController {
     @Req() req: RequestContext,
     @Body(new ZodValidationPipe(CreateTransferSchema)) body: CreateTransferBody,
   ) {
-    const transfer = await this.transactionService.createTransfer({
+    const result = await this.transactionService.createTransfer({
       tenantId: req.tenantId as string,
       actorUserId: req.user?.id ?? null,
       correlationId: req.requestId ?? 'unknown',
       sourceAccountId: body.sourceAccountId,
       destinationAccountId: body.destinationAccountId,
-      amountMinor: body.amountMinor,
+      sourceAmountMinor: body.sourceAmountMinor,
+      destinationAmountMinor: body.destinationAmountMinor,
+      fxRate: body.fxRate,
+      feeMinor: body.feeMinor,
       description: body.description,
       occurredAt: body.occurredAt,
     })
-    return { data: { transfer } }
+    return { data: result }
   }
 
   @Patch(':id')

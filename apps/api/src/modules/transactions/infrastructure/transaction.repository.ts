@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
-import { Transaction, TransactionType } from '../domain/transaction.entity'
+import { Transaction, TransactionType, Transfer } from '../domain/transaction.entity'
 
 @Injectable()
 export class TransactionRepository {
@@ -19,34 +19,68 @@ export class TransactionRepository {
     return this.prisma.transaction.create({ data })
   }
 
-  async createTransferPair(
-    debit: {
-      tenantId: string
-      accountId: string
-      amountMinor: number
-      currency: string
-      description: string | null
-      occurredAt: Date
-      transferId: string
-    },
-    credit: {
-      tenantId: string
-      accountId: string
-      amountMinor: number
-      currency: string
-      description: string | null
-      occurredAt: Date
-      transferId: string
-    },
-  ): Promise<{ debit: Transaction; credit: Transaction }> {
+  async createTransfer(input: {
+    tenantId: string
+    sourceAccountId: string
+    destinationAccountId: string
+    sourceAmountMinor: number
+    destinationAmountMinor: number
+    sourceCurrency: string
+    destinationCurrency: string
+    fxRate: string | null
+    feeMinor: number | null
+    rateSource: string | null
+    description: string | null
+    occurredAt: Date
+  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction }> {
     return this.prisma.$transaction(async (tx) => {
-      const debitTx = await tx.transaction.create({
-        data: { ...debit, type: 'expense' },
+      const transfer = await tx.transfer.create({
+        data: {
+          tenantId: input.tenantId,
+          sourceAccountId: input.sourceAccountId,
+          destinationAccountId: input.destinationAccountId,
+          sourceAmountMinor: input.sourceAmountMinor,
+          destinationAmountMinor: input.destinationAmountMinor,
+          sourceCurrency: input.sourceCurrency,
+          destinationCurrency: input.destinationCurrency,
+          fxRate: input.fxRate ?? undefined,
+          feeMinor: input.feeMinor ?? undefined,
+          rateSource: input.rateSource ?? undefined,
+        },
       })
-      const creditTx = await tx.transaction.create({
-        data: { ...credit, type: 'income' },
+
+      const debit = await tx.transaction.create({
+        data: {
+          tenantId: input.tenantId,
+          accountId: input.sourceAccountId,
+          type: 'expense',
+          amountMinor: input.sourceAmountMinor,
+          currency: input.sourceCurrency,
+          description: input.description,
+          occurredAt: input.occurredAt,
+          transferId: transfer.id,
+        },
       })
-      return { debit: debitTx, credit: creditTx }
+
+      const credit = await tx.transaction.create({
+        data: {
+          tenantId: input.tenantId,
+          accountId: input.destinationAccountId,
+          type: 'income',
+          amountMinor: input.destinationAmountMinor,
+          currency: input.destinationCurrency,
+          description: input.description,
+          occurredAt: input.occurredAt,
+          transferId: transfer.id,
+        },
+      })
+
+      const transferEntity: Transfer = {
+        ...transfer,
+        fxRate: transfer.fxRate != null ? transfer.fxRate.toString() : null,
+      }
+
+      return { transfer: transferEntity, debit, credit }
     })
   }
 

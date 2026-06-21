@@ -33,6 +33,7 @@ model Tenant {
   auditEvents  AuditEvent[]
   accounts     Account[]
   transactions Transaction[]
+  transfers    Transfer[]
 
   @@map("tenants")
 }
@@ -48,6 +49,8 @@ model Account {
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   transactions Transaction[]
+  transfersOut Transfer[]    @relation("TransferSource")
+  transfersIn  Transfer[]    @relation("TransferDestination")
 
   @@index([tenantId])
   @@map("accounts")
@@ -115,13 +118,40 @@ model Transaction {
   createdAt   DateTime        @default(now()) @map("created_at")
   updatedAt   DateTime        @updatedAt @map("updated_at")
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id])
-  account Account @relation(fields: [accountId], references: [id])
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  account  Account  @relation(fields: [accountId], references: [id])
+  transfer Transfer? @relation(fields: [transferId], references: [id])
 
   @@index([tenantId])
   @@index([accountId])
   @@index([transferId])
   @@map("transactions")
+}
+
+model Transfer {
+  id                   String    @id @default(uuid())
+  tenantId             String    @map("tenant_id")
+  sourceAccountId      String    @map("source_account_id")
+  destinationAccountId String    @map("destination_account_id")
+  sourceAmountMinor    Int       @map("source_amount_minor")
+  destinationAmountMinor Int     @map("destination_amount_minor")
+  sourceCurrency       String    @map("source_currency")
+  destinationCurrency  String    @map("destination_currency")
+  fxRate               Decimal?  @map("fx_rate") @db.Decimal(20, 8)
+  feeMinor             Int?      @map("fee_minor")
+  rateSource           String?   @map("rate_source")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  tenant             Tenant        @relation(fields: [tenantId], references: [id])
+  sourceAccount      Account       @relation("TransferSource", fields: [sourceAccountId], references: [id])
+  destinationAccount Account       @relation("TransferDestination", fields: [destinationAccountId], references: [id])
+  transactions       Transaction[]
+
+  @@index([tenantId])
+  @@index([sourceAccountId])
+  @@index([destinationAccountId])
+  @@map("transfers")
 }
 
 enum TransactionType {

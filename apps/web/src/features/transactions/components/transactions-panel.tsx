@@ -42,6 +42,21 @@ export function TransactionsPanel() {
   const [transferOccurredAt, setTransferOccurredAt] = useState('')
   const [transferSubmitting, setTransferSubmitting] = useState(false)
   const [transferError, setTransferError] = useState<string | null>(null)
+  const [transferDestAmount, setTransferDestAmount] = useState('')
+  const [transferFxRate, setTransferFxRate] = useState('')
+  const [transferFeeMinor, setTransferFeeMinor] = useState('')
+
+  const sourceAccount = accounts.find((a) => a.id === transferSourceAccountId)
+  const destAccount = accounts.find((a) => a.id === transferDestAccountId)
+  const isCrossCurrency = sourceAccount && destAccount && sourceAccount.currency !== destAccount.currency
+
+  useEffect(() => {
+    if (!isCrossCurrency) {
+      setTransferDestAmount('')
+      setTransferFxRate('')
+      setTransferFeeMinor('')
+    }
+  }, [isCrossCurrency])
 
   const loadData = async () => {
     const [balancesRes, transactionsRes] = await Promise.all([
@@ -173,21 +188,48 @@ export function TransactionsPanel() {
       return
     }
 
+    const sourceAmountMinor = Math.round(parsedAmount * 100)
+    let destinationAmountMinor: number | undefined
+    let fxRateValue: string | undefined
+
+    if (isCrossCurrency) {
+      const parsedDestAmount = parseFloat(transferDestAmount)
+      if (Number.isNaN(parsedDestAmount) || parsedDestAmount <= 0) {
+        setTransferError('Enter a destination amount greater than zero')
+        return
+      }
+      const fxRateTrimmed = transferFxRate.trim()
+      if (!fxRateTrimmed || !/^\d{1,12}(\.\d{1,8})?$/.test(fxRateTrimmed)) {
+        setTransferError('Enter a valid FX rate (e.g. 4200.00)')
+        return
+      }
+      destinationAmountMinor = Math.round(parsedDestAmount * 100)
+      fxRateValue = fxRateTrimmed
+    }
+
+    const parsedFee = transferFeeMinor.trim() ? parseInt(transferFeeMinor, 10) : undefined
+    const feeMinor = parsedFee !== undefined && !Number.isNaN(parsedFee) && parsedFee >= 0 ? parsedFee : undefined
+
     setTransferSubmitting(true)
     setTransferError(null)
 
     try {
-      const amountMinor = Math.round(parsedAmount * 100)
       const trimmedDescription = transferDescription.trim()
       await createTransfer({
         sourceAccountId: transferSourceAccountId,
         destinationAccountId: transferDestAccountId,
-        amountMinor,
+        sourceAmountMinor,
+        destinationAmountMinor,
+        fxRate: fxRateValue,
+        feeMinor,
         description: trimmedDescription || undefined,
         occurredAt: toOccurredAtIso(transferOccurredAt),
       })
 
       setTransferAmount('')
+      setTransferDestAmount('')
+      setTransferFxRate('')
+      setTransferFeeMinor('')
       setTransferDescription('')
       setTransferOccurredAt('')
       await loadData()
@@ -300,7 +342,7 @@ export function TransactionsPanel() {
         <h2>Transfer between accounts</h2>
         {accounts.length < 2 ? (
           <p className="muted">
-            You need at least two accounts of the same currency to transfer.
+            You need at least two accounts to transfer.
           </p>
         ) : null}
         <label className="label">
@@ -334,7 +376,7 @@ export function TransactionsPanel() {
           </select>
         </label>
         <label className="label">
-          Amount
+          {isCrossCurrency ? `Amount (${sourceAccount?.currency ?? 'source'})` : 'Amount'}
           <input
             className="input"
             type="number"
@@ -346,6 +388,53 @@ export function TransactionsPanel() {
             required
           />
         </label>
+        {isCrossCurrency ? (
+          <>
+            <label className="label">
+              {`Destination amount (${destAccount?.currency ?? 'destination'})`}
+              <input
+                className="input"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={transferDestAmount}
+                onChange={(event) => setTransferDestAmount(event.target.value)}
+                placeholder="0.00"
+                required
+              />
+            </label>
+            <label className="label">
+              FX rate
+              <input
+                className="input"
+                type="text"
+                value={transferFxRate}
+                onChange={(event) => setTransferFxRate(event.target.value)}
+                placeholder="e.g. 4200.00"
+                required
+              />
+            </label>
+            {transferAmount && transferDestAmount && transferFxRate ? (
+              <p className="muted">
+                {parseFloat(transferAmount).toFixed(2)} {sourceAccount?.currency} →{' '}
+                {parseFloat(transferDestAmount).toFixed(2)} {destAccount?.currency}{' '}
+                at rate {transferFxRate}
+              </p>
+            ) : null}
+            <label className="label">
+              Fee (optional, minor units)
+              <input
+                className="input"
+                type="number"
+                min="0"
+                step="1"
+                value={transferFeeMinor}
+                onChange={(event) => setTransferFeeMinor(event.target.value)}
+                placeholder="0"
+              />
+            </label>
+          </>
+        ) : null}
         <label className="label">
           Description (optional)
           <input

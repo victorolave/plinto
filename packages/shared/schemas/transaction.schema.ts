@@ -43,13 +43,33 @@ export const AccountBalanceSchema = z.object({
 export const CreateTransferSchema = z.object({
   sourceAccountId: z.string().trim().min(1),
   destinationAccountId: z.string().trim().min(1),
-  amountMinor: z.number().int().positive(),
+  sourceAmountMinor: z.number().int().positive(),
+  destinationAmountMinor: z.number().int().positive().optional(),
+  fxRate: z.string().regex(/^\d{1,12}(\.\d{1,8})?$/).optional(),
+  feeMinor: z.number().int().nonnegative().optional(),
   description: z.string().trim().min(1).optional(),
   occurredAt: z.string().datetime().optional(),
 }).refine(
   (value) => value.sourceAccountId !== value.destinationAccountId,
   { message: 'Source and destination accounts must differ', path: ['destinationAccountId'] },
 )
+
+export const TransferSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  sourceAccountId: z.string(),
+  destinationAccountId: z.string(),
+  sourceAmountMinor: z.number().int(),
+  destinationAmountMinor: z.number().int(),
+  sourceCurrency: z.string().regex(/^[A-Z]{3}$/),
+  destinationCurrency: z.string().regex(/^[A-Z]{3}$/),
+  fxRate: z.string().nullable(),
+  feeMinor: z.number().int().nullable(),
+  rateSource: z.string().nullable(),
+  createdAt: z.string(),
+})
+
+export type TransferDto = z.infer<typeof TransferSchema>
 
 export type TransactionTypeDto = z.infer<typeof TransactionTypeSchema>
 export type TransactionDto = z.infer<typeof TransactionSchema>

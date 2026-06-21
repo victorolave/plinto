@@ -92,6 +92,73 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /transactions/transfers:
+    post:
+      summary: Transfer funds between accounts
+      description: |
+        Creates a transfer between two accounts. For same-currency transfers, only
+        sourceAmountMinor is required. For cross-currency transfers, both
+        destinationAmountMinor and fxRate are required; the server never computes
+        either amount (PRD-003 §76-78). Currency is always derived from the accounts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransferRequest"
+      responses:
+        "201":
+          description: Transfer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferResponse"
+        "400":
+          description: Validation error or FX constraint violation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                fxNotAllowed:
+                  value:
+                    error:
+                      code: TRANSFER_FX_NOT_ALLOWED
+                      message: Same-currency transfers must not carry FX data or a differing destination amount
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Account not found for the active tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                accountNotFound:
+                  value:
+                    error:
+                      code: ACCOUNT_NOT_FOUND
+                      message: Account not found for the active tenant
+        "422":
+          description: Business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                fxRequired:
+                  value:
+                    error:
+                      code: TRANSFER_FX_REQUIRED
+                      message: Cross-currency transfers require both fxRate and destinationAmountMinor
+                sameAccount:
+                  value:
+                    error:
+                      code: TRANSFER_SAME_ACCOUNT
+                      message: Source and destination accounts must differ
+
   /transactions/{id}:
     patch:
       summary: Correct a transaction for the active tenant
@@ -369,4 +436,85 @@ components:
               items:
                 $ref: "#/components/schemas/AccountBalance"
           required: [balances]
+      required: [data]
+
+    Transfer:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        sourceAccountId:
+          type: string
+        destinationAccountId:
+          type: string
+        sourceAmountMinor:
+          type: integer
+        destinationAmountMinor:
+          type: integer
+        sourceCurrency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        destinationCurrency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        fxRate:
+          type: string
+          nullable: true
+          description: Decimal string preserving precision. Null for same-currency transfers.
+        feeMinor:
+          type: integer
+          nullable: true
+        rateSource:
+          type: string
+          nullable: true
+          example: manual
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, tenantId, sourceAccountId, destinationAccountId, sourceAmountMinor, destinationAmountMinor, sourceCurrency, destinationCurrency, fxRate, feeMinor, rateSource, createdAt]
+
+    CreateTransferRequest:
+      type: object
+      properties:
+        sourceAccountId:
+          type: string
+        destinationAccountId:
+          type: string
+        sourceAmountMinor:
+          type: integer
+          minimum: 1
+        destinationAmountMinor:
+          type: integer
+          minimum: 1
+          description: Required for cross-currency transfers. Omit for same-currency.
+        fxRate:
+          type: string
+          pattern: "^\\d+(\\.\\d+)?$"
+          description: Required for cross-currency transfers as a decimal string. Omit for same-currency.
+        feeMinor:
+          type: integer
+          minimum: 0
+          description: Optional fee in source currency minor units. Only meaningful for cross-currency.
+        description:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+      required: [sourceAccountId, destinationAccountId, sourceAmountMinor]
+
+    TransferResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            transfer:
+              $ref: "#/components/schemas/Transfer"
+            debit:
+              $ref: "#/components/schemas/Transaction"
+            credit:
+              $ref: "#/components/schemas/Transaction"
+          required: [transfer, debit, credit]
       required: [data]

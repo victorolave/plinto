@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
+import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
 import { TransactionRepository } from '../infrastructure/transaction.repository'
 import { AccountRepository } from '../../accounts/infrastructure/account.repository'
 import { AuditService } from '../../audit/application/audit.service'
-import { Transaction, TransactionType, AccountBalance } from '../domain/transaction.entity'
+import { Transaction, TransactionType, AccountBalance, Transfer } from '../domain/transaction.entity'
 
 @Injectable()
 export class TransactionService {
@@ -67,10 +67,13 @@ export class TransactionService {
     correlationId: string
     sourceAccountId: string
     destinationAccountId: string
-    amountMinor: number
+    sourceAmountMinor: number
+    destinationAmountMinor?: number
+    fxRate?: string
+    feeMinor?: number
     description?: string
     occurredAt?: string
-  }): Promise<{ transferId: string; debit: Transaction; credit: Transaction }> {
+  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction }> {
     if (params.sourceAccountId === params.destinationAccountId) {
       throw new UnprocessableEntityException({
         code: 'TRANSFER_SAME_ACCOUNT',
@@ -97,38 +100,59 @@ export class TransactionService {
       })
     }
 
-    if (sourceAccount.currency !== destinationAccount.currency) {
-      throw new UnprocessableEntityException({
-        code: 'TRANSFER_CURRENCY_MISMATCH',
-        message: 'Source and destination accounts must share the same currency',
-      })
-    }
-
-    const transferId = crypto.randomUUID()
-    const currency = sourceAccount.currency
+    const sourceCurrency = sourceAccount.currency
+    const destinationCurrency = destinationAccount.currency
+    const isCrossCurrency = sourceCurrency !== destinationCurrency
     const occurredAt = params.occurredAt ? new Date(params.occurredAt) : new Date()
     const description = params.description ?? null
 
-    const { debit, credit } = await this.transactionRepository.createTransferPair(
-      {
-        tenantId: params.tenantId,
-        accountId: params.sourceAccountId,
-        amountMinor: params.amountMinor,
-        currency,
-        description,
-        occurredAt,
-        transferId,
-      },
-      {
-        tenantId: params.tenantId,
-        accountId: params.destinationAccountId,
-        amountMinor: params.amountMinor,
-        currency,
-        description,
-        occurredAt,
-        transferId,
-      },
-    )
+    let destinationAmountMinor: number
+    let fxRate: string | null
+    let rateSource: string | null
+    let feeMinor: number | null
+
+    if (!isCrossCurrency) {
+      if (
+        params.fxRate !== undefined ||
+        (params.destinationAmountMinor !== undefined && params.destinationAmountMinor !== params.sourceAmountMinor) ||
+        params.feeMinor !== undefined
+      ) {
+        throw new BadRequestException({
+          code: 'TRANSFER_FX_NOT_ALLOWED',
+          message: 'Same-currency transfers must not include fxRate, a differing destination amount, or a fee',
+        })
+      }
+      destinationAmountMinor = params.sourceAmountMinor
+      fxRate = null
+      rateSource = null
+      feeMinor = null
+    } else {
+      if (params.fxRate === undefined || params.destinationAmountMinor === undefined) {
+        throw new UnprocessableEntityException({
+          code: 'TRANSFER_FX_REQUIRED',
+          message: 'Cross-currency transfers require both fxRate and destinationAmountMinor',
+        })
+      }
+      destinationAmountMinor = params.destinationAmountMinor
+      fxRate = params.fxRate
+      rateSource = 'manual'
+      feeMinor = params.feeMinor ?? null
+    }
+
+    const { transfer, debit, credit } = await this.transactionRepository.createTransfer({
+      tenantId: params.tenantId,
+      sourceAccountId: params.sourceAccountId,
+      destinationAccountId: params.destinationAccountId,
+      sourceAmountMinor: params.sourceAmountMinor,
+      destinationAmountMinor,
+      sourceCurrency,
+      destinationCurrency,
+      fxRate,
+      feeMinor,
+      rateSource,
+      description,
+      occurredAt,
+    })
 
     await this.auditService.record({
       tenantId: params.tenantId,
@@ -138,12 +162,16 @@ export class TransactionService {
       resourceId: debit.id,
       correlationId: params.correlationId,
       metadata: {
-        transferId,
+        transferId: transfer.id,
         direction: 'debit',
         fromAccountId: params.sourceAccountId,
         toAccountId: params.destinationAccountId,
-        amountMinor: params.amountMinor,
-        currency,
+        sourceAmountMinor: params.sourceAmountMinor,
+        destinationAmountMinor,
+        sourceCurrency,
+        destinationCurrency,
+        fxRate,
+        feeMinor,
       },
     })
 
@@ -155,16 +183,20 @@ export class TransactionService {
       resourceId: credit.id,
       correlationId: params.correlationId,
       metadata: {
-        transferId,
+        transferId: transfer.id,
         direction: 'credit',
         fromAccountId: params.sourceAccountId,
         toAccountId: params.destinationAccountId,
-        amountMinor: params.amountMinor,
-        currency,
+        sourceAmountMinor: params.sourceAmountMinor,
+        destinationAmountMinor,
+        sourceCurrency,
+        destinationCurrency,
+        fxRate,
+        feeMinor,
       },
     })
 
-    return { transferId, debit, credit }
+    return { transfer, debit, credit }
   }
 
   async updateTransaction(params: {
