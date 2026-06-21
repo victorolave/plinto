@@ -8,6 +8,7 @@ import {
   Transaction,
   TransactionType,
   createTransaction,
+  createTransfer,
   listBalances,
   listTransactions,
   updateTransaction,
@@ -34,6 +35,13 @@ export function TransactionsPanel() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [transferSourceAccountId, setTransferSourceAccountId] = useState('')
+  const [transferDestAccountId, setTransferDestAccountId] = useState('')
+  const [transferAmount, setTransferAmount] = useState('')
+  const [transferDescription, setTransferDescription] = useState('')
+  const [transferOccurredAt, setTransferOccurredAt] = useState('')
+  const [transferSubmitting, setTransferSubmitting] = useState(false)
+  const [transferError, setTransferError] = useState<string | null>(null)
 
   const loadData = async () => {
     const [balancesRes, transactionsRes] = await Promise.all([
@@ -81,8 +89,13 @@ export function TransactionsPanel() {
         setAccounts(accountsRes.data.accounts)
         setBalances(balancesRes.data.balances)
         setTransactions(transactionsRes.data.transactions)
-        if (accountsRes.data.accounts.length > 0) {
-          setSelectedAccountId(accountsRes.data.accounts[0].id)
+        const loadedAccounts = accountsRes.data.accounts
+        if (loadedAccounts.length > 0) {
+          setSelectedAccountId(loadedAccounts[0].id)
+          setTransferSourceAccountId(loadedAccounts[0].id)
+          // Default the destination to a different account so the same-account
+          // guard isn't tripped by an empty initial selection.
+          setTransferDestAccountId((loadedAccounts[1] ?? loadedAccounts[0]).id)
         }
       } catch (err) {
         setError(
@@ -138,6 +151,52 @@ export function TransactionsPanel() {
       )
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleTransfer = async (event: FormEvent) => {
+    event.preventDefault()
+
+    const parsedAmount = parseFloat(transferAmount)
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      setTransferError('Enter an amount greater than zero')
+      return
+    }
+
+    if (!transferSourceAccountId || !transferDestAccountId) {
+      setTransferError('Select both source and destination accounts')
+      return
+    }
+
+    if (transferSourceAccountId === transferDestAccountId) {
+      setTransferError('Source and destination accounts must differ')
+      return
+    }
+
+    setTransferSubmitting(true)
+    setTransferError(null)
+
+    try {
+      const amountMinor = Math.round(parsedAmount * 100)
+      const trimmedDescription = transferDescription.trim()
+      await createTransfer({
+        sourceAccountId: transferSourceAccountId,
+        destinationAccountId: transferDestAccountId,
+        amountMinor,
+        description: trimmedDescription || undefined,
+        occurredAt: toOccurredAtIso(transferOccurredAt),
+      })
+
+      setTransferAmount('')
+      setTransferDescription('')
+      setTransferOccurredAt('')
+      await loadData()
+    } catch (err) {
+      setTransferError(
+        err instanceof Error ? err.message : 'Failed to create transfer',
+      )
+    } finally {
+      setTransferSubmitting(false)
     }
   }
 
@@ -234,6 +293,90 @@ export function TransactionsPanel() {
               Cancel edit
             </button>
           ) : null}
+        </div>
+      </form>
+
+      <form onSubmit={handleTransfer} className="card stack">
+        <h2>Transfer between accounts</h2>
+        {accounts.length < 2 ? (
+          <p className="muted">
+            You need at least two accounts of the same currency to transfer.
+          </p>
+        ) : null}
+        <label className="label">
+          From account
+          <select
+            className="input"
+            value={transferSourceAccountId}
+            onChange={(event) => setTransferSourceAccountId(event.target.value)}
+            required
+          >
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} ({account.currency})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="label">
+          To account
+          <select
+            className="input"
+            value={transferDestAccountId}
+            onChange={(event) => setTransferDestAccountId(event.target.value)}
+            required
+          >
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} ({account.currency})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="label">
+          Amount
+          <input
+            className="input"
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={transferAmount}
+            onChange={(event) => setTransferAmount(event.target.value)}
+            placeholder="0.00"
+            required
+          />
+        </label>
+        <label className="label">
+          Description (optional)
+          <input
+            className="input"
+            value={transferDescription}
+            onChange={(event) => setTransferDescription(event.target.value)}
+          />
+        </label>
+        <label className="label">
+          Date (optional)
+          <input
+            className="input"
+            type="date"
+            value={transferOccurredAt}
+            onChange={(event) => setTransferOccurredAt(event.target.value)}
+          />
+        </label>
+        {transferError ? <p className="error">{transferError}</p> : null}
+        <div className="inline-actions">
+          <button
+            type="submit"
+            className="button"
+            disabled={
+              transferSubmitting ||
+              accounts.length < 2 ||
+              !transferSourceAccountId ||
+              !transferDestAccountId
+            }
+          >
+            {transferSubmitting ? 'Transferring...' : 'Transfer'}
+          </button>
         </div>
       </form>
 

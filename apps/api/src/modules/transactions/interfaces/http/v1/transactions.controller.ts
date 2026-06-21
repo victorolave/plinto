@@ -22,11 +22,13 @@ import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pi
 import {
   CreateTransactionSchema,
   UpdateTransactionSchema,
+  CreateTransferSchema,
 } from '../../../../../common/shared-schemas'
 import { TransactionService } from '../../../application/transaction.service'
 
 type CreateTransactionBody = z.infer<typeof CreateTransactionSchema>
 type UpdateTransactionBody = z.infer<typeof UpdateTransactionSchema>
+type CreateTransferBody = z.infer<typeof CreateTransferSchema>
 
 @Controller('transactions')
 @UseGuards(AuthGuard, TenantGuard, RoleGuard)
@@ -73,6 +75,25 @@ export class TransactionsController {
       occurredAt: body.occurredAt,
     })
     return { data: { transaction } }
+  }
+
+  @Post('transfers')
+  @RequirePermission('transaction:write')
+  async createTransfer(
+    @Req() req: RequestContext,
+    @Body(new ZodValidationPipe(CreateTransferSchema)) body: CreateTransferBody,
+  ) {
+    const transfer = await this.transactionService.createTransfer({
+      tenantId: req.tenantId as string,
+      actorUserId: req.user?.id ?? null,
+      correlationId: req.requestId ?? 'unknown',
+      sourceAccountId: body.sourceAccountId,
+      destinationAccountId: body.destinationAccountId,
+      amountMinor: body.amountMinor,
+      description: body.description,
+      occurredAt: body.occurredAt,
+    })
+    return { data: { transfer } }
   }
 
   @Patch(':id')

@@ -14,8 +14,40 @@ export class TransactionRepository {
     currency: string
     description: string | null
     occurredAt: Date
+    transferId?: string | null
   }): Promise<Transaction> {
     return this.prisma.transaction.create({ data })
+  }
+
+  async createTransferPair(
+    debit: {
+      tenantId: string
+      accountId: string
+      amountMinor: number
+      currency: string
+      description: string | null
+      occurredAt: Date
+      transferId: string
+    },
+    credit: {
+      tenantId: string
+      accountId: string
+      amountMinor: number
+      currency: string
+      description: string | null
+      occurredAt: Date
+      transferId: string
+    },
+  ): Promise<{ debit: Transaction; credit: Transaction }> {
+    return this.prisma.$transaction(async (tx) => {
+      const debitTx = await tx.transaction.create({
+        data: { ...debit, type: 'expense' },
+      })
+      const creditTx = await tx.transaction.create({
+        data: { ...credit, type: 'income' },
+      })
+      return { debit: debitTx, credit: creditTx }
+    })
   }
 
   async findByIdForTenant(id: string, tenantId: string): Promise<Transaction | null> {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { NotFoundException } from '@nestjs/common'
+import { NotFoundException, UnprocessableEntityException } from '@nestjs/common'
 import { TransactionService } from '../transaction.service'
 
 const makeAccount = (overrides = {}) => ({
@@ -29,6 +29,7 @@ const makeTransaction = (overrides = {}) => ({
 
 const makeTransactionRepo = () => ({
   create: vi.fn(),
+  createTransferPair: vi.fn(),
   findByIdForTenant: vi.fn(),
   updateForTenant: vi.fn(),
   listByTenantId: vi.fn(),
@@ -142,6 +143,189 @@ describe('TransactionService', () => {
 
       expect(auditService.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'transaction.expense' }),
+      )
+    })
+  })
+
+  describe('createTransfer', () => {
+    const makeDebitTx = (overrides = {}) => ({
+      ...makeTransaction({ id: 'tx-debit', type: 'expense' as const, accountId: 'account-1' }),
+      transferId: 'transfer-uuid',
+      ...overrides,
+    })
+    const makeCreditTx = (overrides = {}) => ({
+      ...makeTransaction({ id: 'tx-credit', type: 'income' as const, accountId: 'account-2' }),
+      transferId: 'transfer-uuid',
+      ...overrides,
+    })
+
+    it('creates exactly two movements sharing a transferId', async () => {
+      const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+      const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+      const debitTx = makeDebitTx()
+      const creditTx = makeCreditTx()
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(sourceAccount)
+        .mockResolvedValueOnce(destAccount)
+      transactionRepository.createTransferPair.mockResolvedValue({ debit: debitTx, credit: creditTx })
+      auditService.record.mockResolvedValue(undefined)
+
+      const result = await service.createTransfer({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        correlationId: 'req-1',
+        sourceAccountId: 'account-1',
+        destinationAccountId: 'account-2',
+        amountMinor: 5000,
+      })
+
+      expect(transactionRepository.createTransferPair).toHaveBeenCalledTimes(1)
+      const [debitArg, creditArg] = transactionRepository.createTransferPair.mock.calls[0]
+      expect(debitArg.accountId).toBe('account-1')
+      expect(creditArg.accountId).toBe('account-2')
+      expect(debitArg.transferId).toBe(creditArg.transferId)
+      expect(result.debit).toBe(debitTx)
+      expect(result.credit).toBe(creditTx)
+      expect(result.transferId).toBe(debitArg.transferId)
+    })
+
+    it('derives currency from the source account', async () => {
+      const sourceAccount = makeAccount({ id: 'account-1', currency: 'USD' })
+      const destAccount = makeAccount({ id: 'account-2', currency: 'USD' })
+      const debitTx = makeDebitTx({ currency: 'USD' })
+      const creditTx = makeCreditTx({ currency: 'USD' })
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(sourceAccount)
+        .mockResolvedValueOnce(destAccount)
+      transactionRepository.createTransferPair.mockResolvedValue({ debit: debitTx, credit: creditTx })
+      auditService.record.mockResolvedValue(undefined)
+
+      await service.createTransfer({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        correlationId: 'req-1',
+        sourceAccountId: 'account-1',
+        destinationAccountId: 'account-2',
+        amountMinor: 5000,
+      })
+
+      const [debitArg, creditArg] = transactionRepository.createTransferPair.mock.calls[0]
+      expect(debitArg.currency).toBe('USD')
+      expect(creditArg.currency).toBe('USD')
+    })
+
+    it('throws TRANSFER_CURRENCY_MISMATCH and creates no rows when currencies differ', async () => {
+      const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+      const destAccount = makeAccount({ id: 'account-2', currency: 'USD' })
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(sourceAccount)
+        .mockResolvedValueOnce(destAccount)
+
+      await expect(
+        service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          amountMinor: 5000,
+        }),
+      ).rejects.toThrow(UnprocessableEntityException)
+
+      expect(transactionRepository.createTransferPair).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
+    })
+
+    it('throws NotFoundException when source account is outside the tenant', async () => {
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(makeAccount({ id: 'account-2' }))
+
+      await expect(
+        service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-999',
+          destinationAccountId: 'account-2',
+          amountMinor: 5000,
+        }),
+      ).rejects.toThrow(NotFoundException)
+
+      expect(transactionRepository.createTransferPair).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
+    })
+
+    it('throws NotFoundException when destination account is outside the tenant', async () => {
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(makeAccount({ id: 'account-1' }))
+        .mockResolvedValueOnce(null)
+
+      await expect(
+        service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-999',
+          amountMinor: 5000,
+        }),
+      ).rejects.toThrow(NotFoundException)
+
+      expect(transactionRepository.createTransferPair).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
+    })
+
+    it('throws UnprocessableEntityException when source equals destination', async () => {
+      await expect(
+        service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-1',
+          amountMinor: 5000,
+        }),
+      ).rejects.toThrow(UnprocessableEntityException)
+
+      expect(accountRepository.findByIdForTenant).not.toHaveBeenCalled()
+      expect(transactionRepository.createTransferPair).not.toHaveBeenCalled()
+    })
+
+    it('emits two transaction.transfer audit events with correct direction metadata', async () => {
+      const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+      const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+      const debitTx = makeDebitTx()
+      const creditTx = makeCreditTx()
+      accountRepository.findByIdForTenant
+        .mockResolvedValueOnce(sourceAccount)
+        .mockResolvedValueOnce(destAccount)
+      transactionRepository.createTransferPair.mockResolvedValue({ debit: debitTx, credit: creditTx })
+      auditService.record.mockResolvedValue(undefined)
+
+      await service.createTransfer({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        correlationId: 'req-1',
+        sourceAccountId: 'account-1',
+        destinationAccountId: 'account-2',
+        amountMinor: 5000,
+      })
+
+      expect(auditService.record).toHaveBeenCalledTimes(2)
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'transaction.transfer',
+          resourceId: 'tx-debit',
+          metadata: expect.objectContaining({ direction: 'debit' }),
+        }),
+      )
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'transaction.transfer',
+          resourceId: 'tx-credit',
+          metadata: expect.objectContaining({ direction: 'credit' }),
+        }),
       )
     })
   })

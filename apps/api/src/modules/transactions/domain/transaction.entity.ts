@@ -11,6 +11,7 @@ export interface Transaction {
   occurredAt: Date
   createdAt: Date
   updatedAt: Date
+  transferId: string | null
 }
 
 export interface AccountBalance {

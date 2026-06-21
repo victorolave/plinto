@@ -158,3 +158,72 @@ preserva trazabilidad mediante auditoría con valores antes/después.
   UTC. Editar por UI una transacción creada vía API con hora real truncaría el time-of-day;
   agregar input de hora (o preservar `occurredAt` cuando el usuario no lo cambia) antes de exponer
   creación con hora.
+
+## Slice 4 — Transferir entre cuentas de la misma moneda
+
+**Estado**: ✅ Implementado y verificado técnicamente
+
+**Outcome**: un miembro del tenant puede mover dinero entre dos cuentas de la misma moneda sin
+cambiar el balance total de esa moneda.
+
+### Decisión de ejecución (tensión de docs resuelta)
+
+`docs/delivery/vertical-slices.md` define el Slice 4 como creación atómica **síncrona** de las dos
+patas, mientras que ADR 0006 + PRD 003 prescriben ejecución vía background jobs idempotentes. Hoy
+no existe infraestructura de jobs en el repo. Se decidió implementar **síncrono ahora** (atómico
+dentro del request con `prisma.$transaction`), tomando `vertical-slices.md` como fuente de verdad de
+delivery y consistente con los Slices 1–3. La migración a jobs async/idempotentes queda diferida a
+cuando llegue la infra de jobs (Slice 6 recurring la requerirá).
+
+### Incluye
+
+- Columna nullable `transfer_id` en `transactions` (+ índice) vía migración versionada
+  `*_add_transfer_id_to_transactions` autorada offline.
+- Modelo: una transferencia = un `expense` en la cuenta origen + un `income` en la destino,
+  ambos compartiendo `transferId`. No se agregó un valor `transfer` al enum (no rompe
+  `TransactionTypeSchema`); el cálculo de balance existente (Σ ingresos − Σ gastos) ya da net cero.
+- Schema compartido `CreateTransferSchema` (origen, destino, monto; rechaza origen == destino).
+- API `POST /transactions/transfers` protegida por sesión, tenant activo y permiso
+  `transaction:write` (reutilizado; no se introdujo `transfer:write`).
+- Creación atómica de las dos patas en `prisma.$transaction` (`createTransferPair`).
+- Moneda derivada de las cuentas; rechazo con `TRANSFER_CURRENCY_MISMATCH` si difieren (FX es Slice 5).
+- Dos eventos de auditoría `transaction.transfer` (débito/crédito) con metadata
+  `{ transferId, direction, fromAccountId, toAccountId, amountMinor, currency }`.
+- UI en `/dashboard`: formulario de transferencia (deshabilitado con < 2 cuentas).
+- Tests de schema, servicio (dos movimientos exactos, aislamiento de tenant, mismatch de moneda,
+  self-transfer, auditoría) y metadata de permisos del controller.
+
+### Decisiones de diseño
+
+- **Aislamiento de tenant**: origen y destino se resuelven con `findByIdForTenant`; una cuenta de
+  otro tenant devuelve `NotFound` y no se escribe nada.
+- **Misma moneda estructural**: la moneda nunca se recibe del cliente; se deriva de las cuentas y se
+  exige que coincidan antes de cualquier escritura.
+- **`transferId` server-side**: generado con `crypto.randomUUID()`, no aceptado del cliente.
+
+### Excluye
+
+- Transferencias con FX / monedas distintas (Slice 5).
+- Idempotencia / ejecución vía jobs (diferido, ver abajo).
+- Borrado o reverso de transferencias.
+- Documentación del contrato OpenAPI del endpoint de transferencia: se documenta en el Slice 5,
+  cuando el endpoint toma su forma final con los campos FX (evita churn de documentar dos veces).
+
+### Verificación técnica
+
+- [x] `pnpm lint`
+- [x] `pnpm test`
+- [x] `pnpm build`
+- [x] Review adversarial en contexto fresco (should-fix aplicados: `path` en el refine de
+  `CreateTransferSchema`, default de cuenta destino distinta y guard de < 2 cuentas en la UI).
+- [ ] Smoke test manual: crear una transferencia y confirmar que ambos balances se ajustan y el
+  total de la moneda no cambia, en `/dashboard`.
+
+### Deuda técnica diferida (MVP, registrada en el review)
+
+- **Sin idempotencia**: si la escritura atómica commitea pero falla la emisión de auditoría, el
+  request devuelve 500 con la plata ya movida; un retry del cliente duplicaría la transferencia.
+  Mismo perfil de riesgo que `createTransaction`. Resolver con idempotency key + ejecución vía jobs
+  (ADR 0006) cuando llegue la infra de jobs.
+- Auditoría best-effort: las dos llamadas a `auditService.record` son secuenciales fuera de la
+  transacción DB; si la primera falla, la segunda no corre.

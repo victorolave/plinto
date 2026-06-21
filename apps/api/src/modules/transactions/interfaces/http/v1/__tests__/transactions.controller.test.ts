@@ -126,4 +126,46 @@ describe('TransactionsController', () => {
     })
     expect(result).toEqual({ data: { transaction: { id: 'tx-1' } } })
   })
+
+  it('requires write permission to create a transfer', () => {
+    const reflector = new Reflector()
+    const permission = reflector.get(
+      PERMISSION_KEY,
+      TransactionsController.prototype.createTransfer,
+    )
+    expect(permission).toBe('transaction:write')
+  })
+
+  it('creates a transfer using the resolved tenant context', async () => {
+    const transferResult = {
+      transferId: 'transfer-uuid',
+      debit: { id: 'tx-debit' },
+      credit: { id: 'tx-credit' },
+    }
+    const transactionService = {
+      createTransfer: vi.fn().mockResolvedValue(transferResult),
+    }
+    const controller = new TransactionsController(transactionService as any)
+
+    const result = await controller.createTransfer(
+      { tenantId: 'tenant-1', user: { id: 'user-1' }, requestId: 'req-1' } as any,
+      {
+        sourceAccountId: 'account-1',
+        destinationAccountId: 'account-2',
+        amountMinor: 5000,
+      },
+    )
+
+    expect(transactionService.createTransfer).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      actorUserId: 'user-1',
+      correlationId: 'req-1',
+      sourceAccountId: 'account-1',
+      destinationAccountId: 'account-2',
+      amountMinor: 5000,
+      description: undefined,
+      occurredAt: undefined,
+    })
+    expect(result).toEqual({ data: { transfer: transferResult } })
+  })
 })

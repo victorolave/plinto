@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
 import { TransactionRepository } from '../infrastructure/transaction.repository'
 import { AccountRepository } from '../../accounts/infrastructure/account.repository'
 import { AuditService } from '../../audit/application/audit.service'
@@ -59,6 +59,112 @@ export class TransactionService {
     })
 
     return transaction
+  }
+
+  async createTransfer(params: {
+    tenantId: string
+    actorUserId: string | null
+    correlationId: string
+    sourceAccountId: string
+    destinationAccountId: string
+    amountMinor: number
+    description?: string
+    occurredAt?: string
+  }): Promise<{ transferId: string; debit: Transaction; credit: Transaction }> {
+    if (params.sourceAccountId === params.destinationAccountId) {
+      throw new UnprocessableEntityException({
+        code: 'TRANSFER_SAME_ACCOUNT',
+        message: 'Source and destination accounts must differ',
+      })
+    }
+
+    const [sourceAccount, destinationAccount] = await Promise.all([
+      this.accountRepository.findByIdForTenant(params.sourceAccountId, params.tenantId),
+      this.accountRepository.findByIdForTenant(params.destinationAccountId, params.tenantId),
+    ])
+
+    if (!sourceAccount) {
+      throw new NotFoundException({
+        code: 'ACCOUNT_NOT_FOUND',
+        message: 'Account not found for the active tenant',
+      })
+    }
+
+    if (!destinationAccount) {
+      throw new NotFoundException({
+        code: 'ACCOUNT_NOT_FOUND',
+        message: 'Account not found for the active tenant',
+      })
+    }
+
+    if (sourceAccount.currency !== destinationAccount.currency) {
+      throw new UnprocessableEntityException({
+        code: 'TRANSFER_CURRENCY_MISMATCH',
+        message: 'Source and destination accounts must share the same currency',
+      })
+    }
+
+    const transferId = crypto.randomUUID()
+    const currency = sourceAccount.currency
+    const occurredAt = params.occurredAt ? new Date(params.occurredAt) : new Date()
+    const description = params.description ?? null
+
+    const { debit, credit } = await this.transactionRepository.createTransferPair(
+      {
+        tenantId: params.tenantId,
+        accountId: params.sourceAccountId,
+        amountMinor: params.amountMinor,
+        currency,
+        description,
+        occurredAt,
+        transferId,
+      },
+      {
+        tenantId: params.tenantId,
+        accountId: params.destinationAccountId,
+        amountMinor: params.amountMinor,
+        currency,
+        description,
+        occurredAt,
+        transferId,
+      },
+    )
+
+    await this.auditService.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'transaction.transfer',
+      resourceType: 'transaction',
+      resourceId: debit.id,
+      correlationId: params.correlationId,
+      metadata: {
+        transferId,
+        direction: 'debit',
+        fromAccountId: params.sourceAccountId,
+        toAccountId: params.destinationAccountId,
+        amountMinor: params.amountMinor,
+        currency,
+      },
+    })
+
+    await this.auditService.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'transaction.transfer',
+      resourceType: 'transaction',
+      resourceId: credit.id,
+      correlationId: params.correlationId,
+      metadata: {
+        transferId,
+        direction: 'credit',
+        fromAccountId: params.sourceAccountId,
+        toAccountId: params.destinationAccountId,
+        amountMinor: params.amountMinor,
+        currency,
+      },
+    })
+
+    return { transferId, debit, credit }
   }
 
   async updateTransaction(params: {

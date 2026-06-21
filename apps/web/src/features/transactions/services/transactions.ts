@@ -12,6 +12,7 @@ export interface Transaction {
   description: string | null
   occurredAt: string
   createdAt: string
+  transferId?: string | null
 }
 
 export interface AccountBalance {
@@ -57,4 +58,17 @@ export async function updateTransaction(
 
 export async function listBalances(): Promise<{ data: { balances: AccountBalance[] } }> {
   return apiFetch('/transactions/balances')
+}
+
+export async function createTransfer(input: {
+  sourceAccountId: string
+  destinationAccountId: string
+  amountMinor: number
+  description?: string
+  occurredAt?: string
+}): Promise<{ data: { transfer: { transferId: string; debit: Transaction; credit: Transaction } } }> {
+  return apiFetch('/transactions/transfers', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
 }

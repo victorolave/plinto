@@ -4,6 +4,7 @@ import {
   TransactionTypeSchema,
   CreateTransactionSchema,
   UpdateTransactionSchema,
+  CreateTransferSchema,
 } from '../transaction.schema'
 
 describe('TransactionSchema', () => {
@@ -141,6 +142,78 @@ describe('UpdateTransactionSchema', () => {
       description: '   ',
     })
 
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('TransactionSchema with transferId', () => {
+  const validTransaction = {
+    id: 'transaction-1',
+    tenantId: 'tenant-1',
+    accountId: 'account-1',
+    type: 'income',
+    amountMinor: 10000,
+    currency: 'COP',
+    description: 'Salary payment',
+    occurredAt: '2026-06-15T00:00:00.000Z',
+    createdAt: '2026-06-15T00:00:00.000Z',
+  }
+
+  it('accepts a transaction with a transferId string', () => {
+    const result = TransactionSchema.safeParse({ ...validTransaction, transferId: 'transfer-uuid' })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a transaction with transferId as null', () => {
+    const result = TransactionSchema.safeParse({ ...validTransaction, transferId: null })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a transaction without transferId (absent)', () => {
+    const result = TransactionSchema.safeParse(validTransaction)
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('CreateTransferSchema', () => {
+  const validTransfer = {
+    sourceAccountId: 'account-1',
+    destinationAccountId: 'account-2',
+    amountMinor: 5000,
+  }
+
+  it('parses a valid transfer', () => {
+    const result = CreateTransferSchema.safeParse(validTransfer)
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects when source and destination are the same', () => {
+    const result = CreateTransferSchema.safeParse({
+      ...validTransfer,
+      destinationAccountId: 'account-1',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects zero amountMinor', () => {
+    const result = CreateTransferSchema.safeParse({ ...validTransfer, amountMinor: 0 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects negative amountMinor', () => {
+    const result = CreateTransferSchema.safeParse({ ...validTransfer, amountMinor: -100 })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing sourceAccountId', () => {
+    const { sourceAccountId: _s, ...rest } = validTransfer
+    const result = CreateTransferSchema.safeParse(rest)
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing destinationAccountId', () => {
+    const { destinationAccountId: _d, ...rest } = validTransfer
+    const result = CreateTransferSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
 })
