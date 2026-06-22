@@ -7,4 +7,5 @@ export {
   CreateTransactionSchema,
   UpdateTransactionSchema,
   CreateTransferSchema,
+  CreateRecurringTransactionRuleSchema,
 } from '@plinto/shared'

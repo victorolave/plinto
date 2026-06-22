@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export const TransactionTypeSchema = z.enum(['income', 'expense'])
+export const TransactionSourceSchema = z.enum(['manual', 'job'])
 
 export const TransactionSchema = z.object({
   id: z.string(),
@@ -13,6 +14,10 @@ export const TransactionSchema = z.object({
   occurredAt: z.string(),
   createdAt: z.string(),
   transferId: z.string().nullish(),
+  source: TransactionSourceSchema.optional(),
+  recurringRuleId: z.string().nullish(),
+  recurringPeriod: z.string().regex(/^\d{4}-\d{2}$/).nullish(),
+  idempotencyKey: z.string().nullish(),
 })
 
 export const CreateTransactionSchema = z.object({
@@ -72,6 +77,7 @@ export const TransferSchema = z.object({
 export type TransferDto = z.infer<typeof TransferSchema>
 
 export type TransactionTypeDto = z.infer<typeof TransactionTypeSchema>
+export type TransactionSourceDto = z.infer<typeof TransactionSourceSchema>
 export type TransactionDto = z.infer<typeof TransactionSchema>
 export type CreateTransactionDto = z.infer<typeof CreateTransactionSchema>
 export type UpdateTransactionDto = z.infer<typeof UpdateTransactionSchema>

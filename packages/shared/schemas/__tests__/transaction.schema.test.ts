@@ -40,6 +40,20 @@ describe('TransactionSchema', () => {
     const result = TransactionSchema.safeParse({ ...validTransaction, currency: 'cop' })
     expect(result.success).toBe(false)
   })
+
+  it('parses recurring provenance for automatic transactions', () => {
+    const result = TransactionSchema.parse({
+      ...validTransaction,
+      source: 'job',
+      recurringRuleId: 'rule-1',
+      recurringPeriod: '2026-07',
+      idempotencyKey: 'recurring:rule-1:2026-07',
+    })
+
+    expect(result.source).toBe('job')
+    expect(result.recurringRuleId).toBe('rule-1')
+    expect(result.recurringPeriod).toBe('2026-07')
+  })
 })
 
 describe('TransactionTypeSchema', () => {

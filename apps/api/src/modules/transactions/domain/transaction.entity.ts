@@ -1,4 +1,5 @@
 export type TransactionType = 'income' | 'expense'
+export type TransactionSource = 'manual' | 'job'
 
 export interface Transaction {
   id: string
@@ -12,6 +13,10 @@ export interface Transaction {
   createdAt: Date
   updatedAt: Date
   transferId: string | null
+  source?: TransactionSource
+  recurringRuleId?: string | null
+  recurringPeriod?: string | null
+  idempotencyKey?: string | null
 }
 
 export interface AccountBalance {

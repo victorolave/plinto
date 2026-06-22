@@ -13,11 +13,16 @@ import {
   listTransactions,
   updateTransaction,
 } from '../services/transactions'
+import { RecurringTransactionsPanel } from './recurring-transactions-panel'
 
 const transactionTypeOptions: Array<{ value: TransactionType; label: string }> = [
   { value: 'income', label: 'Income' },
   { value: 'expense', label: 'Expense' },
 ]
+
+export function isAutomaticRecurringTransaction(transaction: Pick<Transaction, 'source' | 'recurringRuleId' | 'recurringPeriod'>): boolean {
+  return transaction.source === 'job' && Boolean(transaction.recurringRuleId) && Boolean(transaction.recurringPeriod)
+}
 
 export function TransactionsPanel() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -469,6 +474,8 @@ export function TransactionsPanel() {
         </div>
       </form>
 
+      <RecurringTransactionsPanel accounts={accounts} />
+
       <div className="card stack">
         <h2>Balances</h2>
         {loading ? <p className="muted">Loading balances...</p> : null}
@@ -514,6 +521,9 @@ export function TransactionsPanel() {
                   <p className="muted">
                     {new Date(transaction.occurredAt).toLocaleDateString()}
                   </p>
+                  {isAutomaticRecurringTransaction(transaction) ? (
+                    <p className="muted">Automatic · recurring</p>
+                  ) : null}
                 </div>
                 <button
                   type="button"

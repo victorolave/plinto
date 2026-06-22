@@ -13,6 +13,10 @@ export interface Transaction {
   occurredAt: string
   createdAt: string
   transferId?: string | null
+  source?: 'manual' | 'job'
+  recurringRuleId?: string | null
+  recurringPeriod?: string | null
+  idempotencyKey?: string | null
 }
 
 export interface AccountBalance {

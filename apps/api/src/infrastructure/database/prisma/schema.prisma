@@ -34,6 +34,8 @@ model Tenant {
   accounts     Account[]
   transactions Transaction[]
   transfers    Transfer[]
+  recurringRules RecurringTransactionRule[]
+  recurringExecutions RecurringTransactionExecution[]
 
   @@map("tenants")
 }
@@ -51,6 +53,7 @@ model Account {
   transactions Transaction[]
   transfersOut Transfer[]    @relation("TransferSource")
   transfersIn  Transfer[]    @relation("TransferDestination")
+  recurringRules RecurringTransactionRule[]
 
   @@index([tenantId])
   @@map("accounts")
@@ -115,17 +118,71 @@ model Transaction {
   description String?
   occurredAt  DateTime        @map("occurred_at")
   transferId  String?         @map("transfer_id")
+  source      TransactionSource @default(manual)
+  recurringRuleId String?     @map("recurring_rule_id")
+  recurringPeriod String?     @map("recurring_period")
+  idempotencyKey String?      @map("idempotency_key")
   createdAt   DateTime        @default(now()) @map("created_at")
   updatedAt   DateTime        @updatedAt @map("updated_at")
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id])
   account  Account  @relation(fields: [accountId], references: [id])
   transfer Transfer? @relation(fields: [transferId], references: [id])
+  recurringRule RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id])
+  recurringExecution RecurringTransactionExecution?
 
   @@index([tenantId])
   @@index([accountId])
   @@index([transferId])
+  @@index([recurringRuleId])
+  @@index([tenantId, source])
   @@map("transactions")
+}
+
+model RecurringTransactionRule {
+  id        String      @id @default(uuid())
+  tenantId  String      @map("tenant_id")
+  accountId String      @map("account_id")
+  name      String
+  type      TransactionType
+  amountMinor Int       @map("amount_minor")
+  currency  String
+  frequency RecurringTransactionFrequency @default(monthly)
+  dayOfMonth Int        @map("day_of_month")
+  startDate DateTime    @map("start_date")
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  tenant       Tenant      @relation(fields: [tenantId], references: [id])
+  account      Account     @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
+  executions   RecurringTransactionExecution[]
+
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@map("recurring_transaction_rules")
+}
+
+model RecurringTransactionExecution {
+  id        String      @id @default(uuid())
+  tenantId  String      @map("tenant_id")
+  ruleId    String      @map("rule_id")
+  period    String
+  idempotencyKey String  @map("idempotency_key")
+  transactionId String   @unique @map("transaction_id")
+  status    RecurringExecutionStatus @default(success)
+  jobId     String?     @map("job_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  rule        RecurringTransactionRule @relation(fields: [ruleId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+
+  @@unique([tenantId, idempotencyKey])
+  @@unique([ruleId, period])
+  @@index([tenantId])
+  @@map("recurring_transaction_executions")
 }
 
 model Transfer {
@@ -157,6 +214,19 @@ model Transfer {
 enum TransactionType {
   income
   expense
+}
+
+enum TransactionSource {
+  manual
+  job
+}
+
+enum RecurringTransactionFrequency {
+  monthly
+}
+
+enum RecurringExecutionStatus {
+  success
 }
 
 enum MembershipRole {
