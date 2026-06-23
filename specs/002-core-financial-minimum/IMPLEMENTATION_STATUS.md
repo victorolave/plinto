@@ -1,7 +1,7 @@
 # Estado de Implementación: Minimum Financial Core
 
-**Fecha de revisión**: 2026-06-16
-**Estado general**: 🚧 **EN PROGRESO POR VERTICAL SLICES**
+**Fecha de revisión**: 2026-06-23
+**Estado general**: ✅ **MVP COMPLETO — Slices 1–7 implementados, verificados y smoke-tested E2E**
 
 ## Slice 1 — Crear y listar cuentas financieras
 
@@ -216,8 +216,8 @@ cuando llegue la infra de jobs (Slice 6 recurring la requerirá).
 - [x] `pnpm build`
 - [x] Review adversarial en contexto fresco (should-fix aplicados: `path` en el refine de
   `CreateTransferSchema`, default de cuenta destino distinta y guard de < 2 cuentas en la UI).
-- [ ] Smoke test manual: crear una transferencia y confirmar que ambos balances se ajustan y el
-  total de la moneda no cambia, en `/dashboard`.
+- [x] Smoke test manual E2E (2026-06-23): transferencia COP→COP confirmada en `/dashboard` —
+  origen baja X, destino sube X, total de la moneda invariante, exactamente 2 movimientos ligados.
 
 ### Deuda técnica diferida (MVP, registrada en el review)
 
@@ -276,11 +276,10 @@ moneda— crea una fila `Transfer`, con `fx_rate` null en el caso simple).
   migración regenerada canónicamente con `migrate diff`; envelope de respuesta aplanado; should-fix:
   cota del regex de `fxRate` a la precisión de la columna, rechazo de `feeMinor` en same-currency,
   limpieza de estado FX stale en la UI, aserción de `Decimal` robusta en tests).
-- [ ] Migración aplicada a la DB remota (`prisma:deploy`). **Caveat**: verificar antes que no haya
-  `transactions.transfer_id` huérfano (la FK contra la tabla `transfers` vacía fallaría); como el
-  Slice 4 no se smoke-testeó, no debería haber ninguno.
-- [ ] Smoke test manual: transferencia cross-currency (COP→USD) en `/dashboard` — ambos balances se
-  ajustan en su moneda, sin conversión implícita; y una transferencia same-currency sigue funcionando.
+- [x] Migración aplicada a la DB remota (`prisma:deploy`, 2026-06-23). No hubo `transactions.transfer_id`
+  huérfano; la FK contra `transfers` se aplicó limpia.
+- [x] Smoke test manual E2E (2026-06-23): transferencia cross-currency COP→USD en `/dashboard` con monto
+  origen, monto destino y `fxRate` explícitos, sin conversión implícita; same-currency sigue funcionando.
 
 ## Slice 6 — Transacciones recurrentes mensuales
 
@@ -316,8 +315,11 @@ transacciones automáticamente en el día del mes indicado a partir de una fecha
 - [x] `pnpm lint`
 - [x] `pnpm test`
 - [x] `pnpm build`
-- [ ] Smoke test manual: crear regla recurrente, invocar job y confirmar transacción generada en
-  `/dashboard`.
+- [x] Smoke test manual E2E (2026-06-23): regla creada; `RecurringExecutionService.executeDue`
+  invocado vía script one-off (NestFactory context) contra la DB real → run1 `created:1`, run2
+  `created:0/skipped:1` (idempotencia probada). Transacción generada con `source='job'`,
+  `recurringPeriod='2026-06'`, `idempotencyKey='recurring:{ruleId}:{YYYY-MM}'` y `occurredAt` en el
+  `dayOfMonth`. Nota: no hay UI/endpoint para disparar la ejecución (método de servicio inyectable).
 
 ## Slice 7 — Categorías y reporte de gastos por categoría
 
@@ -424,14 +426,24 @@ transacciones y consultar un reporte de gastos agrupado por categoría y moneda 
   - web: 105 tests, 12 archivos
 - [x] `pnpm build` — 4/4 paquetes compilados exitosamente, ZERO errores
 
-### Smoke test manual: PENDIENTE
+### Smoke test manual: COMPLETADO (2026-06-23)
 
-El usuario debe ejecutar los siguientes pasos contra una DB activa para validar el flujo completo
-end-to-end (los tests unitarios son offline; este smoke requiere la DB):
+Validado end-to-end contra la DB activa. Los flujos por UI los confirmó un QA de navegador; los
+negativos por código de error exacto (pasos 3 y 6) están cubiertos por la suite automatizada porque
+la UI los previene (no reproducibles desde el navegador).
 
-1. Crear una categoría de gasto (ej. "Alimentación", type=expense) → AC #1 ✓
-2. Asignar esa categoría a una transacción de gasto → AC #10: guardar con categoryId ✓
-3. Intentar asignar una categoría de ingreso a una transacción de gasto → 422 CATEGORY_TYPE_MISMATCH ✓
-4. Llamar `GET /reports/expenses-by-category?from=...&to=...` con gastos en USD y COP → filas separadas por moneda ✓ (AC #13)
-5. Eliminar la categoría → las transacciones siguen existiendo con categoryId=null ✓ (AC #9)
-6. Con rol viewer: `GET /categories` → 200; `POST /categories` → 403 ✓ (AC #7, #8)
+1. [x] Crear una categoría de gasto (ej. "Alimentación", type=expense) → AC #1 ✓
+2. [x] Asignar esa categoría a una transacción de gasto (alta y edición) → AC #10: guardar con categoryId ✓
+3. [x] Asignar categoría de ingreso a transacción de gasto → 422 CATEGORY_TYPE_MISMATCH — la UI lo
+   previene (auto-resetea la categoría al cambiar tipo); el 422 está cubierto por tests
+   (`transaction.service.test.ts:684,775,864`) ✓
+4. [x] `GET /reports/expenses-by-category?from=...&to=...` con gastos en USD y COP → filas separadas
+   por moneda, ingresos y sin-categoría excluidos, boundary `to` inclusivo del día ✓ (AC #13)
+5. [x] Eliminar la categoría → las transacciones siguen existiendo con categoryId=null ✓ (AC #9)
+6. [x] Rol viewer: read 200 / write 403 — cubierto por `authorization-policy.test.ts` (no había
+   usuario viewer seedeado para validar por UI) ✓ (AC #7, #8)
+
+**Deuda menor detectada en el smoke**: desfase de fecha display vs. almacenada (la UI con `type="date"`
+guarda `occurredAt` a medianoche UTC, mostrando 1 día menos en zonas oeste). Es la deuda técnica ya
+registrada en el Slice 3; no afecta balances ni el reporte (que usa la fecha almacenada). Trackeado para
+un slice de pulido.
