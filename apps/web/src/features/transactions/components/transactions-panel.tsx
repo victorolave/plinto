@@ -59,6 +59,14 @@ export function buildTransactionUpdateInput(input: TransactionUpdateInput): Tran
   return result
 }
 
+export function formatOccurredAtDate(occurredAt: string): string {
+  if (!occurredAt) return ''
+  // occurredAt is stored as a UTC instant; date-only inputs are persisted at UTC
+  // midnight. Render the UTC calendar date so the displayed day matches the date
+  // the user picked, avoiding a local-timezone off-by-one (issue #6).
+  return new Date(occurredAt).toLocaleDateString(undefined, { timeZone: 'UTC' })
+}
+
 const transactionTypeOptions: Array<{ value: TransactionType; label: string }> = [
   { value: 'income', label: 'Income' },
   { value: 'expense', label: 'Expense' },
@@ -583,7 +591,7 @@ export function TransactionsPanel() {
                     <p className="muted">{transaction.description}</p>
                   ) : null}
                   <p className="muted">
-                    {new Date(transaction.occurredAt).toLocaleDateString()}
+                    {formatOccurredAtDate(transaction.occurredAt)}
                   </p>
                   {isAutomaticRecurringTransaction(transaction) ? (
                     <p className="muted">Automatic · recurring</p>
