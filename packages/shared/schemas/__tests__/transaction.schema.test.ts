@@ -189,6 +189,83 @@ describe('TransactionSchema with transferId', () => {
   })
 })
 
+describe('TransactionSchema with categoryId', () => {
+  const validTransaction = {
+    id: 'transaction-1',
+    tenantId: 'tenant-1',
+    accountId: 'account-1',
+    type: 'expense',
+    amountMinor: 5000,
+    currency: 'USD',
+    description: null,
+    occurredAt: '2026-01-01T00:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  }
+
+  it('accepts a transaction with a categoryId string', () => {
+    const result = TransactionSchema.safeParse({ ...validTransaction, categoryId: 'cat-1' })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a transaction with categoryId as null', () => {
+    const result = TransactionSchema.safeParse({ ...validTransaction, categoryId: null })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a transaction without categoryId (absent)', () => {
+    const result = TransactionSchema.safeParse(validTransaction)
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('CreateTransactionSchema with categoryId', () => {
+  it('accepts categoryId as a non-empty string', () => {
+    const result = CreateTransactionSchema.safeParse({
+      accountId: 'account-1',
+      type: 'expense',
+      amountMinor: 5000,
+      categoryId: 'cat-1',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts without categoryId (uncategorized)', () => {
+    const result = CreateTransactionSchema.safeParse({
+      accountId: 'account-1',
+      type: 'expense',
+      amountMinor: 5000,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts categoryId as null (uncategorized via null)', () => {
+    const result = CreateTransactionSchema.safeParse({
+      accountId: 'account-1',
+      type: 'expense',
+      amountMinor: 5000,
+      categoryId: null,
+    })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('UpdateTransactionSchema with categoryId', () => {
+  it('accepts categoryId as a non-empty string to assign', () => {
+    const result = UpdateTransactionSchema.safeParse({ categoryId: 'cat-1' })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts categoryId as null to clear assignment', () => {
+    const result = UpdateTransactionSchema.safeParse({ categoryId: null })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts without categoryId (no change to category)', () => {
+    const result = UpdateTransactionSchema.safeParse({ amountMinor: 5000 })
+    expect(result.success).toBe(true)
+  })
+})
+
 describe('CreateTransferSchema', () => {
   const validSameCurrencyTransfer = {
     sourceAccountId: 'account-1',

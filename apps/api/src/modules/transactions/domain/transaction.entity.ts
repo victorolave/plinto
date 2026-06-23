@@ -13,6 +13,7 @@ export interface Transaction {
   createdAt: Date
   updatedAt: Date
   transferId: string | null
+  categoryId?: string | null
   source?: TransactionSource
   recurringRuleId?: string | null
   recurringPeriod?: string | null

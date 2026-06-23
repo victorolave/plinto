@@ -73,6 +73,7 @@ export class TransactionsController {
       amountMinor: body.amountMinor,
       description: body.description,
       occurredAt: body.occurredAt,
+      categoryId: body.categoryId,
     })
     return { data: { transaction } }
   }
@@ -116,6 +117,7 @@ export class TransactionsController {
       amountMinor: body.amountMinor,
       description: body.description,
       occurredAt: body.occurredAt,
+      categoryId: body.categoryId,
     })
     return { data: { transaction } }
   }

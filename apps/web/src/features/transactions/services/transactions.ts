@@ -17,6 +17,7 @@ export interface Transaction {
   recurringRuleId?: string | null
   recurringPeriod?: string | null
   idempotencyKey?: string | null
+  categoryId?: string | null
 }
 
 export interface AccountBalance {
@@ -52,6 +53,7 @@ export async function createTransaction(input: {
   amountMinor: number
   description?: string
   occurredAt?: string
+  categoryId?: string
 }): Promise<{ data: { transaction: Transaction } }> {
   return apiFetch('/transactions', {
     method: 'POST',
@@ -67,6 +69,7 @@ export async function updateTransaction(
     amountMinor?: number
     description?: string | null
     occurredAt?: string
+    categoryId?: string | null
   },
 ): Promise<{ data: { transaction: Transaction } }> {
   return apiFetch(`/transactions/${encodeURIComponent(id)}`, {

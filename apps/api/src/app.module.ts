@@ -14,6 +14,8 @@ import { AuditModule } from './modules/audit/audit.module'
 import { AccountsModule } from './modules/accounts/accounts.module'
 import { TransactionsModule } from './modules/transactions/transactions.module'
 import { RecurringModule } from './modules/recurring/recurring.module'
+import { CategoriesModule } from './modules/categories/categories.module'
+import { ReportsModule } from './modules/reports/reports.module'
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { RecurringModule } from './modules/recurring/recurring.module'
     AccountsModule,
     TransactionsModule,
     RecurringModule,
+    CategoriesModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

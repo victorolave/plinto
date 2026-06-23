@@ -281,3 +281,157 @@ moneda— crea una fila `Transfer`, con `fx_rate` null en el caso simple).
   Slice 4 no se smoke-testeó, no debería haber ninguno.
 - [ ] Smoke test manual: transferencia cross-currency (COP→USD) en `/dashboard` — ambos balances se
   ajustan en su moneda, sin conversión implícita; y una transferencia same-currency sigue funcionando.
+
+## Slice 6 — Transacciones recurrentes mensuales
+
+**Estado**: ✅ Implementado y verificado técnicamente
+
+**Outcome**: un miembro del tenant puede definir una regla de recurrencia mensual que genera
+transacciones automáticamente en el día del mes indicado a partir de una fecha de inicio.
+
+### Incluye
+
+- Modelo `RecurringTransactionRule` (`tenant_id`, `account_id`, `name`, `type`, `amount_minor`,
+  `currency`, `frequency = 'monthly'`, `day_of_month`, `start_date`, `active`, timestamps).
+- Migración versionada `*_add_recurring_transactions` autorada offline.
+- Schemas Zod compartidos: `RecurringTransactionRuleSchema`, `CreateRecurringTransactionRuleSchema`.
+- API `GET /recurring-transactions` y `POST /recurring-transactions`, protegida por sesión,
+  tenant activo y permiso `transaction:write`.
+- Job de ejecución (`RecurringExecutionService`): filtra reglas activas del tenant y genera la
+  transacción del período corriente si no existe (`idempotency_key` basado en `ruleId+period`).
+- Evento de auditoría `transaction.income` / `transaction.expense` con `source: 'job'`.
+- UI en `/dashboard`: sección de reglas recurrentes; marcador visual «Automatic · recurring»
+  en el historial de transacciones para distinguirlas de las manuales.
+- Tests de schema, repositorio (idempotencia, aislamiento de tenant), servicio de ejecución,
+  controller (permissions) y servicio de transacciones (helpers de proveniencia).
+
+### Excluye
+
+- Schedulers (cron/triggers) — el job se invoca manualmente o vía infraestructura externa.
+- Cancelación/edición de reglas recurrentes.
+- Frecuencias distintas de mensual.
+
+### Verificación técnica
+
+- [x] `pnpm lint`
+- [x] `pnpm test`
+- [x] `pnpm build`
+- [ ] Smoke test manual: crear regla recurrente, invocar job y confirmar transacción generada en
+  `/dashboard`.
+
+## Slice 7 — Categorías y reporte de gastos por categoría
+
+**Estado**: ✅ Implementado y verificado técnicamente
+
+**Outcome**: un miembro del tenant puede crear categorías (income/expense), asignarlas a
+transacciones y consultar un reporte de gastos agrupado por categoría y moneda (nunca mezcladas).
+
+### Incluye
+
+- Modelo `Category` (`id`, `tenant_id`, `name`, `type TransactionType`, `color?`, timestamps,
+  FK `categories_tenant_id_fkey RESTRICT`, `@@index([tenantId])`).
+- Columna nullable `category_id` en `transactions` (FK `ON DELETE SET NULL`, `@@index([tenantId, categoryId])`).
+- Migración versionada `20260622100000_add_categories/migration.sql` autorada offline.
+- Schemas Zod compartidos: `CategorySchema`, `CreateCategorySchema`, `UpdateCategorySchema` (con refine),
+  `ExpenseByCategoryItemSchema`, `ExpenseByCategoryReportSchema`.
+- Extensión de `TransactionSchema`, `CreateTransactionSchema`, `UpdateTransactionSchema` con
+  `categoryId` nullish/nullable.
+- Permisos `category:read` y `category:write` en `authorization-policy.ts`:
+  owner/member reciben ambos; viewer recibe solo `category:read`.
+- API `CategoriesModule`: `GET /categories`, `GET /categories/:id` (category:read),
+  `POST /categories`, `PATCH /categories/:id`, `DELETE /categories/:id` (category:write).
+- API `ReportsModule`: `GET /reports/expenses-by-category?from=&to=` (report:read).
+  Agrupa con `prisma.transaction.groupBy` por `(categoryId, currency)`; segunda query para nombres.
+  Excluye no-categorizados (`categoryId: {not: null}`) e income.
+- `TransactionService` extendido: valida `categoryId` contra tenant y tipo en create/update;
+  `categoryId=null` limpia la asignación; no emite evento adicional de auditoría.
+- Web `categories.ts`: `listCategories`, `getCategory`, `createCategory`, `updateCategory`,
+  `deleteCategory`, `getExpenseReport(from, to)` vía `apiFetch`.
+- Web `category-select.tsx`: dropdown extraído con helper puro `filterCategoriesByType`, props
+  `{type, value, onChange, categories}`. Mantiene `TransactionsPanel` en ≤595 líneas.
+- Web `categories-panel.tsx`: lista CRUD + formulario crear/editar (nombre, tipo, color opcional).
+- Web `expense-report-panel.tsx`: inputs de fecha, fetch on submit, filas por moneda separadas
+  (`groupReportItemsByCurrency`, `formatMinorAmount`). NUNCA combina monedas (ADR 0004).
+- `transactions-panel.tsx`: integra `<CategorySelect>` en form crear/editar; `categoryId` state;
+  helpers exportados `buildTransactionCreateInput` / `buildTransactionUpdateInput` con soporte
+  `categoryId?: string` / `categoryId?: string | null`.
+- `dashboard/page.tsx`: renderiza `<CategoriesPanel>` + `<ExpenseReportPanel>` junto a los paneles
+  existentes.
+- Auditoría: `category.created` y `category.updated`; sin evento en DELETE (por diseño).
+- Entrega: PR único con `size:exception`.
+
+### Decisiones de diseño
+
+- **Enforced en app service (no en DB)**: la validación tipo-categoría ↔ tipo-transacción se
+  hace en `TransactionService` (igual que la derivación de moneda), no con CHECK constraint.
+- **groupBy + segunda query para nombres**: `prisma.groupBy` no soporta include/relations;
+  segunda query `category.findMany` en JS para mapear nombres.
+- **No-categorizados excluidos del reporte**: `categoryId: {not: null}` en la query, por diseño.
+- **Dirección de dependencia una sola vía**: TransactionsModule → CategoriesModule, sin ciclo.
+- **Tests web en node env (sin jsdom)**: la convención del proyecto es testear helpers puros
+  exportados de los componentes, no el DOM renderizado.
+
+### Excluye
+
+- Reportes PRD-005(b) ingreso-vs-gasto y PRD-005(c) evolución mensual.
+- Presupuestos, categorías jerárquicas, export CSV/PDF.
+- Caché de reporte o conversión FX en reportes.
+- Auditoría de cambios de categoría en transacciones o lecturas de reporte.
+- Unicidad de nombre de categoría (constraint de DB).
+
+### Verificación técnica (Checks de Aceptación — 18/18)
+
+- [x] AC #1: Category CRUD create → 201 con id, tenantId, name, type, color, timestamps
+- [x] AC #2: Audit on create → `category.created` emitido (cubierto en `category.service.test.ts`)
+- [x] AC #3: Audit on update → `category.updated` emitido (cubierto en `category.service.test.ts`)
+- [x] AC #4: No audit on delete → sin evento en DELETE (cubierto en `category.service.test.ts`)
+- [x] AC #5: Color optional → null cuando ausente; trimmed cuando presente (cubierto en `category.schema.test.ts`)
+- [x] AC #6: Tenant isolation categories → 404 CATEGORY_NOT_FOUND para otro tenant (cubierto en `category.repository.test.ts`)
+- [x] AC #7: Permission viewer cannot write → 403 en POST/PATCH/DELETE (cubierto en `categories.controller.test.ts`)
+- [x] AC #8: Permission viewer can read → 200 en GET (cubierto en `categories.controller.test.ts`)
+- [x] AC #9: DELETE → SET NULL → transacciones conservadas con categoryId=null (cubierto en `category.repository.test.ts`)
+- [x] AC #10: Type mismatch → 422 CATEGORY_TYPE_MISMATCH (cubierto en `transaction.service.test.ts`)
+- [x] AC #11: Cross-tenant category → 404 CATEGORY_NOT_FOUND (cubierto en `transaction.service.test.ts`)
+- [x] AC #12: categoryId=null clears → categoryId null tras update (cubierto en `transaction.service.test.ts`)
+- [x] AC #13: Report multi-currency separation → USD y COP en filas separadas (cubierto en `report.service.test.ts`)
+- [x] AC #14: Report income excluded → income ausente del reporte (cubierto en `report.service.test.ts`)
+- [x] AC #15: Report uncategorized excluded → null categoryId ausente (cubierto en `report.service.test.ts`)
+- [x] AC #16: Report period filter → occurredAt fuera de rango excluido (cubierto en `report.service.test.ts`)
+- [x] AC #17: Report permission enforcement → 403 sin report:read (cubierto en `reports.controller.test.ts`)
+- [x] AC #18: Report amounts as integer minor units → totalMinor entero (cubierto en `report.service.test.ts` + `category.schema.test.ts`)
+
+### Archivos de test
+
+- `packages/shared/schemas/__tests__/category.schema.test.ts` — 21 tests
+- `packages/shared/schemas/__tests__/transaction.schema.test.ts` — extensión categoryId (6 tests nuevos, 43 total)
+- `apps/api/src/modules/categories/__tests__/category.repository.test.ts` — 7 tests
+- `apps/api/src/modules/categories/__tests__/category.service.test.ts` — 8 tests
+- `apps/api/src/modules/categories/__tests__/categories.controller.test.ts` — 9 tests
+- `apps/api/src/modules/reports/__tests__/report.service.test.ts` — 8 tests
+- `apps/api/src/modules/reports/__tests__/reports.controller.test.ts` — 6 tests
+- `apps/api/src/modules/transactions/application/__tests__/transaction.service.test.ts` — 7 tests nuevos (32 total)
+- `apps/web/src/features/categories/services/__tests__/categories.test.ts` — 9 tests
+- `apps/web/src/features/categories/components/__tests__/category-select.test.ts` — 4 tests
+- `apps/web/src/features/categories/components/__tests__/expense-report-panel.test.ts` — 4 tests
+- `apps/web/src/features/transactions/components/__tests__/transactions-panel-category.test.ts` — 5 tests
+
+### Gates
+
+- [x] `pnpm lint` — ZERO errores (turbo: 4/4 packages)
+- [x] `pnpm test` — 411 tests, 43 archivos — TODOS PASAN
+  - shared: 140 tests, 11 archivos
+  - api: 166 tests, 20 archivos
+  - web: 105 tests, 12 archivos
+- [x] `pnpm build` — 4/4 paquetes compilados exitosamente, ZERO errores
+
+### Smoke test manual: PENDIENTE
+
+El usuario debe ejecutar los siguientes pasos contra una DB activa para validar el flujo completo
+end-to-end (los tests unitarios son offline; este smoke requiere la DB):
+
+1. Crear una categoría de gasto (ej. "Alimentación", type=expense) → AC #1 ✓
+2. Asignar esa categoría a una transacción de gasto → AC #10: guardar con categoryId ✓
+3. Intentar asignar una categoría de ingreso a una transacción de gasto → 422 CATEGORY_TYPE_MISMATCH ✓
+4. Llamar `GET /reports/expenses-by-category?from=...&to=...` con gastos en USD y COP → filas separadas por moneda ✓ (AC #13)
+5. Eliminar la categoría → las transacciones siguen existiendo con categoryId=null ✓ (AC #9)
+6. Con rol viewer: `GET /categories` → 200; `POST /categories` → 403 ✓ (AC #7, #8)

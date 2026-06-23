@@ -14,6 +14,50 @@ import {
   updateTransaction,
 } from '../services/transactions'
 import { RecurringTransactionsPanel } from './recurring-transactions-panel'
+import { Category } from '../../categories/services/categories'
+import { listCategories } from '../../categories/services/categories'
+import { CategorySelect } from '../../categories/components/category-select'
+
+export interface TransactionCreateInput {
+  accountId: string
+  type: TransactionType
+  amountMinor: number
+  description?: string
+  occurredAt?: string
+  categoryId?: string
+}
+
+export interface TransactionUpdateInput {
+  accountId?: string
+  type?: TransactionType
+  amountMinor?: number
+  description?: string | null
+  occurredAt?: string
+  categoryId?: string | null
+}
+
+export function buildTransactionCreateInput(input: TransactionCreateInput): TransactionCreateInput {
+  const result: TransactionCreateInput = {
+    accountId: input.accountId,
+    type: input.type,
+    amountMinor: input.amountMinor,
+  }
+  if (input.description !== undefined) result.description = input.description
+  if (input.occurredAt !== undefined) result.occurredAt = input.occurredAt
+  if (input.categoryId !== undefined) result.categoryId = input.categoryId
+  return result
+}
+
+export function buildTransactionUpdateInput(input: TransactionUpdateInput): TransactionUpdateInput {
+  const result: TransactionUpdateInput = {}
+  if (input.accountId !== undefined) result.accountId = input.accountId
+  if (input.type !== undefined) result.type = input.type
+  if (input.amountMinor !== undefined) result.amountMinor = input.amountMinor
+  if (input.description !== undefined) result.description = input.description
+  if (input.occurredAt !== undefined) result.occurredAt = input.occurredAt
+  if ('categoryId' in input) result.categoryId = input.categoryId
+  return result
+}
 
 const transactionTypeOptions: Array<{ value: TransactionType; label: string }> = [
   { value: 'income', label: 'Income' },
@@ -28,6 +72,7 @@ export function TransactionsPanel() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [balances, setBalances] = useState<AccountBalance[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [selectedAccountId, setSelectedAccountId] = useState('')
   const [type, setType] = useState<TransactionType>('income')
   // Amount is collected in major units (e.g. 100.50 COP) and converted to minor
@@ -36,6 +81,7 @@ export function TransactionsPanel() {
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [occurredAt, setOccurredAt] = useState('')
+  const [categoryId, setCategoryId] = useState<string | null>(null)
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -77,6 +123,7 @@ export function TransactionsPanel() {
     setAmount('')
     setDescription('')
     setOccurredAt('')
+    setCategoryId(null)
     setEditingTransactionId(null)
     if (accounts.length > 0) {
       setSelectedAccountId(accounts[0].id)
@@ -90,6 +137,7 @@ export function TransactionsPanel() {
     setAmount((transaction.amountMinor / 100).toFixed(2))
     setDescription(transaction.description ?? '')
     setOccurredAt(transaction.occurredAt.slice(0, 10))
+    setCategoryId(transaction.categoryId ?? null)
     setError(null)
   }
 
@@ -101,14 +149,16 @@ export function TransactionsPanel() {
   useEffect(() => {
     const run = async () => {
       try {
-        const [accountsRes, balancesRes, transactionsRes] = await Promise.all([
+        const [accountsRes, balancesRes, transactionsRes, categoriesRes] = await Promise.all([
           listAccounts(),
           listBalances(),
           listTransactions(),
+          listCategories(),
         ])
         setAccounts(accountsRes.data.accounts)
         setBalances(balancesRes.data.balances)
         setTransactions(transactionsRes.data.transactions)
+        setCategories(categoriesRes.data.categories)
         const loadedAccounts = accountsRes.data.accounts
         if (loadedAccounts.length > 0) {
           setSelectedAccountId(loadedAccounts[0].id)
@@ -144,23 +194,25 @@ export function TransactionsPanel() {
     try {
       const amountMinor = Math.round(parsedAmount * 100)
       const trimmedDescription = description.trim()
-      const transactionInput = {
-        accountId: selectedAccountId,
-        type,
-        amountMinor,
-        occurredAt: toOccurredAtIso(occurredAt),
-      }
 
       if (editingTransactionId) {
-        await updateTransaction(editingTransactionId, {
-          ...transactionInput,
+        await updateTransaction(editingTransactionId, buildTransactionUpdateInput({
+          accountId: selectedAccountId,
+          type,
+          amountMinor,
           description: trimmedDescription || null,
-        })
+          occurredAt: toOccurredAtIso(occurredAt),
+          categoryId: categoryId,
+        }))
       } else {
-        await createTransaction({
-          ...transactionInput,
+        await createTransaction(buildTransactionCreateInput({
+          accountId: selectedAccountId,
+          type,
+          amountMinor,
           description: trimmedDescription || undefined,
-        })
+          occurredAt: toOccurredAtIso(occurredAt),
+          ...(categoryId !== null ? { categoryId } : {}),
+        }))
       }
 
       resetForm()
@@ -278,7 +330,10 @@ export function TransactionsPanel() {
           <select
             className="input"
             value={type}
-            onChange={(event) => setType(event.target.value as TransactionType)}
+            onChange={(event) => {
+              setType(event.target.value as TransactionType)
+              setCategoryId(null)
+            }}
           >
             {transactionTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -286,6 +341,15 @@ export function TransactionsPanel() {
               </option>
             ))}
           </select>
+        </label>
+        <label className="label">
+          Category (optional)
+          <CategorySelect
+            type={type}
+            value={categoryId}
+            onChange={setCategoryId}
+            categories={categories}
+          />
         </label>
         <label className="label">
           Amount

@@ -15,6 +15,7 @@ export class TransactionRepository {
     description: string | null
     occurredAt: Date
     transferId?: string | null
+    categoryId?: string | null
   }): Promise<Transaction> {
     return this.prisma.transaction.create({ data })
   }
@@ -100,6 +101,7 @@ export class TransactionRepository {
       currency: string
       description: string | null
       occurredAt: Date
+      categoryId: string | null
     }>,
   ): Promise<Transaction | null> {
     return this.prisma.$transaction(async (tx) => {

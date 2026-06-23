@@ -14,6 +14,7 @@ export const TransactionSchema = z.object({
   occurredAt: z.string(),
   createdAt: z.string(),
   transferId: z.string().nullish(),
+  categoryId: z.string().nullish(),
   source: TransactionSourceSchema.optional(),
   recurringRuleId: z.string().nullish(),
   recurringPeriod: z.string().regex(/^\d{4}-\d{2}$/).nullish(),
@@ -26,6 +27,7 @@ export const CreateTransactionSchema = z.object({
   amountMinor: z.number().int().positive(),
   description: z.string().trim().min(1).optional(),
   occurredAt: z.string().datetime().optional(),
+  categoryId: z.string().trim().min(1).nullish(),
 })
 
 export const UpdateTransactionSchema = z.object({
@@ -34,6 +36,7 @@ export const UpdateTransactionSchema = z.object({
   amountMinor: z.number().int().positive().optional(),
   description: z.string().trim().min(1).nullable().optional(),
   occurredAt: z.string().datetime().optional(),
+  categoryId: z.string().nullable().optional(),
 }).refine((value) => Object.values(value).some((field) => field !== undefined), {
   message: 'At least one field must be provided',
 })

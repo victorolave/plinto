@@ -36,6 +36,7 @@ model Tenant {
   transfers    Transfer[]
   recurringRules RecurringTransactionRule[]
   recurringExecutions RecurringTransactionExecution[]
+  categories   Category[]
 
   @@map("tenants")
 }
@@ -118,6 +119,7 @@ model Transaction {
   description String?
   occurredAt  DateTime        @map("occurred_at")
   transferId  String?         @map("transfer_id")
+  categoryId  String?         @map("category_id")
   source      TransactionSource @default(manual)
   recurringRuleId String?     @map("recurring_rule_id")
   recurringPeriod String?     @map("recurring_period")
@@ -128,6 +130,7 @@ model Transaction {
   tenant   Tenant   @relation(fields: [tenantId], references: [id])
   account  Account  @relation(fields: [accountId], references: [id])
   transfer Transfer? @relation(fields: [transferId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   recurringRule RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id])
   recurringExecution RecurringTransactionExecution?
 
@@ -136,6 +139,7 @@ model Transaction {
   @@index([transferId])
   @@index([recurringRuleId])
   @@index([tenantId, source])
+  @@index([tenantId, categoryId])
   @@map("transactions")
 }
 
@@ -209,6 +213,22 @@ model Transfer {
   @@index([sourceAccountId])
   @@index([destinationAccountId])
   @@map("transfers")
+}
+
+model Category {
+  id        String          @id @default(uuid())
+  tenantId  String          @map("tenant_id")
+  name      String
+  type      TransactionType
+  color     String?
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  transactions Transaction[]
+
+  @@index([tenantId])
+  @@map("categories")
 }
 
 enum TransactionType {

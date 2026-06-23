@@ -42,6 +42,14 @@ const makeAccountRepo = () => ({
   findByIdForTenant: vi.fn(),
 })
 
+const makeCategoryRepo = () => ({
+  create: vi.fn(),
+  listByTenantId: vi.fn(),
+  findByIdForTenant: vi.fn(),
+  updateForTenant: vi.fn(),
+  deleteForTenant: vi.fn(),
+})
+
 const makeAuditService = () => ({
   record: vi.fn(),
 })
@@ -49,17 +57,20 @@ const makeAuditService = () => ({
 describe('TransactionService', () => {
   let transactionRepository: ReturnType<typeof makeTransactionRepo>
   let accountRepository: ReturnType<typeof makeAccountRepo>
+  let categoryRepository: ReturnType<typeof makeCategoryRepo>
   let auditService: ReturnType<typeof makeAuditService>
   let service: TransactionService
 
   beforeEach(() => {
     transactionRepository = makeTransactionRepo()
     accountRepository = makeAccountRepo()
+    categoryRepository = makeCategoryRepo()
     auditService = makeAuditService()
     service = new TransactionService(
       transactionRepository as any,
       accountRepository as any,
       auditService as any,
+      categoryRepository as any,
     )
   })
 
@@ -641,6 +652,288 @@ describe('TransactionService', () => {
       expect(result).toHaveLength(2)
       expect(result[0].accountId).toBe('account-1')
       expect(result[1].accountId).toBe('account-2')
+    })
+  })
+
+  describe('createTransaction with categoryId', () => {
+    it('saves categoryId when a valid expense category is provided (AC #10)', async () => {
+      const account = makeAccount({ currency: 'COP' })
+      const category = { id: 'cat-1', tenantId: 'tenant-1', name: 'Food', type: 'expense' as const, color: null, createdAt: new Date(), updatedAt: new Date() }
+      const transaction = makeTransaction({ type: 'expense', categoryId: 'cat-1' })
+      accountRepository.findByIdForTenant.mockResolvedValue(account)
+      categoryRepository.findByIdForTenant.mockResolvedValue(category)
+      transactionRepository.create.mockResolvedValue(transaction)
+      auditService.record.mockResolvedValue(undefined)
+
+      const result = await service.createTransaction({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        requestId: 'req-1',
+        accountId: 'account-1',
+        type: 'expense',
+        amountMinor: 5000,
+        categoryId: 'cat-1',
+      })
+
+      expect(transactionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryId: 'cat-1' }),
+      )
+      expect(result.categoryId).toBe('cat-1')
+    })
+
+    it('throws UnprocessableEntityException CATEGORY_TYPE_MISMATCH when income category assigned to expense (AC #10)', async () => {
+      const account = makeAccount({ currency: 'COP' })
+      const incomeCategory = { id: 'cat-income', tenantId: 'tenant-1', name: 'Salary', type: 'income' as const, color: null, createdAt: new Date(), updatedAt: new Date() }
+      accountRepository.findByIdForTenant.mockResolvedValue(account)
+      categoryRepository.findByIdForTenant.mockResolvedValue(incomeCategory)
+
+      await expect(
+        service.createTransaction({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          requestId: 'req-1',
+          accountId: 'account-1',
+          type: 'expense',
+          amountMinor: 5000,
+          categoryId: 'cat-income',
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'CATEGORY_TYPE_MISMATCH' }),
+      })
+
+      expect(transactionRepository.create).not.toHaveBeenCalled()
+    })
+
+    it('throws NotFoundException CATEGORY_NOT_FOUND when categoryId belongs to another tenant (AC #11)', async () => {
+      const account = makeAccount({ currency: 'COP' })
+      accountRepository.findByIdForTenant.mockResolvedValue(account)
+      categoryRepository.findByIdForTenant.mockResolvedValue(null)
+
+      await expect(
+        service.createTransaction({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          requestId: 'req-1',
+          accountId: 'account-1',
+          type: 'expense',
+          amountMinor: 5000,
+          categoryId: 'cat-other-tenant',
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'CATEGORY_NOT_FOUND' }),
+      })
+
+      expect(transactionRepository.create).not.toHaveBeenCalled()
+    })
+
+    it('saves categoryId as null when no categoryId is provided (uncategorized)', async () => {
+      const account = makeAccount({ currency: 'COP' })
+      const transaction = makeTransaction({ type: 'expense', categoryId: null })
+      accountRepository.findByIdForTenant.mockResolvedValue(account)
+      transactionRepository.create.mockResolvedValue(transaction)
+      auditService.record.mockResolvedValue(undefined)
+
+      await service.createTransaction({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        requestId: 'req-1',
+        accountId: 'account-1',
+        type: 'expense',
+        amountMinor: 5000,
+      })
+
+      expect(categoryRepository.findByIdForTenant).not.toHaveBeenCalled()
+      expect(transactionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryId: null }),
+      )
+    })
+  })
+
+  describe('updateTransaction with categoryId', () => {
+    it('clears categoryId when null is passed (AC #12)', async () => {
+      const existing = makeTransaction({ type: 'expense', categoryId: 'cat-1' })
+      const updated = makeTransaction({ type: 'expense', categoryId: null })
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      transactionRepository.updateForTenant.mockResolvedValue(updated)
+      auditService.record.mockResolvedValue(undefined)
+
+      await service.updateTransaction({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        requestId: 'req-1',
+        transactionId: 'tx-1',
+        categoryId: null,
+      })
+
+      expect(transactionRepository.updateForTenant).toHaveBeenCalledWith(
+        'tx-1',
+        'tenant-1',
+        expect.objectContaining({ categoryId: null }),
+      )
+    })
+
+    it('throws CATEGORY_TYPE_MISMATCH when updating expense with income category (AC #10)', async () => {
+      const existing = makeTransaction({ type: 'expense', categoryId: null })
+      const incomeCategory = { id: 'cat-income', tenantId: 'tenant-1', name: 'Salary', type: 'income' as const, color: null, createdAt: new Date(), updatedAt: new Date() }
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      categoryRepository.findByIdForTenant.mockResolvedValue(incomeCategory)
+
+      await expect(
+        service.updateTransaction({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          requestId: 'req-1',
+          transactionId: 'tx-1',
+          categoryId: 'cat-income',
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'CATEGORY_TYPE_MISMATCH' }),
+      })
+
+      expect(transactionRepository.updateForTenant).not.toHaveBeenCalled()
+    })
+
+    it('throws CATEGORY_NOT_FOUND when updating with cross-tenant category (AC #11)', async () => {
+      const existing = makeTransaction({ type: 'expense', categoryId: null })
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      categoryRepository.findByIdForTenant.mockResolvedValue(null)
+
+      await expect(
+        service.updateTransaction({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          requestId: 'req-1',
+          transactionId: 'tx-1',
+          categoryId: 'cat-other-tenant',
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'CATEGORY_NOT_FOUND' }),
+      })
+
+      expect(transactionRepository.updateForTenant).not.toHaveBeenCalled()
+    })
+
+    it('does NOT emit a separate audit event for categoryId change (only transaction.updated fires)', async () => {
+      const existing = makeTransaction({ type: 'expense', categoryId: 'cat-1' })
+      const category = { id: 'cat-2', tenantId: 'tenant-1', name: 'Travel', type: 'expense' as const, color: null, createdAt: new Date(), updatedAt: new Date() }
+      const updated = makeTransaction({ type: 'expense', categoryId: 'cat-2' })
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      categoryRepository.findByIdForTenant.mockResolvedValue(category)
+      transactionRepository.updateForTenant.mockResolvedValue(updated)
+      auditService.record.mockResolvedValue(undefined)
+
+      await service.updateTransaction({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        requestId: 'req-1',
+        transactionId: 'tx-1',
+        categoryId: 'cat-2',
+      })
+
+      expect(auditService.record).toHaveBeenCalledTimes(1)
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'transaction.updated' }),
+      )
+    })
+
+    it('validates categoryId type against effectiveType when type also changes', async () => {
+      // transaction is being changed from expense to income, and an income category is assigned
+      const existing = makeTransaction({ type: 'expense', categoryId: null })
+      const incomeCategory = { id: 'cat-income', tenantId: 'tenant-1', name: 'Salary', type: 'income' as const, color: null, createdAt: new Date(), updatedAt: new Date() }
+      const updated = makeTransaction({ type: 'income', categoryId: 'cat-income' })
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      categoryRepository.findByIdForTenant.mockResolvedValue(incomeCategory)
+      transactionRepository.updateForTenant.mockResolvedValue(updated)
+      auditService.record.mockResolvedValue(undefined)
+
+      // Should NOT throw — effectiveType is income (from params.type), category is income
+      const result = await service.updateTransaction({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        requestId: 'req-1',
+        transactionId: 'tx-1',
+        type: 'income',
+        categoryId: 'cat-income',
+      })
+
+      expect(transactionRepository.updateForTenant).toHaveBeenCalled()
+      expect(result.categoryId).toBe('cat-income')
+    })
+
+    // MUST-FIX 2: type-only change must re-validate the already-attached category
+    it('throws CATEGORY_TYPE_MISMATCH when type-only change makes attached income category invalid (MUST-FIX 2a)', async () => {
+      // Existing: type=income, categoryId=cat-income (valid match)
+      // Update: type=expense, no categoryId in payload → mismatched, must reject
+      const existing = makeTransaction({ type: 'income', categoryId: 'cat-income' })
+      const incomeCategory = { id: 'cat-income', tenantId: 'tenant-1', name: 'Salary', type: 'income' as const, color: null, createdAt: new Date(), updatedAt: new Date() }
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      categoryRepository.findByIdForTenant.mockResolvedValue(incomeCategory)
+
+      await expect(
+        service.updateTransaction({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          requestId: 'req-1',
+          transactionId: 'tx-1',
+          type: 'expense', // type changes; no categoryId provided
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'CATEGORY_TYPE_MISMATCH' }),
+      })
+
+      expect(transactionRepository.updateForTenant).not.toHaveBeenCalled()
+    })
+
+    it('succeeds when type-only change still matches the attached category type (MUST-FIX 2b)', async () => {
+      // Existing: type=income, categoryId=cat-income → change type=income again (no-op on type)
+      // Actually test: existing income with income category, type change to expense but category is expense too
+      const existing = makeTransaction({ type: 'expense', categoryId: 'cat-expense' })
+      const expenseCategory = { id: 'cat-expense', tenantId: 'tenant-1', name: 'Food', type: 'expense' as const, color: null, createdAt: new Date(), updatedAt: new Date() }
+      const updated = makeTransaction({ type: 'expense', categoryId: 'cat-expense' })
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      categoryRepository.findByIdForTenant.mockResolvedValue(expenseCategory)
+      transactionRepository.updateForTenant.mockResolvedValue(updated)
+      auditService.record.mockResolvedValue(undefined)
+
+      // type stays expense, category is expense → should pass
+      const result = await service.updateTransaction({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        requestId: 'req-1',
+        transactionId: 'tx-1',
+        type: 'expense', // same as existing, but still triggers re-validation path
+        // no categoryId in payload
+      })
+
+      expect(transactionRepository.updateForTenant).toHaveBeenCalled()
+      expect(result).toBe(updated)
+    })
+
+    it('does NOT throw when type changes and categoryId:null explicitly clears the assignment (MUST-FIX 2c)', async () => {
+      // Regression: changing type AND clearing categoryId (categoryId:null) → succeeds
+      const existing = makeTransaction({ type: 'income', categoryId: 'cat-income' })
+      const updated = makeTransaction({ type: 'expense', categoryId: null })
+      transactionRepository.findByIdForTenant.mockResolvedValue(existing)
+      transactionRepository.updateForTenant.mockResolvedValue(updated)
+      auditService.record.mockResolvedValue(undefined)
+
+      const result = await service.updateTransaction({
+        tenantId: 'tenant-1',
+        actorUserId: 'user-1',
+        requestId: 'req-1',
+        transactionId: 'tx-1',
+        type: 'expense',
+        categoryId: null, // explicit clear — no re-validation needed
+      })
+
+      // categoryRepository.findByIdForTenant must NOT be called for the re-validation path
+      expect(categoryRepository.findByIdForTenant).not.toHaveBeenCalled()
+      expect(transactionRepository.updateForTenant).toHaveBeenCalledWith(
+        'tx-1',
+        'tenant-1',
+        expect.objectContaining({ categoryId: null }),
+      )
+      expect(result).toBe(updated)
     })
   })
 })

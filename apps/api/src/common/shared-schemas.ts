@@ -8,4 +8,6 @@ export {
   UpdateTransactionSchema,
   CreateTransferSchema,
   CreateRecurringTransactionRuleSchema,
+  CreateCategorySchema,
+  UpdateCategorySchema,
 } from '@plinto/shared'

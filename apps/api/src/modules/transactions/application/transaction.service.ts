@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException, UnprocessableEntity
 import { TransactionRepository } from '../infrastructure/transaction.repository'
 import { AccountRepository } from '../../accounts/infrastructure/account.repository'
 import { AuditService } from '../../audit/application/audit.service'
+import { CategoryRepository } from '../../categories/infrastructure/category.repository'
 import { Transaction, TransactionType, AccountBalance, Transfer } from '../domain/transaction.entity'
 
 @Injectable()
@@ -10,6 +11,7 @@ export class TransactionService {
     private readonly transactionRepository: TransactionRepository,
     private readonly accountRepository: AccountRepository,
     private readonly auditService: AuditService,
+    private readonly categoryRepository: CategoryRepository,
   ) {}
 
   async createTransaction(params: {
@@ -21,6 +23,7 @@ export class TransactionService {
     amountMinor: number
     description?: string
     occurredAt?: string
+    categoryId?: string | null
   }): Promise<Transaction> {
     const account = await this.accountRepository.findByIdForTenant(
       params.accountId,
@@ -34,6 +37,27 @@ export class TransactionService {
       })
     }
 
+    let resolvedCategoryId: string | null = null
+    if (params.categoryId) {
+      const category = await this.categoryRepository.findByIdForTenant(
+        params.categoryId,
+        params.tenantId,
+      )
+      if (!category) {
+        throw new NotFoundException({
+          code: 'CATEGORY_NOT_FOUND',
+          message: 'Category not found for the active tenant',
+        })
+      }
+      if (category.type !== params.type) {
+        throw new UnprocessableEntityException({
+          code: 'CATEGORY_TYPE_MISMATCH',
+          message: 'Category type must match the transaction type',
+        })
+      }
+      resolvedCategoryId = params.categoryId
+    }
+
     const transaction = await this.transactionRepository.create({
       tenantId: params.tenantId,
       accountId: params.accountId,
@@ -42,6 +66,7 @@ export class TransactionService {
       currency: account.currency,
       description: params.description ?? null,
       occurredAt: params.occurredAt ? new Date(params.occurredAt) : new Date(),
+      categoryId: resolvedCategoryId,
     })
 
     await this.auditService.record({
@@ -209,6 +234,7 @@ export class TransactionService {
     amountMinor?: number
     description?: string | null
     occurredAt?: string
+    categoryId?: string | null
   }): Promise<Transaction> {
     const existing = await this.transactionRepository.findByIdForTenant(
       params.transactionId,
@@ -239,6 +265,54 @@ export class TransactionService {
       currency = account.currency
     }
 
+    // Resolve effective type for category type-match check
+    const effectiveType: TransactionType = params.type ?? existing.type
+
+    // Resolve categoryId update
+    let resolvedCategoryId: string | null | undefined = undefined
+    if (params.categoryId === null) {
+      // Explicit null clears the assignment — no type re-validation needed
+      resolvedCategoryId = null
+    } else if (typeof params.categoryId === 'string') {
+      // Caller provided an explicit new category — validate type match against effectiveType
+      const category = await this.categoryRepository.findByIdForTenant(
+        params.categoryId,
+        params.tenantId,
+      )
+      if (!category) {
+        throw new NotFoundException({
+          code: 'CATEGORY_NOT_FOUND',
+          message: 'Category not found for the active tenant',
+        })
+      }
+      if (category.type !== effectiveType) {
+        throw new UnprocessableEntityException({
+          code: 'CATEGORY_TYPE_MISMATCH',
+          message: 'Category type must match the transaction type',
+        })
+      }
+      resolvedCategoryId = params.categoryId
+    } else if (
+      params.type !== undefined &&
+      params.type !== existing.type &&
+      existing.categoryId
+    ) {
+      // Type-only change: the existing category remains attached but the new type may no longer
+      // match. Re-fetch and enforce the invariant (reject rather than silently clear — consistent
+      // with create behaviour).
+      const existingCategory = await this.categoryRepository.findByIdForTenant(
+        existing.categoryId,
+        params.tenantId,
+      )
+      if (existingCategory && existingCategory.type !== effectiveType) {
+        throw new UnprocessableEntityException({
+          code: 'CATEGORY_TYPE_MISMATCH',
+          message: 'Category type must match the transaction type',
+        })
+      }
+      // resolvedCategoryId stays undefined → repository patch does not touch categoryId
+    }
+
     const updated = await this.transactionRepository.updateForTenant(
       params.transactionId,
       params.tenantId,
@@ -250,6 +324,7 @@ export class TransactionService {
         description:
           params.description === undefined ? undefined : params.description,
         occurredAt: params.occurredAt ? new Date(params.occurredAt) : undefined,
+        categoryId: resolvedCategoryId,
       },
     )
 
@@ -275,6 +350,7 @@ export class TransactionService {
           currency: existing.currency,
           description: existing.description,
           occurredAt: existing.occurredAt.toISOString(),
+          categoryId: existing.categoryId ?? null,
         },
         after: {
           accountId: updated.accountId,
@@ -283,6 +359,7 @@ export class TransactionService {
           currency: updated.currency,
           description: updated.description,
           occurredAt: updated.occurredAt.toISOString(),
+          categoryId: updated.categoryId ?? null,
         },
       },
     })
