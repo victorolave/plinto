@@ -81,14 +81,14 @@ describe('jwt.ts — createPlintoJwt / verifyPlintoJwt', () => {
     expect(raw.aud).toBe('plinto-api')
   })
 
-  it('token carries an exp claim (short-lived)', () => {
+  it('token carries an exp claim at the 8h absolute ceiling', () => {
     const before = Math.floor(Date.now() / 1000)
     const token = createPlintoJwt(baseClaims)
     const raw = jwt.decode(token) as Record<string, unknown>
     const exp = raw.exp as number
-    // 30 minutes = 1800 seconds
-    expect(exp).toBeGreaterThan(before + 1700)
-    expect(exp).toBeLessThan(before + 1900)
+    // 8 hours = 28800 seconds (sliding session handles idle; this is the cap)
+    expect(exp).toBeGreaterThan(before + 28800 - 100)
+    expect(exp).toBeLessThan(before + 28800 + 100)
   })
 
   // ---------- tampered token ----------
@@ -162,8 +162,8 @@ describe('jwt.ts — createPlintoJwt / verifyPlintoJwt', () => {
     vi.useFakeTimers()
     try {
       const token = createPlintoJwt(baseClaims)
-      // Advance 31 minutes — past the 30m TTL
-      vi.advanceTimersByTime(31 * 60 * 1000)
+      // Advance past the 8h TTL
+      vi.advanceTimersByTime(8 * 60 * 60 * 1000 + 60 * 1000)
       expect(() => verifyPlintoJwt(token)).toThrow()
     } finally {
       vi.useRealTimers()

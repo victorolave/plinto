@@ -44,6 +44,7 @@ vi.mock('../../../../lib/auth/oidc-client', () => ({
 
 vi.mock('../../../../lib/auth/jwt', () => ({
   createPlintoJwt: vi.fn().mockReturnValue('mocked-jwt-token'),
+  JWT_TTL_SECONDS: 60 * 60 * 8,
 }))
 
 // ---- actual imports (after mocks) ----

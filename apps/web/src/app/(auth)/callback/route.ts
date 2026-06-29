@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getOidcClient } from '../../../lib/auth/oidc-client'
-import { createPlintoJwt } from '../../../lib/auth/jwt'
+import { createPlintoJwt, JWT_TTL_SECONDS } from '../../../lib/auth/jwt'
 
 const STATE_COOKIE = 'plinto_oidc_state'
 const VERIFIER_COOKIE = 'plinto_oidc_verifier'
@@ -64,7 +64,6 @@ export async function GET(request: Request) {
 
   const sessionPayload = await sessionResponse.json()
   const sessionId = sessionPayload?.data?.sessionId
-  const expiresAt = sessionPayload?.data?.expiresAt
   const activeTenantId = sessionPayload?.data?.activeTenantId
   const needsOnboarding = sessionPayload?.data?.needsOnboarding
   const user = sessionPayload?.data?.user
@@ -85,12 +84,14 @@ export async function GET(request: Request) {
   const response = redirectTo(
     needsOnboarding ? '/onboarding' : activeTenantId ? '/dashboard' : '/select-tenant',
   )
+  // Cookie lifetime matches the JWT's absolute ceiling. The backend slides the
+  // session's idle expiry on activity, so this is just the hard max age.
   response.cookies.set('plinto_session', jwtToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    expires: expiresAt ? new Date(expiresAt) : undefined,
+    maxAge: JWT_TTL_SECONDS,
   })
   
   // Store refresh token if available

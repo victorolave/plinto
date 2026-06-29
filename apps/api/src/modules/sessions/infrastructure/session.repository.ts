@@ -27,6 +27,14 @@ export class SessionRepository {
     })
   }
 
+  /** Push a session's expiry forward (sliding expiration for active users). */
+  async extendExpiry(sessionId: string, expiresAt: Date) {
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: { expiresAt },
+    })
+  }
+
   async updateActiveTenant(sessionId: string, tenantId: string | null) {
     return this.prisma.session.update({
       where: { id: sessionId },

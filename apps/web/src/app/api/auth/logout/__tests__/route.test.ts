@@ -195,16 +195,9 @@ describe('POST /api/auth/logout', () => {
   // ---------- BUG: logout does not clear plinto_refresh_token ----------
 
   it('clears plinto_refresh_token cookie on logout', async () => {
-    // BUG: logout/route.ts only calls response.cookies.set("plinto_session", "", { maxAge: 0 })
-    // but never touches plinto_refresh_token.
-    // A 30-day refresh-token cookie set by callback/route.ts survives logout,
-    // allowing silent session re-creation via /api/auth/refresh even after the
-    // user explicitly logs out.
-    //
-    // Compare with refresh/route.ts which correctly calls
-    // response.cookies.delete('plinto_refresh_token') on both failure paths.
-    //
-    // Fix: add response.cookies.set('plinto_refresh_token', '', { ..., maxAge: 0 })
+    // The 30-day IdP refresh-token cookie set by callback/route.ts is a
+    // credential and must not survive logout. Logout must clear both
+    // plinto_session and plinto_refresh_token.
     // (or response.cookies.delete) alongside the plinto_session clear.
     const mockResp = makeMockResponse({ success: true })
     mockNextResponseJson.mockReturnValue(mockResp as any)

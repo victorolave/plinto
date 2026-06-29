@@ -38,7 +38,8 @@ export async function POST() {
     path: '/',
   }
   response.cookies.set('plinto_session', '', clearedCookie)
-  // Also clear the refresh token so logout cannot be silently undone via /api/auth/refresh.
+  // Also clear the long-lived IdP refresh token cookie — it's a credential and
+  // must not outlive the session.
   response.cookies.set('plinto_refresh_token', '', clearedCookie)
 
   return response
