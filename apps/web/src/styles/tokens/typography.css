@@ -1,0 +1,54 @@
+/* ============================================================
+   Plinto — Typography tokens
+   Two-typeface system: Montserrat (geometric, heavy) for display &
+   brand; Inter (neutral grotesque) for product UI, body & data.
+   Roboto Mono (tabular) for money.
+
+   Font families are loaded via next/font in app/layout.tsx, which
+   exposes --font-inter / --font-montserrat / --font-roboto-mono.
+   ============================================================ */
+:root {
+  /* Families */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', sans-serif; /* product UI & body */
+  --font-display: var(--font-montserrat), var(--font-inter), ui-sans-serif,
+    system-ui, sans-serif; /* headlines & brand */
+  --font-mono: var(--font-roboto-mono), ui-monospace, 'SF Mono', Menlo,
+    monospace; /* tabular figures for money */
+
+  /* Weights */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  /* Type scale (rem @ 16px base) */
+  --text-2xs: 0.6875rem; /* 11 — micro labels */
+  --text-xs: 0.75rem; /* 12 — captions, badges */
+  --text-sm: 0.8125rem; /* 13 — secondary UI */
+  --text-md: 0.875rem; /* 14 — body / table cells */
+  --text-base: 0.9375rem; /* 15 — default body */
+  --text-lg: 1.0625rem; /* 17 — emphasized body */
+  --text-xl: 1.3125rem; /* 21 — card titles */
+  --text-2xl: 1.625rem; /* 26 — section headings */
+  --text-3xl: 2.125rem; /* 34 — page titles */
+  --text-4xl: 2.75rem; /* 44 — hero / big balances */
+  --text-5xl: 3.5rem; /* 56 — marketing display */
+
+  /* Line heights */
+  --leading-tight: 1.1;
+  --leading-snug: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Letter spacing */
+  --tracking-tight: -0.02em; /* display headings */
+  --tracking-snug: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em; /* eyebrow labels */
+  --tracking-caps: 0.08em; /* all-caps micro labels */
+
+  /* Semantic roles */
+  --font-balance: var(--weight-bold);
+}
