@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
+import { AuthLayout } from '../../../components/layout/auth-layout'
 
 async function checkSession() {
   const sessionCookie = cookies().get('plinto_session')?.value
@@ -64,16 +65,14 @@ export default async function LoginPage() {
   await checkSession()
 
   return (
-    <main className="auth-shell">
-      <div className="card stack">
-        <div className="stack">
-          <h1>Sign in</h1>
-          <p className="muted">Continue with your identity provider to access Plinto.</p>
-        </div>
-        <a href="/api/auth/login" className="button">
-          Continue
-        </a>
-      </div>
-    </main>
+    <AuthLayout
+      eyebrow="Welcome"
+      title="Sign in"
+      subtitle="Continue with your identity provider to access your household."
+    >
+      <a href="/api/auth/login" className="btn btn--block">
+        Continue
+      </a>
+    </AuthLayout>
   )
 }

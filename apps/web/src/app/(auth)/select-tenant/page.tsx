@@ -1,15 +1,14 @@
 import { TenantSelector } from '../../../features/tenants/components/tenant-selector'
+import { AuthLayout } from '../../../components/layout/auth-layout'
 
 export default function SelectTenantPage() {
   return (
-    <main className="auth-shell">
-      <div className="card stack">
-        <div className="stack">
-          <h1>Select a tenant</h1>
-          <p className="muted">Choose where you want to work right now.</p>
-        </div>
-        <TenantSelector />
-      </div>
-    </main>
+    <AuthLayout
+      eyebrow="Welcome back"
+      title="Choose a household"
+      subtitle="Select the household you want to work in right now."
+    >
+      <TenantSelector />
+    </AuthLayout>
   )
 }

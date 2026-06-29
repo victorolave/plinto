@@ -1,10 +1,18 @@
 'use client'
 
-export default function ErrorPage() {
+import { Button } from '../components/ui/button'
+import { AuthLayout } from '../components/layout/auth-layout'
+
+export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
   return (
-    <main style={{ padding: '2rem' }}>
-      <h1>Something went wrong</h1>
-      <p>Please try again.</p>
-    </main>
+    <AuthLayout
+      eyebrow="Error"
+      title="Something went wrong"
+      subtitle="An unexpected error occurred. Please try again."
+    >
+      <Button onClick={reset} block>
+        Try again
+      </Button>
+    </AuthLayout>
   )
 }

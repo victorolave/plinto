@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { createTenant, updateProfile } from '../services/onboarding'
+import { Button } from '../../../components/ui/button'
+import { Field, Input } from '../../../components/ui/field'
 
 export function OnboardingForm() {
   const [name, setName] = useState('')
@@ -28,36 +30,40 @@ export function OnboardingForm() {
 
   return (
     <form onSubmit={handleSubmit} className="stack">
-      <label className="label">
-        Your name
-        <input
-          className="input"
+      <Field label="Your name" htmlFor="onboarding-name">
+        <Input
+          id="onboarding-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
+          placeholder="e.g. Marta Ruiz"
           required
         />
-      </label>
-      <label className="label">
-        Tenant name
-        <input
-          className="input"
+      </Field>
+      <Field label="Household name" htmlFor="onboarding-tenant">
+        <Input
+          id="onboarding-tenant"
           value={tenantName}
           onChange={(event) => setTenantName(event.target.value)}
+          placeholder="e.g. Ruiz Family"
           required
         />
-      </label>
-      <label className="label">
-        Base currency
-        <input
-          className="input"
+      </Field>
+      <Field
+        label="Base currency"
+        hint="The default currency for this household."
+        htmlFor="onboarding-currency"
+      >
+        <Input
+          id="onboarding-currency"
           value={baseCurrency}
           onChange={(event) => setBaseCurrency(event.target.value)}
+          maxLength={3}
         />
-      </label>
-      {error ? <p className="error">{error}</p> : null}
-      <button type="submit" disabled={loading} className="button">
-        {loading ? 'Submitting...' : 'Continue'}
-      </button>
+      </Field>
+      {error ? <p className="error-text">{error}</p> : null}
+      <Button type="submit" disabled={loading} block>
+        {loading ? 'Submitting…' : 'Continue'}
+      </Button>
     </form>
   )
 }

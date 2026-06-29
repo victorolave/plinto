@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { OnboardingForm } from '../../../features/auth/components/onboarding-form'
+import { AuthLayout } from '../../../components/layout/auth-layout'
 
 async function checkOnboardingStatus() {
   const sessionCookie = cookies().get('plinto_session')?.value
@@ -60,14 +61,12 @@ export default async function OnboardingPage() {
   await checkOnboardingStatus()
 
   return (
-    <main className="auth-shell">
-      <div className="card stack">
-        <div className="stack">
-          <h1>Complete your profile</h1>
-          <p className="muted">Tell us your name and set up your first household.</p>
-        </div>
-        <OnboardingForm />
-      </div>
-    </main>
+    <AuthLayout
+      eyebrow="Get started"
+      title="Complete your profile"
+      subtitle="Tell us your name and set up your first household."
+    >
+      <OnboardingForm />
+    </AuthLayout>
   )
 }
