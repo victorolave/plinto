@@ -18,7 +18,7 @@ export function CategorySelect({ type, value, onChange, categories }: CategorySe
 
   return (
     <select
-      className="input"
+      className="select"
       value={value ?? ''}
       onChange={(event) => onChange(event.target.value || null)}
     >

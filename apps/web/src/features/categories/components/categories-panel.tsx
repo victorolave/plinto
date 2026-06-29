@@ -1,6 +1,6 @@
 'use client'
 
-import { type FormEvent, useEffect, useState } from 'react'
+import { type CSSProperties, type FormEvent, useEffect, useState } from 'react'
 import {
   Category,
   CategoryType,
@@ -9,6 +9,11 @@ import {
   listCategories,
   updateCategory,
 } from '../services/categories'
+import { Card, CardHeader } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Field, Input, Select } from '../../../components/ui/field'
+import { Badge } from '../../../components/ui/badge'
+import { Pencil, Trash } from '../../../components/ui/icons'
 
 const categoryTypeOptions: Array<{ value: CategoryType; label: string }> = [
   { value: 'expense', label: 'Expense' },
@@ -100,106 +105,126 @@ export function CategoriesPanel() {
   }
 
   return (
-    <section className="stack">
-      <div>
-        <h1>Categories</h1>
-        <p className="muted">
-          Organize your transactions into categories.
-        </p>
-      </div>
+    <div className="page">
+      <div
+        className="panel-grid"
+        style={
+          {
+            '--panel-cols': 'minmax(0, 1fr) minmax(0, 1.4fr)',
+            gap: 'var(--space-5)',
+          } as CSSProperties
+        }
+      >
+        <Card>
+          <CardHeader title={editingCategoryId ? 'Edit category' : 'Create category'} />
+          <form onSubmit={handleSubmit} className="stack">
+            <Field label="Name" htmlFor="category-name">
+              <Input
+                id="category-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="e.g. Groceries"
+                required
+              />
+            </Field>
 
-      <form onSubmit={handleSubmit} className="card stack">
-        <h2>{editingCategoryId ? 'Edit category' : 'Create category'}</h2>
-        <label className="label">
-          Name
-          <input
-            className="input"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-          />
-        </label>
-        {!editingCategoryId ? (
-          <label className="label">
-            Type
-            <select
-              className="input"
-              value={type}
-              onChange={(event) => setType(event.target.value as CategoryType)}
-            >
-              {categoryTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <label className="label">
-          Color (optional)
-          <input
-            className="input"
-            value={color}
-            onChange={(event) => setColor(event.target.value)}
-            placeholder="#FF0000"
-          />
-        </label>
-        {error ? <p className="error">{error}</p> : null}
-        <div className="inline-actions">
-          <button type="submit" className="button" disabled={submitting}>
-            {submitting ? 'Saving...' : editingCategoryId ? 'Save changes' : 'Create category'}
-          </button>
-          {editingCategoryId ? (
-            <button
-              type="button"
-              className="button secondary"
-              disabled={submitting}
-              onClick={resetForm}
-            >
-              Cancel
-            </button>
-          ) : null}
-        </div>
-      </form>
+            {!editingCategoryId ? (
+              <Field label="Type" htmlFor="category-type">
+                <Select
+                  id="category-type"
+                  value={type}
+                  onChange={(event) => setType(event.target.value as CategoryType)}
+                >
+                  {categoryTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
 
-      <div className="card stack">
-        <h2>Your categories</h2>
-        {loading ? <p className="muted">Loading categories...</p> : null}
-        {!loading && categories.length === 0 ? (
-          <p className="muted">No categories yet. Create your first category.</p>
-        ) : null}
-        {categories.length > 0 ? (
-          <div className="stack">
+            <Field label="Color" hint="Optional — used as a marker on this category." htmlFor="category-color">
+              <Input
+                id="category-color"
+                value={color}
+                onChange={(event) => setColor(event.target.value)}
+                placeholder="#FD5447"
+              />
+            </Field>
+
+            {error ? <p className="error-text">{error}</p> : null}
+
+            <div className="inline-actions">
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Saving…' : editingCategoryId ? 'Save changes' : 'Create category'}
+              </Button>
+              {editingCategoryId ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={submitting}
+                  onClick={resetForm}
+                >
+                  Cancel
+                </Button>
+              ) : null}
+            </div>
+          </form>
+        </Card>
+
+        <Card flush>
+          <div style={{ padding: 'var(--space-6) var(--space-6) 0' }}>
+            <CardHeader title="Your categories" subtitle="Used to label income and expenses" />
+          </div>
+          <div style={{ padding: '0 var(--space-6) var(--space-4)' }}>
+            {loading ? <p className="muted">Loading categories…</p> : null}
+            {!loading && categories.length === 0 ? (
+              <p className="muted">No categories yet. Create your first category.</p>
+            ) : null}
             {categories.map((category) => (
-              <article key={category.id} className="list-item">
-                <div>
-                  <strong>{category.name}</strong>
-                  <p className="muted">
+              <div key={category.id} className="data-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minWidth: 0 }}>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 'var(--radius-xs)',
+                      background: category.color || 'var(--neutral-300)',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ minWidth: 0 }}>
+                    <div className="account-name">{category.name}</div>
+                  </div>
+                  <Badge tone={category.type === 'income' ? 'success' : 'neutral'}>
                     {category.type}
-                    {category.color ? ` · ${category.color}` : ''}
-                  </p>
+                  </Badge>
                 </div>
                 <div className="inline-actions">
-                  <button
-                    type="button"
-                    className="button secondary"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<Pencil size={15} />}
                     onClick={() => startEditing(category)}
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="button secondary"
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    leftIcon={<Trash size={15} />}
                     onClick={() => handleDelete(category.id)}
                   >
                     Delete
-                  </button>
+                  </Button>
                 </div>
-              </article>
+              </div>
             ))}
           </div>
-        ) : null}
+        </Card>
       </div>
-    </section>
+    </div>
   )
 }

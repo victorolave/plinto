@@ -1,18 +1,44 @@
 import type { ReactNode } from 'react'
-import { Montserrat } from 'next/font/google'
+import type { Metadata } from 'next'
+import { Inter, Montserrat, Roboto_Mono } from 'next/font/google'
 import '../styles/globals.css'
 
-const fontSans = Montserrat({
+// Inter — product UI, body & data (the SaaS-native workhorse).
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-sans',
+  variable: '--font-inter',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
 })
 
+// Montserrat — geometric, heavy display & brand, matching the wordmark.
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  variable: '--font-montserrat',
+  display: 'swap',
+  weight: ['600', '700', '800'],
+})
+
+// Roboto Mono — tabular figures so money amounts align.
+const robotoMono = Roboto_Mono({
+  subsets: ['latin'],
+  variable: '--font-roboto-mono',
+  display: 'swap',
+  weight: ['400', '500', '600'],
+})
+
+export const metadata: Metadata = {
+  title: 'Plinto',
+  description: 'Everything your family spends, in one calm place.',
+}
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${fontSans.variable} font-sans`}>{children}</body>
+    <html
+      lang="en"
+      className={`${inter.variable} ${montserrat.variable} ${robotoMono.variable}`}
+    >
+      <body>{children}</body>
     </html>
   )
 }

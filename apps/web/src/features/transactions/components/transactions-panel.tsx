@@ -1,6 +1,6 @@
 'use client'
 
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { listAccounts } from '../../accounts/services/accounts'
 import type { Account } from '../../accounts/services/accounts'
 import {
@@ -17,6 +17,19 @@ import { RecurringTransactionsPanel } from './recurring-transactions-panel'
 import { Category } from '../../categories/services/categories'
 import { listCategories } from '../../categories/services/categories'
 import { CategorySelect } from '../../categories/components/category-select'
+import { Card, CardHeader } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Field, Input, Select, SegmentedControl } from '../../../components/ui/field'
+import { Amount } from '../../../components/ui/amount'
+import { Badge } from '../../../components/ui/badge'
+import { Tabs } from '../../../components/ui/tabs'
+import {
+  Briefcase,
+  Cart,
+  Pencil,
+  Repeat,
+  ArrowSwap,
+} from '../../../components/ui/icons'
 
 export interface TransactionCreateInput {
   accountId: string
@@ -76,6 +89,8 @@ export function isAutomaticRecurringTransaction(transaction: Pick<Transaction, '
   return transaction.source === 'job' && Boolean(transaction.recurringRuleId) && Boolean(transaction.recurringPeriod)
 }
 
+type HistoryFilter = 'all' | 'income' | 'expense'
+
 export function TransactionsPanel() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [balances, setBalances] = useState<AccountBalance[]>([])
@@ -94,6 +109,7 @@ export function TransactionsPanel() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('all')
   const [transferSourceAccountId, setTransferSourceAccountId] = useState('')
   const [transferDestAccountId, setTransferDestAccountId] = useState('')
   const [transferAmount, setTransferAmount] = useState('')
@@ -307,308 +323,361 @@ export function TransactionsPanel() {
     }
   }
 
+  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
+
+  const visibleTransactions = useMemo(
+    () =>
+      transactions.filter((transaction) =>
+        historyFilter === 'all' ? true : transaction.type === historyFilter,
+      ),
+    [transactions, historyFilter],
+  )
+
+  const incomeCount = transactions.filter((t) => t.type === 'income').length
+  const expenseCount = transactions.filter((t) => t.type === 'expense').length
+
   return (
-    <section className="stack">
-      <div>
-        <h1>Transactions</h1>
-        <p className="muted">
-          Record income and expenses for your accounts.
-        </p>
-      </div>
+    <div className="page">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
+          gap: 'var(--space-5)',
+          alignItems: 'start',
+        }}
+      >
+        {/* Record transaction */}
+        <Card>
+          <CardHeader
+            title={editingTransactionId ? 'Edit transaction' : 'Record transaction'}
+            subtitle="Logged to your household ledger"
+          />
+          <form onSubmit={handleSubmit} className="stack">
+            <SegmentedControl
+              options={transactionTypeOptions}
+              value={type}
+              onChange={(value) => {
+                setType(value)
+                setCategoryId(null)
+              }}
+            />
 
-      <form onSubmit={handleSubmit} className="card stack">
-        <h2>{editingTransactionId ? 'Edit transaction' : 'Record transaction'}</h2>
-        <label className="label">
-          Account
-          <select
-            className="input"
-            value={selectedAccountId}
-            onChange={(event) => setSelectedAccountId(event.target.value)}
-            required
-          >
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} ({account.currency})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="label">
-          Type
-          <select
-            className="input"
-            value={type}
-            onChange={(event) => {
-              setType(event.target.value as TransactionType)
-              setCategoryId(null)
-            }}
-          >
-            {transactionTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="label">
-          Category (optional)
-          <CategorySelect
-            type={type}
-            value={categoryId}
-            onChange={setCategoryId}
-            categories={categories}
-          />
-        </label>
-        <label className="label">
-          Amount
-          <input
-            className="input"
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            placeholder="0.00"
-            required
-          />
-        </label>
-        <label className="label">
-          Description (optional)
-          <input
-            className="input"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-        </label>
-        <label className="label">
-          Date (optional)
-          <input
-            className="input"
-            type="date"
-            value={occurredAt}
-            onChange={(event) => setOccurredAt(event.target.value)}
-          />
-        </label>
-        {error ? <p className="error">{error}</p> : null}
-        <div className="inline-actions">
-          <button
-            type="submit"
-            className="button"
-            disabled={submitting || !selectedAccountId}
-          >
-            {submitting
-              ? 'Saving...'
-              : editingTransactionId
-                ? 'Save correction'
-                : 'Record transaction'}
-          </button>
-          {editingTransactionId ? (
-            <button
-              type="button"
-              className="button secondary"
-              disabled={submitting}
-              onClick={resetForm}
-            >
-              Cancel edit
-            </button>
-          ) : null}
-        </div>
-      </form>
+            <Field label="Account" htmlFor="tx-account">
+              <Select
+                id="tx-account"
+                value={selectedAccountId}
+                onChange={(event) => setSelectedAccountId(event.target.value)}
+                required
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.currency})
+                  </option>
+                ))}
+              </Select>
+            </Field>
 
-      <form onSubmit={handleTransfer} className="card stack">
-        <h2>Transfer between accounts</h2>
-        {accounts.length < 2 ? (
-          <p className="muted">
-            You need at least two accounts to transfer.
-          </p>
-        ) : null}
-        <label className="label">
-          From account
-          <select
-            className="input"
-            value={transferSourceAccountId}
-            onChange={(event) => setTransferSourceAccountId(event.target.value)}
-            required
-          >
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} ({account.currency})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="label">
-          To account
-          <select
-            className="input"
-            value={transferDestAccountId}
-            onChange={(event) => setTransferDestAccountId(event.target.value)}
-            required
-          >
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} ({account.currency})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="label">
-          {isCrossCurrency ? `Amount (${sourceAccount?.currency ?? 'source'})` : 'Amount'}
-          <input
-            className="input"
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={transferAmount}
-            onChange={(event) => setTransferAmount(event.target.value)}
-            placeholder="0.00"
-            required
-          />
-        </label>
-        {isCrossCurrency ? (
-          <>
-            <label className="label">
-              {`Destination amount (${destAccount?.currency ?? 'destination'})`}
-              <input
-                className="input"
+            <Field label="Category" hint="Optional" htmlFor="tx-category">
+              <CategorySelect
+                type={type}
+                value={categoryId}
+                onChange={setCategoryId}
+                categories={categories}
+              />
+            </Field>
+
+            <Field label="Amount" htmlFor="tx-amount">
+              <Input
+                id="tx-amount"
                 type="number"
                 min="0.01"
                 step="0.01"
-                value={transferDestAmount}
-                onChange={(event) => setTransferDestAmount(event.target.value)}
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
                 placeholder="0.00"
                 required
               />
-            </label>
-            <label className="label">
-              FX rate
-              <input
-                className="input"
-                type="text"
-                value={transferFxRate}
-                onChange={(event) => setTransferFxRate(event.target.value)}
-                placeholder="e.g. 4200.00"
+            </Field>
+
+            <Field label="Description" hint="Optional" htmlFor="tx-description">
+              <Input
+                id="tx-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="e.g. Mercadona"
+              />
+            </Field>
+
+            <Field label="Date" hint="Optional" htmlFor="tx-date">
+              <Input
+                id="tx-date"
+                type="date"
+                value={occurredAt}
+                onChange={(event) => setOccurredAt(event.target.value)}
+              />
+            </Field>
+
+            {error ? <p className="error-text">{error}</p> : null}
+
+            <div className="inline-actions">
+              <Button type="submit" disabled={submitting || !selectedAccountId}>
+                {submitting
+                  ? 'Saving…'
+                  : editingTransactionId
+                    ? 'Save correction'
+                    : 'Record transaction'}
+              </Button>
+              {editingTransactionId ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={submitting}
+                  onClick={resetForm}
+                >
+                  Cancel edit
+                </Button>
+              ) : null}
+            </div>
+          </form>
+        </Card>
+
+        {/* Transfer between accounts */}
+        <Card>
+          <CardHeader
+            title="Transfer between accounts"
+            subtitle="Move money with explicit FX when currencies differ"
+          />
+          <form onSubmit={handleTransfer} className="stack">
+            {accounts.length < 2 ? (
+              <p className="muted">You need at least two accounts to transfer.</p>
+            ) : null}
+
+            <Field label="From account" htmlFor="transfer-from">
+              <Select
+                id="transfer-from"
+                value={transferSourceAccountId}
+                onChange={(event) => setTransferSourceAccountId(event.target.value)}
+                required
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.currency})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="To account" htmlFor="transfer-to">
+              <Select
+                id="transfer-to"
+                value={transferDestAccountId}
+                onChange={(event) => setTransferDestAccountId(event.target.value)}
+                required
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.currency})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field
+              label={isCrossCurrency ? `Amount (${sourceAccount?.currency ?? 'source'})` : 'Amount'}
+              htmlFor="transfer-amount"
+            >
+              <Input
+                id="transfer-amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={transferAmount}
+                onChange={(event) => setTransferAmount(event.target.value)}
+                placeholder="0.00"
                 required
               />
-            </label>
-            {transferAmount && transferDestAmount && transferFxRate ? (
-              <p className="muted">
-                {parseFloat(transferAmount).toFixed(2)} {sourceAccount?.currency} →{' '}
-                {parseFloat(transferDestAmount).toFixed(2)} {destAccount?.currency}{' '}
-                at rate {transferFxRate}
-              </p>
+            </Field>
+
+            {isCrossCurrency ? (
+              <>
+                <Field
+                  label={`Destination amount (${destAccount?.currency ?? 'destination'})`}
+                  htmlFor="transfer-dest-amount"
+                >
+                  <Input
+                    id="transfer-dest-amount"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={transferDestAmount}
+                    onChange={(event) => setTransferDestAmount(event.target.value)}
+                    placeholder="0.00"
+                    required
+                  />
+                </Field>
+                <Field label="FX rate" htmlFor="transfer-fx">
+                  <Input
+                    id="transfer-fx"
+                    type="text"
+                    value={transferFxRate}
+                    onChange={(event) => setTransferFxRate(event.target.value)}
+                    placeholder="e.g. 4200.00"
+                    required
+                  />
+                </Field>
+                {transferAmount && transferDestAmount && transferFxRate ? (
+                  <p className="muted">
+                    {parseFloat(transferAmount).toFixed(2)} {sourceAccount?.currency} →{' '}
+                    {parseFloat(transferDestAmount).toFixed(2)} {destAccount?.currency} at rate{' '}
+                    {transferFxRate}
+                  </p>
+                ) : null}
+                <Field label="Fee" hint="Optional, in minor units" htmlFor="transfer-fee">
+                  <Input
+                    id="transfer-fee"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={transferFeeMinor}
+                    onChange={(event) => setTransferFeeMinor(event.target.value)}
+                    placeholder="0"
+                  />
+                </Field>
+              </>
             ) : null}
-            <label className="label">
-              Fee (optional, minor units)
-              <input
-                className="input"
-                type="number"
-                min="0"
-                step="1"
-                value={transferFeeMinor}
-                onChange={(event) => setTransferFeeMinor(event.target.value)}
-                placeholder="0"
+
+            <Field label="Description" hint="Optional" htmlFor="transfer-description">
+              <Input
+                id="transfer-description"
+                value={transferDescription}
+                onChange={(event) => setTransferDescription(event.target.value)}
               />
-            </label>
-          </>
-        ) : null}
-        <label className="label">
-          Description (optional)
-          <input
-            className="input"
-            value={transferDescription}
-            onChange={(event) => setTransferDescription(event.target.value)}
-          />
-        </label>
-        <label className="label">
-          Date (optional)
-          <input
-            className="input"
-            type="date"
-            value={transferOccurredAt}
-            onChange={(event) => setTransferOccurredAt(event.target.value)}
-          />
-        </label>
-        {transferError ? <p className="error">{transferError}</p> : null}
-        <div className="inline-actions">
-          <button
-            type="submit"
-            className="button"
-            disabled={
-              transferSubmitting ||
-              accounts.length < 2 ||
-              !transferSourceAccountId ||
-              !transferDestAccountId
-            }
-          >
-            {transferSubmitting ? 'Transferring...' : 'Transfer'}
-          </button>
-        </div>
-      </form>
+            </Field>
+
+            <Field label="Date" hint="Optional" htmlFor="transfer-date">
+              <Input
+                id="transfer-date"
+                type="date"
+                value={transferOccurredAt}
+                onChange={(event) => setTransferOccurredAt(event.target.value)}
+              />
+            </Field>
+
+            {transferError ? <p className="error-text">{transferError}</p> : null}
+
+            <div className="inline-actions">
+              <Button
+                type="submit"
+                leftIcon={<ArrowSwap size={16} />}
+                disabled={
+                  transferSubmitting ||
+                  accounts.length < 2 ||
+                  !transferSourceAccountId ||
+                  !transferDestAccountId
+                }
+              >
+                {transferSubmitting ? 'Transferring…' : 'Transfer'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
 
       <RecurringTransactionsPanel accounts={accounts} />
 
-      <div className="card stack">
-        <h2>Balances</h2>
-        {loading ? <p className="muted">Loading balances...</p> : null}
-        {!loading && balances.length === 0 ? (
-          <p className="muted">No balances yet.</p>
-        ) : null}
-        {balances.length > 0 ? (
-          <div className="stack">
-            {balances.map((balance) => (
-              <article key={balance.accountId} className="list-item">
-                <div>
-                  <strong>{balance.accountName}</strong>
-                  <p className="muted">
-                    {balance.currency}{' '}
-                    {(balance.balanceMinor / 100).toFixed(2)}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      {/* Balances */}
+      <Card flush>
+        <div style={{ padding: 'var(--space-6) var(--space-6) 0' }}>
+          <CardHeader title="Balances" subtitle="Current balance per account" />
+        </div>
+        <div style={{ padding: '0 var(--space-6) var(--space-4)' }}>
+          {loading ? <p className="muted">Loading balances…</p> : null}
+          {!loading && balances.length === 0 ? <p className="muted">No balances yet.</p> : null}
+          {balances.map((balance) => (
+            <div key={balance.accountId} className="data-row">
+              <span className="account-name">{balance.accountName}</span>
+              <Amount minor={balance.balanceMinor} currency={balance.currency} size="sm" />
+            </div>
+          ))}
+        </div>
+      </Card>
 
-      <div className="card stack">
-        <h2>Transaction history</h2>
-        {loading ? <p className="muted">Loading transactions...</p> : null}
-        {!loading && transactions.length === 0 ? (
-          <p className="muted">No transactions yet. Record your first transaction.</p>
-        ) : null}
-        {transactions.length > 0 ? (
-          <div className="stack">
-            {transactions.map((transaction) => (
-              <article key={transaction.id} className="list-item">
-                <div>
-                  <strong>
-                    {transaction.type === 'income' ? '+' : '-'}{' '}
-                    {transaction.currency}{' '}
-                    {(transaction.amountMinor / 100).toFixed(2)}
-                  </strong>
-                  {transaction.description ? (
-                    <p className="muted">{transaction.description}</p>
-                  ) : null}
-                  <p className="muted">
-                    {formatOccurredAtDate(transaction.occurredAt)}
-                  </p>
-                  {isAutomaticRecurringTransaction(transaction) ? (
-                    <p className="muted">Automatic · recurring</p>
-                  ) : null}
+      {/* History */}
+      <Card flush>
+        <div style={{ padding: 'var(--space-6) var(--space-6) 0' }}>
+          <CardHeader title="Transaction history" />
+          <Tabs
+            items={[
+              { id: 'all', label: 'All', count: transactions.length },
+              { id: 'income', label: 'Income', count: incomeCount },
+              { id: 'expense', label: 'Expenses', count: expenseCount },
+            ]}
+            value={historyFilter}
+            onChange={setHistoryFilter}
+          />
+        </div>
+        <div style={{ padding: '0 var(--space-4) var(--space-3)' }}>
+          {loading ? (
+            <p className="muted" style={{ padding: 'var(--space-3) var(--space-2)' }}>
+              Loading transactions…
+            </p>
+          ) : null}
+          {!loading && visibleTransactions.length === 0 ? (
+            <p className="muted" style={{ padding: 'var(--space-3) var(--space-2)' }}>
+              No transactions yet. Record your first transaction.
+            </p>
+          ) : null}
+          {visibleTransactions.map((transaction) => {
+            const income = transaction.type === 'income'
+            const RowIcon = income ? Briefcase : Cart
+            const account = accountById.get(transaction.accountId)
+            const automatic = isAutomaticRecurringTransaction(transaction)
+            return (
+              <div key={transaction.id} className="tx-row">
+                <span className="tx-icon">
+                  <RowIcon size={18} />
+                </span>
+                <div className="tx-main">
+                  <div className="tx-title">
+                    {transaction.description || (income ? 'Income' : 'Expense')}
+                  </div>
+                  <div className="tx-meta">
+                    <span>{formatOccurredAtDate(transaction.occurredAt)}</span>
+                    {account ? (
+                      <>
+                        <span>·</span>
+                        <span>{account.name}</span>
+                      </>
+                    ) : null}
+                    {automatic ? (
+                      <Badge tone="info">
+                        <Repeat size={11} /> Automatic
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="button secondary"
-                  onClick={() => startEditing(transaction)}
-                >
-                  Edit
-                </button>
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    </section>
+                <div className="tx-right">
+                  <Amount
+                    minor={income ? transaction.amountMinor : -transaction.amountMinor}
+                    currency={transaction.currency}
+                    size="sm"
+                    colorize
+                    showSign
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<Pencil size={15} />}
+                    onClick={() => startEditing(transaction)}
+                  >
+                    Edit
+                  </Button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+    </div>
   )
 }

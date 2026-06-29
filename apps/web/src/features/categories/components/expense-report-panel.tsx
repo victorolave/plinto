@@ -3,6 +3,11 @@
 import { type FormEvent, useState } from 'react'
 import { getExpenseReport } from '../services/categories'
 import type { ExpenseReportItem } from '../services/categories'
+import { Card, CardHeader } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Field, Input } from '../../../components/ui/field'
+import { Amount, CurrencyTag } from '../../../components/ui/amount'
+import { Calendar } from '../../../components/ui/icons'
 
 export function groupReportItemsByCurrency(items: ExpenseReportItem[]): Record<string, ExpenseReportItem[]> {
   const grouped: Record<string, ExpenseReportItem[]> = {}
@@ -49,68 +54,84 @@ export function ExpenseReportPanel() {
   const currencies = Object.keys(grouped).sort()
 
   return (
-    <section className="stack">
-      <div>
-        <h1>Expense Report</h1>
-        <p className="muted">
-          View expenses grouped by category for a date range.
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="card stack">
-        <h2>Filter by date range</h2>
-        <label className="label">
-          From
-          <input
-            className="input"
-            type="date"
-            value={from}
-            onChange={(event) => setFrom(event.target.value)}
-            required
-          />
-        </label>
-        <label className="label">
-          To
-          <input
-            className="input"
-            type="date"
-            value={to}
-            onChange={(event) => setTo(event.target.value)}
-            required
-          />
-        </label>
-        {error ? <p className="error">{error}</p> : null}
-        <button type="submit" className="button" disabled={loading || !from || !to}>
-          {loading ? 'Loading...' : 'Generate report'}
-        </button>
-      </form>
+    <div className="page">
+      <Card>
+        <CardHeader
+          title="Expenses by category"
+          subtitle="Totals are kept separate per currency — never mixed."
+        />
+        <form onSubmit={handleSubmit}>
+          <div
+            className="cluster"
+            style={{ alignItems: 'flex-end', gap: 'var(--space-4)' }}
+          >
+            <Field label="From" htmlFor="report-from" className="">
+              <Input
+                id="report-from"
+                type="date"
+                value={from}
+                onChange={(event) => setFrom(event.target.value)}
+                required
+              />
+            </Field>
+            <Field label="To" htmlFor="report-to">
+              <Input
+                id="report-to"
+                type="date"
+                value={to}
+                onChange={(event) => setTo(event.target.value)}
+                required
+              />
+            </Field>
+            <Button
+              type="submit"
+              leftIcon={<Calendar size={16} />}
+              disabled={loading || !from || !to}
+            >
+              {loading ? 'Loading…' : 'Generate report'}
+            </Button>
+          </div>
+          {error ? (
+            <p className="error-text" style={{ marginTop: 'var(--space-3)' }}>
+              {error}
+            </p>
+          ) : null}
+        </form>
+      </Card>
 
       {hasLoaded ? (
-        <div className="card stack">
-          <h2>Results</h2>
-          {items.length === 0 ? (
+        items.length === 0 ? (
+          <Card>
             <p className="muted">No categorized expenses found for this period.</p>
-          ) : (
-            currencies.map((currency) => (
-              <div key={currency} className="stack">
-                <h3>{currency}</h3>
-                <div className="stack">
-                  {grouped[currency].map((item) => (
-                    <article key={`${item.categoryId}-${item.currency}`} className="list-item">
-                      <div>
-                        <strong>{item.categoryName}</strong>
-                        <p className="muted">
-                          {currency} {formatMinorAmount(item.totalMinor)}
-                        </p>
-                      </div>
-                    </article>
-                  ))}
+          </Card>
+        ) : (
+          currencies.map((currency) => {
+            const total = grouped[currency].reduce((sum, item) => sum + item.totalMinor, 0)
+            return (
+              <section key={currency}>
+                <div className="section-head">
+                  <CurrencyTag currency={currency} />
+                  <h2 className="card-title">Expenses</h2>
+                  <div className="section-total">
+                    <span className="plinto-eyebrow">Total in {currency}</span>
+                    <Amount minor={total} currency={currency} size="lg" />
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+                <Card flush>
+                  <div style={{ padding: '0 var(--space-6)' }}>
+                    {grouped[currency].map((item) => (
+                      <div key={`${item.categoryId}-${item.currency}`} className="data-row">
+                        <span className="account-name">{item.categoryName}</span>
+                        <Amount minor={item.totalMinor} currency={item.currency} size="sm" />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </section>
+            )
+          })
+        )
       ) : null}
-    </section>
+    </div>
   )
 }
