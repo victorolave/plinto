@@ -146,4 +146,22 @@ export class PrismaTransactionRepository extends TransactionRepository {
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
     })
   }
+
+  async sumByAccount(
+    tenantId: string,
+  ): Promise<Array<{ accountId: string; type: TransactionType; totalMinor: number }>> {
+    const rows = await this.prisma.transaction.groupBy({
+      by: ['accountId', 'type'],
+      // Same archived-account exclusion as listByTenantId so balances and the
+      // ledger stay consistent.
+      where: { tenantId, account: { archivedAt: null } },
+      _sum: { amountMinor: true },
+    })
+
+    return rows.map((row) => ({
+      accountId: row.accountId,
+      type: row.type as TransactionType,
+      totalMinor: row._sum.amountMinor ?? 0,
+    }))
+  }
 }

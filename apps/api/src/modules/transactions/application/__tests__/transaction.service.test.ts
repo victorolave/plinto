@@ -34,6 +34,7 @@ const makeTransactionRepo = () => ({
   updateForTenant: vi.fn(),
   listByTenantId: vi.fn(),
   listByAccountId: vi.fn(),
+  sumByAccount: vi.fn(),
 })
 
 const makeAccountRepo = () => ({
@@ -624,10 +625,11 @@ describe('TransactionService', () => {
   describe('getBalances', () => {
     it('computes income minus expense per account', async () => {
       const account = makeAccount()
-      const income = makeTransaction({ type: 'income', amountMinor: 10000 })
-      const expense = makeTransaction({ id: 'tx-2', type: 'expense', amountMinor: 3000 })
       accountRepository.listByTenantId.mockResolvedValue([account])
-      transactionRepository.listByTenantId.mockResolvedValue([income, expense])
+      transactionRepository.sumByAccount.mockResolvedValue([
+        { accountId: 'account-1', type: 'income', totalMinor: 10000 },
+        { accountId: 'account-1', type: 'expense', totalMinor: 3000 },
+      ])
 
       const result = await service.getBalances('tenant-1')
 
@@ -645,7 +647,7 @@ describe('TransactionService', () => {
       const account1 = makeAccount({ id: 'account-1', name: 'Account 1' })
       const account2 = makeAccount({ id: 'account-2', name: 'Account 2', currency: 'USD' })
       accountRepository.listByTenantId.mockResolvedValue([account1, account2])
-      transactionRepository.listByTenantId.mockResolvedValue([])
+      transactionRepository.sumByAccount.mockResolvedValue([])
 
       const result = await service.getBalances('tenant-1')
 

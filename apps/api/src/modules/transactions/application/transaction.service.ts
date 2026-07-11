@@ -375,26 +375,24 @@ export class TransactionService {
   }
 
   async getBalances(tenantId: string): Promise<AccountBalance[]> {
-    const [accounts, transactions] = await Promise.all([
+    const [accounts, sums] = await Promise.all([
       this.accountRepository.listByTenantId(tenantId),
-      this.transactionRepository.listByTenantId(tenantId),
+      this.transactionRepository.sumByAccount(tenantId),
     ])
 
-    return accounts.map((account) => {
-      const accountTransactions = transactions.filter(
-        (t) => t.accountId === account.id,
-      )
-      const balanceMinor = accountTransactions.reduce((sum, t) => {
-        if (t.type === 'income') return sum + t.amountMinor
-        return sum - t.amountMinor
-      }, 0)
+    // Fold the per-(account,type) SQL sums into a signed balance per account.
+    // Work is O(accounts + distinct groups), not O(all transactions).
+    const balanceByAccount = new Map<string, number>()
+    for (const row of sums) {
+      const signed = row.type === 'income' ? row.totalMinor : -row.totalMinor
+      balanceByAccount.set(row.accountId, (balanceByAccount.get(row.accountId) ?? 0) + signed)
+    }
 
-      return {
-        accountId: account.id,
-        accountName: account.name,
-        currency: account.currency,
-        balanceMinor,
-      }
-    })
+    return accounts.map((account) => ({
+      accountId: account.id,
+      accountName: account.name,
+      currency: account.currency,
+      balanceMinor: balanceByAccount.get(account.id) ?? 0,
+    }))
   }
 }

@@ -54,4 +54,13 @@ export abstract class TransactionRepository {
   abstract listByTenantId(tenantId: string): Promise<Transaction[]>
 
   abstract listByAccountId(tenantId: string, accountId: string): Promise<Transaction[]>
+
+  /**
+   * Aggregates signed movement totals per account and type in SQL, so balances
+   * are computed by the database rather than by loading every transaction into
+   * application memory. Excludes archived accounts, matching listByTenantId.
+   */
+  abstract sumByAccount(
+    tenantId: string,
+  ): Promise<Array<{ accountId: string; type: TransactionType; totalMinor: number }>>
 }
