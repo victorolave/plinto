@@ -25,7 +25,6 @@ const TITLES: Record<
   accounts: ['Accounts', () => 'Balances by currency'],
   transactions: ['Transactions', ({ tenant }) => (tenant ? `${tenant} ledger` : 'Income, expenses and transfers')],
   categories: ['Categories', () => 'Organize your spending'],
-  reports: ['Reports', () => 'Expenses by category'],
   settings: ['Settings', () => 'Household & members'],
 }
 
