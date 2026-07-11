@@ -1,8 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   UsePipes,
@@ -16,10 +20,14 @@ import {
   RoleGuard,
 } from '../../../../../common/guards/role.guard'
 import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pipe'
-import { CreateAccountSchema } from '../../../../../common/shared-schemas'
+import {
+  CreateAccountSchema,
+  UpdateAccountSchema,
+} from '../../../../../common/shared-schemas'
 import { AccountService } from '../../../application/account.service'
 
 type CreateAccountBody = z.infer<typeof CreateAccountSchema>
+type UpdateAccountBody = z.infer<typeof UpdateAccountSchema>
 
 @Controller('accounts')
 @UseGuards(AuthGuard, TenantGuard, RoleGuard)
@@ -28,9 +36,14 @@ export class AccountsController {
 
   @Get()
   @RequirePermission('account:read')
-  async listAccounts(@Req() req: RequestContext) {
+  async listAccounts(
+    @Req() req: RequestContext,
+    @Query('includeArchived') includeArchived?: string,
+  ) {
     const tenantId = req.tenantId as string
-    const accounts = await this.accountService.listAccounts(tenantId)
+    const accounts = await this.accountService.listAccounts(tenantId, {
+      includeArchived: includeArchived === 'true',
+    })
 
     return {
       data: {
@@ -51,6 +64,63 @@ export class AccountsController {
       name: body.name,
       type: body.type,
       currency: body.currency,
+    })
+
+    return {
+      data: {
+        account,
+      },
+    }
+  }
+
+  @Patch(':id')
+  @RequirePermission('account:write')
+  async updateAccount(
+    @Req() req: RequestContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpdateAccountSchema)) body: UpdateAccountBody,
+  ) {
+    const account = await this.accountService.updateAccount({
+      id,
+      tenantId: req.tenantId as string,
+      actorUserId: req.user?.id ?? null,
+      correlationId: req.requestId ?? 'unknown',
+      name: body.name,
+      type: body.type,
+    })
+
+    return {
+      data: {
+        account,
+      },
+    }
+  }
+
+  @Post(':id/restore')
+  @RequirePermission('account:write')
+  async restoreAccount(@Req() req: RequestContext, @Param('id') id: string) {
+    const account = await this.accountService.restoreAccount({
+      id,
+      tenantId: req.tenantId as string,
+      actorUserId: req.user?.id ?? null,
+      correlationId: req.requestId ?? 'unknown',
+    })
+
+    return {
+      data: {
+        account,
+      },
+    }
+  }
+
+  @Delete(':id')
+  @RequirePermission('account:delete')
+  async archiveAccount(@Req() req: RequestContext, @Param('id') id: string) {
+    const account = await this.accountService.archiveAccount({
+      id,
+      tenantId: req.tenantId as string,
+      actorUserId: req.user?.id ?? null,
+      correlationId: req.requestId ?? 'unknown',
     })
 
     return {
