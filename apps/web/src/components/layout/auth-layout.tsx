@@ -24,18 +24,28 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
     <main className="auth-shell">
       <aside className="auth-brand-panel">
         <Image
-          src="/brand/logo-horizontal-white.png"
-          alt="Plinto"
-          width={131}
-          height={40}
-          priority
+          className="auth-brand-illustration"
+          src="/brand/auth-financial-journey.png"
+          alt=""
+          fill
+          sizes="(max-width: 860px) 100vw, 47vw"
         />
-        <div className="auth-brand-pitch">
-          <p className="auth-tagline">Household finances, made simple.</p>
-          <p className="auth-brand-sub">
-            Track accounts, transactions and categories across every household
-            you manage — in one place.
-          </p>
+        <div className="auth-brand-content">
+          <Image
+            className="auth-brand-logo"
+            src="/brand/logo-horizontal-white.png"
+            alt="Plinto"
+            width={131}
+            height={40}
+            priority
+          />
+          <div className="auth-brand-pitch">
+            <p className="auth-tagline">Household finances, made simple.</p>
+            <p className="auth-brand-sub">
+              Track accounts, transactions and categories across every household
+              you manage — in one place.
+            </p>
+          </div>
         </div>
       </aside>
 
