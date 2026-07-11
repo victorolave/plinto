@@ -20,7 +20,6 @@ This document is the delivery guide for turning Plinto PRDs into reviewable, shi
 | Product direction | Notion | Notion may describe intent, but it must be synced into repo docs before implementation. |
 | Architecture decisions | `docs/adr/` | ADRs constrain slice design. |
 | Product requirements | `docs/prd/` | PRDs define product outcomes, not necessarily slice boundaries. |
-| Feature execution plans | `specs/` | Specs/tasks must be sliced into independently verifiable outcomes. |
 
 If Notion and the repo disagree, **do not guess**. Verify both, update the repo-facing document, and record the decision.
 
@@ -114,7 +113,6 @@ Includes:
 - Fix active tenant selection so any valid member can select their tenant when product intent requires it.
 - Reconcile OpenAPI contract, Zod schemas, controllers, and tests.
 - Run a smoke test for OIDC/onboarding.
-- Update `specs/001-auth-registration-onboarding/IMPLEMENTATION_STATUS.md` with current evidence.
 
 Key evidence:
 
@@ -279,4 +277,3 @@ Before opening or merging a slice, ask:
 - `docs/adr/0004-persistence-multitenancy-multicurrency.md`
 - `docs/adr/0007-authorization-rbac-tenant-permissions.md`
 - `docs/adr/0008-observability-audit-logs-traceability.md`
-- `specs/001-auth-registration-onboarding/IMPLEMENTATION_STATUS.md`

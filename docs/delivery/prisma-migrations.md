@@ -101,4 +101,3 @@ corrective migration with `prisma migrate diff` and reviewing the SQL before app
 
 - `docs/adr/0004-persistence-multitenancy-multicurrency.md` — §4 establishes the migration principle.
 - `docs/delivery/vertical-slices.md` — every slice must include its migration.
-- `specs/002-core-financial-minimum/IMPLEMENTATION_STATUS.md` — references the baseline.

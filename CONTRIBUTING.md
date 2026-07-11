@@ -226,9 +226,8 @@ Select the appropriate type. This helps categorize and track changes:
 - 🧪 **Test** - Test additions/updates
 - And others as listed in the template
 
-#### Related Spec/PRD
-If your PR implements a feature from a spec or PRD, link to it:
-- **Spec**: `specs/001-auth-registration-onboarding/`
+#### Related PRD
+If your PR implements a feature from a PRD, link to it:
 - **PRD**: `docs/prd/PRD-001-authentication-registration-tenant-onboarding.md`
 - **ADR**: `docs/adr/0003-oidc-agnostic-auth-cookie-sessions-multitenancy.md`
 
@@ -319,8 +318,7 @@ Implements complete authentication flow with OIDC provider integration, user onb
 
 **Type**: 🎉 Feature
 
-**Related Spec/PRD**:
-- Spec: `specs/001-auth-registration-onboarding/`
+**Related PRD**:
 - PRD: `docs/prd/PRD-001-authentication-registration-tenant-onboarding.md`
 
 **Changes Made**:
