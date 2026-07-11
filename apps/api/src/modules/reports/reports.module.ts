@@ -5,11 +5,12 @@ import { AuthGuard } from '../../common/guards/auth.guard'
 import { TenantGuard } from '../../common/guards/tenant.guard'
 import { RoleGuard } from '../../common/guards/role.guard'
 import { ReportService } from './application/report.service'
+import { ReportRepository } from './infrastructure/report.repository'
 import { ReportsController } from './interfaces/http/v1/reports.controller'
 
 @Module({
   imports: [MembershipsModule, SessionsModule],
   controllers: [ReportsController],
-  providers: [ReportService, AuthGuard, TenantGuard, RoleGuard],
+  providers: [ReportService, ReportRepository, AuthGuard, TenantGuard, RoleGuard],
 })
 export class ReportsModule {}
