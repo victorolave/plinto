@@ -1,0 +1,167 @@
+'use client'
+
+import { type FormEvent, useState } from 'react'
+import type { Account } from '../../accounts/services/accounts'
+import type { TransactionType } from '../services/transactions'
+import { createRecurringTransactionRule } from '../services/recurring-transactions'
+import { Button } from '../../../components/ui/button'
+import { Field, Input, Select } from '../../../components/ui/field'
+import { Repeat } from '../../../components/ui/icons'
+
+const recurringTypeOptions: Array<{ value: TransactionType; label: string }> = [
+  { value: 'income', label: 'Income' },
+  { value: 'expense', label: 'Expense' },
+]
+
+export interface RecurringFormProps {
+  accounts: Account[]
+  /** Called after a rule is created — parent reloads and closes the drawer. */
+  onSaved: () => void | Promise<void>
+}
+
+export function RecurringForm({ accounts, onSaved }: RecurringFormProps) {
+  const [name, setName] = useState('')
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
+  const [type, setType] = useState<TransactionType>('expense')
+  const [amount, setAmount] = useState('')
+  const [dayOfMonth, setDayOfMonth] = useState('1')
+  const [startDate, setStartDate] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+
+    const parsedAmount = parseFloat(amount)
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      setError('Enter an amount greater than zero')
+      return
+    }
+
+    const parsedDay = parseInt(dayOfMonth, 10)
+    if (Number.isNaN(parsedDay) || parsedDay < 1 || parsedDay > 28) {
+      setError('Choose a day from 1 to 28')
+      return
+    }
+
+    if (!startDate) {
+      setError('Choose a start date')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      await createRecurringTransactionRule({
+        name: name.trim(),
+        accountId,
+        type,
+        amountMinor: Math.round(parsedAmount * 100),
+        dayOfMonth: parsedDay,
+        startDate: new Date(`${startDate}T00:00:00.000Z`).toISOString(),
+      })
+      await onSaved()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save recurring rule')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="drawer-form">
+      <div className="stack">
+        <Field label="Name" htmlFor="recurring-name">
+          <Input
+            id="recurring-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="e.g. Rent"
+            required
+          />
+        </Field>
+
+        <div className="form-grid">
+          <Field label="Account" htmlFor="recurring-account">
+            <Select
+              id="recurring-account"
+              value={accountId}
+              onChange={(event) => setAccountId(event.target.value)}
+              required
+            >
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} ({account.currency})
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Type" htmlFor="recurring-type">
+            <Select
+              id="recurring-type"
+              value={type}
+              onChange={(event) => setType(event.target.value as TransactionType)}
+            >
+              {recurringTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+
+        <div className="form-grid">
+          <Field label="Amount" htmlFor="recurring-amount">
+            <Input
+              id="recurring-amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0.00"
+              required
+            />
+          </Field>
+          <Field label="Day of month" hint="1–28" htmlFor="recurring-day">
+            <Input
+              id="recurring-day"
+              type="number"
+              min="1"
+              max="28"
+              step="1"
+              value={dayOfMonth}
+              onChange={(event) => setDayOfMonth(event.target.value)}
+              required
+            />
+          </Field>
+        </div>
+
+        <Field label="Start date" htmlFor="recurring-start">
+          <Input
+            id="recurring-start"
+            type="date"
+            value={startDate}
+            onChange={(event) => setStartDate(event.target.value)}
+            required
+          />
+        </Field>
+
+        {error ? <p className="error-text">{error}</p> : null}
+      </div>
+
+      <div className="drawer-form-actions">
+        <Button
+          type="submit"
+          block
+          leftIcon={<Repeat size={16} />}
+          disabled={submitting || !accountId}
+        >
+          {submitting ? 'Saving…' : 'Create monthly rule'}
+        </Button>
+      </div>
+    </form>
+  )
+}

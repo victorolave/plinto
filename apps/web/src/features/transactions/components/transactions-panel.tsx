@@ -1,137 +1,125 @@
 'use client'
 
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { listAccounts } from '../../accounts/services/accounts'
 import type { Account } from '../../accounts/services/accounts'
 import {
   AccountBalance,
   Transaction,
-  TransactionType,
-  createTransaction,
-  createTransfer,
   listBalances,
   listTransactions,
-  updateTransaction,
 } from '../services/transactions'
-import { RecurringTransactionsPanel } from './recurring-transactions-panel'
+import {
+  RecurringTransactionRule,
+  listRecurringTransactionRules,
+} from '../services/recurring-transactions'
+import { RecurringSection } from './recurring-section'
+import { RecurringForm } from './recurring-form'
+import { TransactionForm } from './transaction-form'
+import { TransferForm } from './transfer-form'
+import {
+  BalanceStripSkeleton,
+  TransactionListSkeleton,
+} from './transactions-skeleton'
 import { Category } from '../../categories/services/categories'
 import { listCategories } from '../../categories/services/categories'
-import { CategorySelect } from '../../categories/components/category-select'
-import { Card, CardHeader } from '../../../components/ui/card'
+import { Card } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
-import { Field, Input, Select, SegmentedControl } from '../../../components/ui/field'
+import { Input, Select } from '../../../components/ui/field'
 import { Amount } from '../../../components/ui/amount'
 import { Badge } from '../../../components/ui/badge'
 import { Tabs } from '../../../components/ui/tabs'
+import { Drawer } from '../../../components/ui/drawer'
+import { EmptyState } from '../../../components/ui/empty-state'
 import {
   Briefcase,
   Cart,
+  List,
+  Filter,
   Pencil,
+  Plus,
   Repeat,
+  Search,
+  Wallet,
   ArrowSwap,
 } from '../../../components/ui/icons'
+import {
+  formatOccurredAtDate,
+  isAutomaticRecurringTransaction,
+} from '../lib/transaction-input'
 
-export interface TransactionCreateInput {
-  accountId: string
-  type: TransactionType
-  amountMinor: number
-  description?: string
-  occurredAt?: string
-  categoryId?: string
-}
-
-export interface TransactionUpdateInput {
-  accountId?: string
-  type?: TransactionType
-  amountMinor?: number
-  description?: string | null
-  occurredAt?: string
-  categoryId?: string | null
-}
-
-export function buildTransactionCreateInput(input: TransactionCreateInput): TransactionCreateInput {
-  const result: TransactionCreateInput = {
-    accountId: input.accountId,
-    type: input.type,
-    amountMinor: input.amountMinor,
-  }
-  if (input.description !== undefined) result.description = input.description
-  if (input.occurredAt !== undefined) result.occurredAt = input.occurredAt
-  if (input.categoryId !== undefined) result.categoryId = input.categoryId
-  return result
-}
-
-export function buildTransactionUpdateInput(input: TransactionUpdateInput): TransactionUpdateInput {
-  const result: TransactionUpdateInput = {}
-  if (input.accountId !== undefined) result.accountId = input.accountId
-  if (input.type !== undefined) result.type = input.type
-  if (input.amountMinor !== undefined) result.amountMinor = input.amountMinor
-  if (input.description !== undefined) result.description = input.description
-  if (input.occurredAt !== undefined) result.occurredAt = input.occurredAt
-  if ('categoryId' in input) result.categoryId = input.categoryId
-  return result
-}
-
-export function formatOccurredAtDate(occurredAt: string): string {
-  if (!occurredAt) return ''
-  // occurredAt is stored as a UTC instant; date-only inputs are persisted at UTC
-  // midnight. Render the UTC calendar date so the displayed day matches the date
-  // the user picked, avoiding a local-timezone off-by-one (issue #6).
-  return new Date(occurredAt).toLocaleDateString(undefined, { timeZone: 'UTC' })
-}
-
-const transactionTypeOptions: Array<{ value: TransactionType; label: string }> = [
-  { value: 'income', label: 'Income' },
-  { value: 'expense', label: 'Expense' },
-]
-
-export function isAutomaticRecurringTransaction(transaction: Pick<Transaction, 'source' | 'recurringRuleId' | 'recurringPeriod'>): boolean {
-  return transaction.source === 'job' && Boolean(transaction.recurringRuleId) && Boolean(transaction.recurringPeriod)
-}
+// Re-exported for tests and existing consumers that import from this module.
+export {
+  formatOccurredAtDate,
+  isAutomaticRecurringTransaction,
+  buildTransactionCreateInput,
+  buildTransactionUpdateInput,
+} from '../lib/transaction-input'
+export type {
+  TransactionCreateInput,
+  TransactionUpdateInput,
+} from '../lib/transaction-input'
 
 type HistoryFilter = 'all' | 'income' | 'expense'
+type ActiveDrawer = 'transaction' | 'transfer' | 'recurring' | null
+type DatePreset = 'all' | 'month' | '30d' | 'year' | 'custom'
+
+const datePresetOptions: Array<{ value: DatePreset; label: string }> = [
+  { value: 'all', label: 'All time' },
+  { value: 'month', label: 'This month' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: 'year', label: 'This year' },
+  { value: 'custom', label: 'Custom range' },
+]
+
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/** Resolve a preset to inclusive [from, to] YYYY-MM-DD bounds (empty = open). */
+function presetRange(preset: DatePreset): { from: string; to: string } {
+  const now = new Date()
+  switch (preset) {
+    case 'month': {
+      const from = new Date(now.getFullYear(), now.getMonth(), 1)
+      const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      return { from: toDateInputValue(from), to: toDateInputValue(to) }
+    }
+    case '30d': {
+      const from = new Date(now)
+      from.setDate(from.getDate() - 29)
+      return { from: toDateInputValue(from), to: toDateInputValue(now) }
+    }
+    case 'year':
+      return { from: `${now.getFullYear()}-01-01`, to: `${now.getFullYear()}-12-31` }
+    default:
+      return { from: '', to: '' }
+  }
+}
 
 export function TransactionsPanel() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [balances, setBalances] = useState<AccountBalance[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [selectedAccountId, setSelectedAccountId] = useState('')
-  const [type, setType] = useState<TransactionType>('income')
-  // Amount is collected in major units (e.g. 100.50 COP) and converted to minor
-  // units via Math.round(amount * 100). This ×100 assumption is an MVP simplification
-  // pending a per-currency minor-units table (ADR 0004).
-  const [amount, setAmount] = useState('')
-  const [description, setDescription] = useState('')
-  const [occurredAt, setOccurredAt] = useState('')
-  const [categoryId, setCategoryId] = useState<string | null>(null)
-  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
+  const [rules, setRules] = useState<RecurringTransactionRule[]>([])
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('all')
-  const [transferSourceAccountId, setTransferSourceAccountId] = useState('')
-  const [transferDestAccountId, setTransferDestAccountId] = useState('')
-  const [transferAmount, setTransferAmount] = useState('')
-  const [transferDescription, setTransferDescription] = useState('')
-  const [transferOccurredAt, setTransferOccurredAt] = useState('')
-  const [transferSubmitting, setTransferSubmitting] = useState(false)
-  const [transferError, setTransferError] = useState<string | null>(null)
-  const [transferDestAmount, setTransferDestAmount] = useState('')
-  const [transferFxRate, setTransferFxRate] = useState('')
-  const [transferFeeMinor, setTransferFeeMinor] = useState('')
+  const [search, setSearch] = useState('')
+  const [accountFilter, setAccountFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [datePreset, setDatePreset] = useState<DatePreset>('all')
 
-  const sourceAccount = accounts.find((a) => a.id === transferSourceAccountId)
-  const destAccount = accounts.find((a) => a.id === transferDestAccountId)
-  const isCrossCurrency = sourceAccount && destAccount && sourceAccount.currency !== destAccount.currency
+  const [drawer, setDrawer] = useState<ActiveDrawer>(null)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
 
-  useEffect(() => {
-    if (!isCrossCurrency) {
-      setTransferDestAmount('')
-      setTransferFxRate('')
-      setTransferFeeMinor('')
-    }
-  }, [isCrossCurrency])
+  const router = useRouter()
 
   const loadData = async () => {
     const [balancesRes, transactionsRes] = await Promise.all([
@@ -142,490 +130,279 @@ export function TransactionsPanel() {
     setTransactions(transactionsRes.data.transactions)
   }
 
-  const resetForm = () => {
-    setType('income')
-    setAmount('')
-    setDescription('')
-    setOccurredAt('')
-    setCategoryId(null)
-    setEditingTransactionId(null)
-    if (accounts.length > 0) {
-      setSelectedAccountId(accounts[0].id)
-    }
-  }
-
-  const startEditing = (transaction: Transaction) => {
-    setEditingTransactionId(transaction.id)
-    setSelectedAccountId(transaction.accountId)
-    setType(transaction.type)
-    setAmount((transaction.amountMinor / 100).toFixed(2))
-    setDescription(transaction.description ?? '')
-    setOccurredAt(transaction.occurredAt.slice(0, 10))
-    setCategoryId(transaction.categoryId ?? null)
-    setError(null)
-  }
-
-  const toOccurredAtIso = (value: string) => {
-    if (!value) return undefined
-    return new Date(`${value}T00:00:00.000Z`).toISOString()
+  const loadRecurring = async () => {
+    const res = await listRecurringTransactionRules()
+    setRules(res.data.rules)
   }
 
   useEffect(() => {
     const run = async () => {
       try {
-        const [accountsRes, balancesRes, transactionsRes, categoriesRes] = await Promise.all([
-          listAccounts(),
-          listBalances(),
-          listTransactions(),
-          listCategories(),
-        ])
+        const [accountsRes, balancesRes, transactionsRes, categoriesRes, rulesRes] =
+          await Promise.all([
+            listAccounts(),
+            listBalances(),
+            listTransactions(),
+            listCategories(),
+            listRecurringTransactionRules(),
+          ])
         setAccounts(accountsRes.data.accounts)
         setBalances(balancesRes.data.balances)
         setTransactions(transactionsRes.data.transactions)
         setCategories(categoriesRes.data.categories)
-        const loadedAccounts = accountsRes.data.accounts
-        if (loadedAccounts.length > 0) {
-          setSelectedAccountId(loadedAccounts[0].id)
-          setTransferSourceAccountId(loadedAccounts[0].id)
-          // Default the destination to a different account so the same-account
-          // guard isn't tripped by an empty initial selection.
-          setTransferDestAccountId((loadedAccounts[1] ?? loadedAccounts[0]).id)
-        }
+        setRules(rulesRes.data.rules)
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to load transactions',
-        )
+        setError(err instanceof Error ? err.message : 'Failed to load transactions')
       } finally {
         setLoading(false)
       }
     }
     void run()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
-
-    const parsedAmount = parseFloat(amount)
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError('Enter an amount greater than zero')
-      return
-    }
-
-    setSubmitting(true)
-    setError(null)
-
-    try {
-      const amountMinor = Math.round(parsedAmount * 100)
-      const trimmedDescription = description.trim()
-
-      if (editingTransactionId) {
-        await updateTransaction(editingTransactionId, buildTransactionUpdateInput({
-          accountId: selectedAccountId,
-          type,
-          amountMinor,
-          description: trimmedDescription || null,
-          occurredAt: toOccurredAtIso(occurredAt),
-          categoryId: categoryId,
-        }))
-      } else {
-        await createTransaction(buildTransactionCreateInput({
-          accountId: selectedAccountId,
-          type,
-          amountMinor,
-          description: trimmedDescription || undefined,
-          occurredAt: toOccurredAtIso(occurredAt),
-          ...(categoryId !== null ? { categoryId } : {}),
-        }))
-      }
-
-      resetForm()
-      await loadData()
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to save transaction',
-      )
-    } finally {
-      setSubmitting(false)
-    }
+  const closeDrawer = () => {
+    setDrawer(null)
+    setEditingTransaction(null)
   }
 
-  const handleTransfer = async (event: FormEvent) => {
-    event.preventDefault()
-
-    const parsedAmount = parseFloat(transferAmount)
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setTransferError('Enter an amount greater than zero')
-      return
-    }
-
-    if (!transferSourceAccountId || !transferDestAccountId) {
-      setTransferError('Select both source and destination accounts')
-      return
-    }
-
-    if (transferSourceAccountId === transferDestAccountId) {
-      setTransferError('Source and destination accounts must differ')
-      return
-    }
-
-    const sourceAmountMinor = Math.round(parsedAmount * 100)
-    let destinationAmountMinor: number | undefined
-    let fxRateValue: string | undefined
-
-    if (isCrossCurrency) {
-      const parsedDestAmount = parseFloat(transferDestAmount)
-      if (Number.isNaN(parsedDestAmount) || parsedDestAmount <= 0) {
-        setTransferError('Enter a destination amount greater than zero')
-        return
-      }
-      const fxRateTrimmed = transferFxRate.trim()
-      if (!fxRateTrimmed || !/^\d{1,12}(\.\d{1,8})?$/.test(fxRateTrimmed)) {
-        setTransferError('Enter a valid FX rate (e.g. 4200.00)')
-        return
-      }
-      destinationAmountMinor = Math.round(parsedDestAmount * 100)
-      fxRateValue = fxRateTrimmed
-    }
-
-    const parsedFee = transferFeeMinor.trim() ? parseInt(transferFeeMinor, 10) : undefined
-    const feeMinor = parsedFee !== undefined && !Number.isNaN(parsedFee) && parsedFee >= 0 ? parsedFee : undefined
-
-    setTransferSubmitting(true)
-    setTransferError(null)
-
-    try {
-      const trimmedDescription = transferDescription.trim()
-      await createTransfer({
-        sourceAccountId: transferSourceAccountId,
-        destinationAccountId: transferDestAccountId,
-        sourceAmountMinor,
-        destinationAmountMinor,
-        fxRate: fxRateValue,
-        feeMinor,
-        description: trimmedDescription || undefined,
-        occurredAt: toOccurredAtIso(transferOccurredAt),
-      })
-
-      setTransferAmount('')
-      setTransferDestAmount('')
-      setTransferFxRate('')
-      setTransferFeeMinor('')
-      setTransferDescription('')
-      setTransferOccurredAt('')
-      await loadData()
-    } catch (err) {
-      setTransferError(
-        err instanceof Error ? err.message : 'Failed to create transfer',
-      )
-    } finally {
-      setTransferSubmitting(false)
-    }
+  const handleSaved = async () => {
+    await loadData()
+    closeDrawer()
   }
 
-  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
+  const handleRecurringSaved = async () => {
+    await loadRecurring()
+    closeDrawer()
+  }
 
-  const visibleTransactions = useMemo(
-    () =>
-      transactions.filter((transaction) =>
-        historyFilter === 'all' ? true : transaction.type === historyFilter,
-      ),
-    [transactions, historyFilter],
+  const openAdd = () => {
+    setEditingTransaction(null)
+    setDrawer('transaction')
+  }
+
+  const openEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction)
+    setDrawer('transaction')
+  }
+
+  const accountById = useMemo(
+    () => new Map(accounts.map((a) => [a.id, a])),
+    [accounts],
   )
+
+  const applyPreset = (preset: DatePreset) => {
+    setDatePreset(preset)
+    if (preset !== 'custom') {
+      const { from, to } = presetRange(preset)
+      setDateFrom(from)
+      setDateTo(to)
+    }
+  }
+
+  const setCustomFrom = (value: string) => {
+    setDateFrom(value)
+    setDatePreset('custom')
+  }
+  const setCustomTo = (value: string) => {
+    setDateTo(value)
+    setDatePreset('custom')
+  }
+
+  const visibleTransactions = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return transactions.filter((transaction) => {
+      if (historyFilter !== 'all' && transaction.type !== historyFilter) return false
+      if (accountFilter && transaction.accountId !== accountFilter) return false
+      // occurredAt is a UTC instant; its date slice matches how the row renders.
+      const occurredDate = transaction.occurredAt.slice(0, 10)
+      if (dateFrom && occurredDate < dateFrom) return false
+      if (dateTo && occurredDate > dateTo) return false
+      if (query) {
+        const account = accountById.get(transaction.accountId)
+        const haystack =
+          `${transaction.description ?? ''} ${account?.name ?? ''}`.toLowerCase()
+        if (!haystack.includes(query)) return false
+      }
+      return true
+    })
+  }, [transactions, historyFilter, accountFilter, search, dateFrom, dateTo, accountById])
+
+  const filtersActive =
+    historyFilter !== 'all' ||
+    accountFilter !== '' ||
+    search.trim() !== '' ||
+    dateFrom !== '' ||
+    dateTo !== ''
+
+  const clearFilters = () => {
+    setHistoryFilter('all')
+    setAccountFilter('')
+    setSearch('')
+    setDateFrom('')
+    setDateTo('')
+    setDatePreset('all')
+  }
 
   const incomeCount = transactions.filter((t) => t.type === 'income').length
   const expenseCount = transactions.filter((t) => t.type === 'expense').length
 
   return (
     <div className="page">
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
-          gap: 'var(--space-5)',
-          alignItems: 'start',
-        }}
-      >
-        {/* Record transaction */}
-        <Card>
-          <CardHeader
-            title={editingTransactionId ? 'Edit transaction' : 'Record transaction'}
-            subtitle="Logged to your household ledger"
-          />
-          <form onSubmit={handleSubmit} className="stack">
-            <SegmentedControl
-              options={transactionTypeOptions}
-              value={type}
-              onChange={(value) => {
-                setType(value)
-                setCategoryId(null)
-              }}
-            />
+      {error ? <p className="error-text">{error}</p> : null}
 
-            <Field label="Account" htmlFor="tx-account">
-              <Select
-                id="tx-account"
-                value={selectedAccountId}
-                onChange={(event) => setSelectedAccountId(event.target.value)}
-                required
-              >
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} ({account.currency})
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <Field label="Category" hint="Optional" htmlFor="tx-category">
-              <CategorySelect
-                type={type}
-                value={categoryId}
-                onChange={setCategoryId}
-                categories={categories}
-              />
-            </Field>
-
-            <Field label="Amount" htmlFor="tx-amount">
-              <Input
-                id="tx-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder="0.00"
-                required
-              />
-            </Field>
-
-            <Field label="Description" hint="Optional" htmlFor="tx-description">
-              <Input
-                id="tx-description"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="e.g. Mercadona"
-              />
-            </Field>
-
-            <Field label="Date" hint="Optional" htmlFor="tx-date">
-              <Input
-                id="tx-date"
-                type="date"
-                value={occurredAt}
-                onChange={(event) => setOccurredAt(event.target.value)}
-              />
-            </Field>
-
-            {error ? <p className="error-text">{error}</p> : null}
-
-            <div className="inline-actions">
-              <Button type="submit" disabled={submitting || !selectedAccountId}>
-                {submitting
-                  ? 'Saving…'
-                  : editingTransactionId
-                    ? 'Save correction'
-                    : 'Record transaction'}
-              </Button>
-              {editingTransactionId ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={submitting}
-                  onClick={resetForm}
-                >
-                  Cancel edit
-                </Button>
-              ) : null}
-            </div>
-          </form>
-        </Card>
-
-        {/* Transfer between accounts */}
-        <Card>
-          <CardHeader
-            title="Transfer between accounts"
-            subtitle="Move money with explicit FX when currencies differ"
-          />
-          <form onSubmit={handleTransfer} className="stack">
-            {accounts.length < 2 ? (
-              <p className="muted">You need at least two accounts to transfer.</p>
-            ) : null}
-
-            <Field label="From account" htmlFor="transfer-from">
-              <Select
-                id="transfer-from"
-                value={transferSourceAccountId}
-                onChange={(event) => setTransferSourceAccountId(event.target.value)}
-                required
-              >
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} ({account.currency})
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <Field label="To account" htmlFor="transfer-to">
-              <Select
-                id="transfer-to"
-                value={transferDestAccountId}
-                onChange={(event) => setTransferDestAccountId(event.target.value)}
-                required
-              >
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} ({account.currency})
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <Field
-              label={isCrossCurrency ? `Amount (${sourceAccount?.currency ?? 'source'})` : 'Amount'}
-              htmlFor="transfer-amount"
-            >
-              <Input
-                id="transfer-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={transferAmount}
-                onChange={(event) => setTransferAmount(event.target.value)}
-                placeholder="0.00"
-                required
-              />
-            </Field>
-
-            {isCrossCurrency ? (
-              <>
-                <Field
-                  label={`Destination amount (${destAccount?.currency ?? 'destination'})`}
-                  htmlFor="transfer-dest-amount"
-                >
-                  <Input
-                    id="transfer-dest-amount"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={transferDestAmount}
-                    onChange={(event) => setTransferDestAmount(event.target.value)}
-                    placeholder="0.00"
-                    required
-                  />
-                </Field>
-                <Field label="FX rate" htmlFor="transfer-fx">
-                  <Input
-                    id="transfer-fx"
-                    type="text"
-                    value={transferFxRate}
-                    onChange={(event) => setTransferFxRate(event.target.value)}
-                    placeholder="e.g. 4200.00"
-                    required
-                  />
-                </Field>
-                {transferAmount && transferDestAmount && transferFxRate ? (
-                  <p className="muted">
-                    {parseFloat(transferAmount).toFixed(2)} {sourceAccount?.currency} →{' '}
-                    {parseFloat(transferDestAmount).toFixed(2)} {destAccount?.currency} at rate{' '}
-                    {transferFxRate}
-                  </p>
-                ) : null}
-                <Field label="Fee" hint="Optional, in minor units" htmlFor="transfer-fee">
-                  <Input
-                    id="transfer-fee"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={transferFeeMinor}
-                    onChange={(event) => setTransferFeeMinor(event.target.value)}
-                    placeholder="0"
-                  />
-                </Field>
-              </>
-            ) : null}
-
-            <Field label="Description" hint="Optional" htmlFor="transfer-description">
-              <Input
-                id="transfer-description"
-                value={transferDescription}
-                onChange={(event) => setTransferDescription(event.target.value)}
-              />
-            </Field>
-
-            <Field label="Date" hint="Optional" htmlFor="transfer-date">
-              <Input
-                id="transfer-date"
-                type="date"
-                value={transferOccurredAt}
-                onChange={(event) => setTransferOccurredAt(event.target.value)}
-              />
-            </Field>
-
-            {transferError ? <p className="error-text">{transferError}</p> : null}
-
-            <div className="inline-actions">
-              <Button
-                type="submit"
-                leftIcon={<ArrowSwap size={16} />}
-                disabled={
-                  transferSubmitting ||
-                  accounts.length < 2 ||
-                  !transferSourceAccountId ||
-                  !transferDestAccountId
-                }
-              >
-                {transferSubmitting ? 'Transferring…' : 'Transfer'}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      </div>
-
-      <RecurringTransactionsPanel accounts={accounts} />
-
-      {/* Balances */}
-      <Card flush>
-        <div style={{ padding: 'var(--space-6) var(--space-6) 0' }}>
-          <CardHeader title="Balances" subtitle="Current balance per account" />
-        </div>
-        <div style={{ padding: '0 var(--space-6) var(--space-4)' }}>
-          {loading ? <p className="muted">Loading balances…</p> : null}
-          {!loading && balances.length === 0 ? <p className="muted">No balances yet.</p> : null}
+      {/* Compact balances context */}
+      {loading ? <BalanceStripSkeleton /> : null}
+      {!loading && balances.length > 0 ? (
+        <div className="balance-strip" aria-label="Account balances">
           {balances.map((balance) => (
-            <div key={balance.accountId} className="data-row">
-              <span className="account-name">{balance.accountName}</span>
-              <Amount minor={balance.balanceMinor} currency={balance.currency} size="sm" />
+            <div key={balance.accountId} className="balance-pill">
+              <span className="balance-pill-name">{balance.accountName}</span>
+              <Amount
+                minor={balance.balanceMinor}
+                currency={balance.currency}
+                size="sm"
+              />
             </div>
           ))}
         </div>
-      </Card>
+      ) : null}
 
-      {/* History */}
-      <Card flush>
-        <div style={{ padding: 'var(--space-6) var(--space-6) 0' }}>
-          <CardHeader title="Transaction history" />
-          <Tabs
-            items={[
-              { id: 'all', label: 'All', count: transactions.length },
-              { id: 'income', label: 'Income', count: incomeCount },
-              { id: 'expense', label: 'Expenses', count: expenseCount },
-            ]}
-            value={historyFilter}
-            onChange={setHistoryFilter}
-          />
+      {/* Toolbar: filter + on-demand entry points */}
+      <div className="tx-toolbar">
+        <Tabs
+          items={[
+            { id: 'all', label: 'All', count: transactions.length },
+            { id: 'income', label: 'Income', count: incomeCount },
+            { id: 'expense', label: 'Expenses', count: expenseCount },
+          ]}
+          value={historyFilter}
+          onChange={setHistoryFilter}
+        />
+        <div className="tx-toolbar-actions">
+          <Button
+            variant="secondary"
+            leftIcon={<ArrowSwap size={16} />}
+            onClick={() => setDrawer('transfer')}
+            disabled={accounts.length < 2}
+          >
+            Transfer
+          </Button>
+          <Button
+            leftIcon={<Plus size={18} />}
+            onClick={openAdd}
+            disabled={accounts.length === 0}
+          >
+            Add transaction
+          </Button>
         </div>
-        <div style={{ padding: '0 var(--space-4) var(--space-3)' }}>
-          {loading ? (
-            <p className="muted" style={{ padding: 'var(--space-3) var(--space-2)' }}>
-              Loading transactions…
-            </p>
+      </div>
+
+      {/* Search + account filter (client-side over the loaded ledger) */}
+      {!loading && transactions.length > 0 ? (
+        <div className="tx-filters">
+          <Input
+            leftIcon={<Search size={16} />}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by description or account"
+            aria-label="Search transactions"
+          />
+          <Select
+            className="tx-account-filter"
+            value={accountFilter}
+            onChange={(event) => setAccountFilter(event.target.value)}
+            aria-label="Filter by account"
+          >
+            <option value="">All accounts</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} ({account.currency})
+              </option>
+            ))}
+          </Select>
+
+          <div className="tx-date-range">
+            <Select
+              className="tx-date-preset"
+              value={datePreset}
+              onChange={(event) => applyPreset(event.target.value as DatePreset)}
+              aria-label="Date range preset"
+            >
+              {datePresetOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            <Input
+              type="date"
+              className="tx-date-input"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(event) => setCustomFrom(event.target.value)}
+              aria-label="From date"
+            />
+            <span className="tx-date-sep">→</span>
+            <Input
+              type="date"
+              className="tx-date-input"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(event) => setCustomTo(event.target.value)}
+              aria-label="To date"
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {/* Transaction list — the focus of the view */}
+      <Card flush>
+        <div className="tx-list">
+          {loading ? <TransactionListSkeleton /> : null}
+          {!loading && accounts.length === 0 ? (
+            <EmptyState
+              compact
+              icon={<Wallet size={26} />}
+              title="No accounts yet"
+              description="Add an account first — your transactions will show up here once you have somewhere to record them."
+              action={
+                <Button
+                  variant="secondary"
+                  leftIcon={<Plus size={16} />}
+                  onClick={() => router.push('/dashboard/accounts')}
+                >
+                  Add account
+                </Button>
+              }
+            />
           ) : null}
-          {!loading && visibleTransactions.length === 0 ? (
-            <p className="muted" style={{ padding: 'var(--space-3) var(--space-2)' }}>
-              No transactions yet. Record your first transaction.
-            </p>
+          {!loading && accounts.length > 0 && transactions.length === 0 ? (
+            <EmptyState
+              compact
+              icon={<List size={26} />}
+              title="No transactions yet"
+              description="Record your first one to start building your household ledger."
+              action={
+                <Button leftIcon={<Plus size={16} />} onClick={openAdd}>
+                  Add transaction
+                </Button>
+              }
+            />
+          ) : null}
+          {!loading && transactions.length > 0 && visibleTransactions.length === 0 ? (
+            <EmptyState
+              compact
+              icon={<Filter size={24} />}
+              title="No matching transactions"
+              description="Nothing matches your current search and filters."
+              action={
+                filtersActive ? (
+                  <Button variant="secondary" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : null}
           {visibleTransactions.map((transaction) => {
             const income = transaction.type === 'income'
@@ -668,7 +445,7 @@ export function TransactionsPanel() {
                     variant="ghost"
                     size="sm"
                     leftIcon={<Pencil size={15} />}
-                    onClick={() => startEditing(transaction)}
+                    onClick={() => openEdit(transaction)}
                   >
                     Edit
                   </Button>
@@ -678,6 +455,49 @@ export function TransactionsPanel() {
           })}
         </div>
       </Card>
+
+      {/* Recurring rules — visible on the main view, created on demand */}
+      <RecurringSection
+        rules={rules}
+        accounts={accounts}
+        loading={loading}
+        onAdd={() => setDrawer('recurring')}
+      />
+
+      {/* On-demand transaction create / edit */}
+      <Drawer
+        open={drawer === 'transaction'}
+        onClose={closeDrawer}
+        title={editingTransaction ? 'Edit transaction' : 'Add transaction'}
+        description="Logged to your household ledger"
+      >
+        <TransactionForm
+          accounts={accounts}
+          categories={categories}
+          editing={editingTransaction}
+          onSaved={handleSaved}
+        />
+      </Drawer>
+
+      {/* On-demand transfer */}
+      <Drawer
+        open={drawer === 'transfer'}
+        onClose={closeDrawer}
+        title="Transfer between accounts"
+        description="Move money with explicit FX when currencies differ"
+      >
+        <TransferForm accounts={accounts} onSaved={handleSaved} />
+      </Drawer>
+
+      {/* On-demand recurring rule creation */}
+      <Drawer
+        open={drawer === 'recurring'}
+        onClose={closeDrawer}
+        title="New recurring rule"
+        description="Posts automatically each month when due"
+      >
+        <RecurringForm accounts={accounts} onSaved={handleRecurringSaved} />
+      </Drawer>
     </div>
   )
 }
