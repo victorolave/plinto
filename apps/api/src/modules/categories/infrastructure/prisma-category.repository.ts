@@ -2,10 +2,18 @@ import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import { Category } from '../domain/category.entity'
 import { TransactionType } from '../../transactions/domain/transaction.entity'
+import { CategoryRepository } from '../domain/category.repository'
 
+/**
+ * Prisma adapter for the CategoryRepository port. This is the only unit that
+ * knows about Prisma for the categories aggregate; swapping ORMs means
+ * adding a sibling adapter and rebinding the port in CategoriesModule.
+ */
 @Injectable()
-export class CategoryRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaCategoryRepository extends CategoryRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super()
+  }
 
   async create(data: {
     tenantId: string

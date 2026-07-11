@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { AccountRepository } from '../infrastructure/account.repository'
+import { AccountRepository } from '../domain/account.repository'
 import { AuditService } from '../../audit/application/audit.service'
 import { Account, AccountType } from '../domain/account.entity'
 

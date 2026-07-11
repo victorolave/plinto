@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RecurringExecutionService } from '../recurring-execution.service'
-import { RecurringTransactionRepository } from '../../infrastructure/recurring-transaction.repository'
+import { PrismaRecurringTransactionRepository } from '../../infrastructure/prisma-recurring-transaction.repository'
 
 const makeRule = (overrides = {}) => ({
   id: 'rule-1',
@@ -88,7 +88,7 @@ describe('RecurringExecutionService', () => {
         dayOfMonth: 5,
       }),
     ])
-    const realRepository = new RecurringTransactionRepository(prisma as any)
+    const realRepository = new PrismaRecurringTransactionRepository(prisma as any)
     const createExecutionTransaction = vi
       .spyOn(realRepository, 'createExecutionTransaction')
       .mockResolvedValue({ transaction: { id: 'tx-1' } as any, execution: { id: 'exec-1' } as any })

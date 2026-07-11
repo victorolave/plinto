@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { RecurringTransactionRepository } from '../infrastructure/recurring-transaction.repository'
+import { RecurringTransactionRepository } from '../domain/recurring-transaction.repository'
 
 @Injectable()
 export class RecurringExecutionService {

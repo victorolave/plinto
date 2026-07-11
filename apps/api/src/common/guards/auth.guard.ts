@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common'
 import { SESSION_COOKIE_NAME, SESSION_TTL_MINUTES } from '../../config/constants'
-import { SessionRepository } from '../../modules/sessions/infrastructure/session.repository'
+import { SessionRepository } from '../../modules/sessions/domain/session.repository'
 import { readCookie } from '../utils/cookies'
 import { RequestContext } from '../types/request-context'
 import { JwtService } from '../auth/jwt.service'

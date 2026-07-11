@@ -1,15 +1,19 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
+import { ExpenseCategoryGroup, ReportRepository } from '../domain/report.repository'
 
-export interface ExpenseCategoryGroup {
-  categoryId: string
-  currency: string
-  totalMinor: number
-}
+export type { ExpenseCategoryGroup } from '../domain/report.repository'
 
+/**
+ * Prisma adapter for the ReportRepository port. This is the only unit that
+ * knows about Prisma for the reports aggregate; swapping ORMs means adding
+ * a sibling adapter and rebinding the port in ReportsModule.
+ */
 @Injectable()
-export class ReportRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaReportRepository extends ReportRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super()
+  }
 
   /**
    * Aggregates expense totals grouped by category and currency for a tenant.

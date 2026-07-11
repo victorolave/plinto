@@ -5,7 +5,8 @@ import { AuditModule } from '../audit/audit.module'
 import { AuthGuard } from '../../common/guards/auth.guard'
 import { TenantGuard } from '../../common/guards/tenant.guard'
 import { RoleGuard } from '../../common/guards/role.guard'
-import { CategoryRepository } from './infrastructure/category.repository'
+import { CategoryRepository } from './domain/category.repository'
+import { PrismaCategoryRepository } from './infrastructure/prisma-category.repository'
 import { CategoryService } from './application/category.service'
 import { CategoriesController } from './interfaces/http/v1/categories.controller'
 
@@ -13,7 +14,7 @@ import { CategoriesController } from './interfaces/http/v1/categories.controller
   imports: [MembershipsModule, SessionsModule, AuditModule],
   controllers: [CategoriesController],
   providers: [
-    CategoryRepository,
+    { provide: CategoryRepository, useClass: PrismaCategoryRepository },
     CategoryService,
     AuthGuard,
     TenantGuard,

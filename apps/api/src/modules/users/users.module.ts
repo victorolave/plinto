@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
-import { UserRepository } from './infrastructure/user.repository'
+import { UserRepository } from './domain/user.repository'
+import { PrismaUserRepository } from './infrastructure/prisma-user.repository'
 import { UserProvisioningService } from './application/user-provisioning.service'
 import { UsersController } from './interfaces/http/v1/users.controller'
 import { MembershipsModule } from '../memberships/memberships.module'
@@ -9,7 +10,11 @@ import { AuthGuard } from '../../common/guards/auth.guard'
 @Module({
   imports: [MembershipsModule, SessionsModule],
   controllers: [UsersController],
-  providers: [UserRepository, UserProvisioningService, AuthGuard],
+  providers: [
+    { provide: UserRepository, useClass: PrismaUserRepository },
+    UserProvisioningService,
+    AuthGuard,
+  ],
   exports: [UserRepository, UserProvisioningService],
 })
 export class UsersModule {}

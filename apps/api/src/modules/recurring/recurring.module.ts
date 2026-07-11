@@ -8,7 +8,8 @@ import { RoleGuard } from '../../common/guards/role.guard'
 import { InternalKeyGuard } from '../../common/guards/internal-key.guard'
 import { RecurringTransactionService } from './application/recurring-transaction.service'
 import { RecurringExecutionService } from './application/recurring-execution.service'
-import { RecurringTransactionRepository } from './infrastructure/recurring-transaction.repository'
+import { RecurringTransactionRepository } from './domain/recurring-transaction.repository'
+import { PrismaRecurringTransactionRepository } from './infrastructure/prisma-recurring-transaction.repository'
 import { RecurringTransactionsController } from './interfaces/http/v1/recurring-transactions.controller'
 import { RecurringExecutionController } from './interfaces/http/v1/recurring-execution.controller'
 
@@ -18,7 +19,7 @@ import { RecurringExecutionController } from './interfaces/http/v1/recurring-exe
   providers: [
     RecurringTransactionService,
     RecurringExecutionService,
-    RecurringTransactionRepository,
+    { provide: RecurringTransactionRepository, useClass: PrismaRecurringTransactionRepository },
     AuthGuard,
     TenantGuard,
     RoleGuard,

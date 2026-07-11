@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { AccountRepository } from '../../accounts/infrastructure/account.repository'
+import { AccountRepository } from '../../accounts/domain/account.repository'
 import { TransactionType } from '../../transactions/domain/transaction.entity'
 import { RecurringTransactionRule } from '../domain/recurring-transaction.entity'
-import { RecurringTransactionRepository } from '../infrastructure/recurring-transaction.repository'
+import { RecurringTransactionRepository } from '../domain/recurring-transaction.repository'
 import { RecurringExecutionService } from './recurring-execution.service'
 
 @Injectable()

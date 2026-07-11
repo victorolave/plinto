@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
-import { TransactionRepository } from '../infrastructure/transaction.repository'
-import { AccountRepository } from '../../accounts/infrastructure/account.repository'
+import { TransactionRepository } from '../domain/transaction.repository'
+import { AccountRepository } from '../../accounts/domain/account.repository'
 import { AuditService } from '../../audit/application/audit.service'
-import { CategoryRepository } from '../../categories/infrastructure/category.repository'
+import { CategoryRepository } from '../../categories/domain/category.repository'
 import { Transaction, TransactionType, AccountBalance, Transfer } from '../domain/transaction.entity'
 
 @Injectable()

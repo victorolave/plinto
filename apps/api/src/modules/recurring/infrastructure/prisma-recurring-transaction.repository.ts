@@ -4,16 +4,23 @@ import {
   RecurringTransactionExecution,
   RecurringTransactionRule,
 } from '../domain/recurring-transaction.entity'
-import { Transaction, TransactionType } from '../../transactions/domain/transaction.entity'
+import { TransactionType } from '../../transactions/domain/transaction.entity'
+import {
+  RecurringExecutionResult,
+  RecurringTransactionRepository,
+} from '../domain/recurring-transaction.repository'
 
-export interface RecurringExecutionResult {
-  transaction: Transaction
-  execution: RecurringTransactionExecution
-}
-
+/**
+ * Prisma adapter for the RecurringTransactionRepository port. This is the
+ * only unit that knows about Prisma for the recurring aggregate; swapping
+ * ORMs means adding a sibling adapter and rebinding the port in
+ * RecurringModule.
+ */
 @Injectable()
-export class RecurringTransactionRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaRecurringTransactionRepository extends RecurringTransactionRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super()
+  }
 
   async createRule(data: {
     tenantId: string

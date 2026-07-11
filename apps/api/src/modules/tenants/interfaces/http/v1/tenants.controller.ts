@@ -12,8 +12,8 @@ import { AuthGuard } from '../../../../../common/guards/auth.guard'
 import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pipe'
 import { CreateTenantSchema } from '../../../../../common/shared-schemas'
 import { OnboardingService } from '../../../application/onboarding.service'
-import { TenantRepository } from '../../../infrastructure/tenant.repository'
-import { MembershipRepository } from '../../../../memberships/infrastructure/membership.repository'
+import { TenantRepository } from '../../../domain/tenant.repository'
+import { MembershipRepository } from '../../../../memberships/domain/membership.repository'
 
 @Controller('tenants')
 @UseGuards(AuthGuard)

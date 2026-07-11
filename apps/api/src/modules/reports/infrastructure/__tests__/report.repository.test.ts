@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ReportRepository } from '../report.repository'
+import { PrismaReportRepository } from '../prisma-report.repository'
 import type { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service'
 
 const makePrisma = () => ({
@@ -13,11 +13,11 @@ const makePrisma = () => ({
 
 describe('ReportRepository', () => {
   let prisma: ReturnType<typeof makePrisma>
-  let repository: ReportRepository
+  let repository: PrismaReportRepository
 
   beforeEach(() => {
     prisma = makePrisma()
-    repository = new ReportRepository(prisma as unknown as PrismaService)
+    repository = new PrismaReportRepository(prisma as unknown as PrismaService)
   })
 
   describe('sumExpensesByCategory', () => {

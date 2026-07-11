@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import { Account, AccountType } from '../domain/account.entity'
+import { AccountRepository } from '../domain/account.repository'
 
+/**
+ * Prisma adapter for the AccountRepository port. This is the only unit that
+ * knows about Prisma for the accounts aggregate; swapping ORMs means adding a
+ * sibling adapter and rebinding the port in AccountsModule.
+ */
 @Injectable()
-export class AccountRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaAccountRepository extends AccountRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super()
+  }
 
   async create(data: {
     tenantId: string

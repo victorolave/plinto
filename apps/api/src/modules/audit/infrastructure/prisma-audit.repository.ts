@@ -2,10 +2,18 @@ import { Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import { AuditEvent } from '../domain/audit-event.entity'
+import { AuditRepository } from '../domain/audit.repository'
 
+/**
+ * Prisma adapter for the AuditRepository port. This is the only unit that
+ * knows about Prisma for the audit aggregate; swapping ORMs means adding a
+ * sibling adapter and rebinding the port in AuditModule.
+ */
 @Injectable()
-export class AuditRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaAuditRepository extends AuditRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super()
+  }
 
   async create(data: Omit<AuditEvent, 'id' | 'createdAt'>): Promise<AuditEvent> {
     const createData: Prisma.AuditEventCreateInput = {

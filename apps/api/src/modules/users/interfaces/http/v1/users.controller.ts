@@ -11,8 +11,8 @@ import { RequestContext } from '../../../../../common/types/request-context'
 import { AuthGuard } from '../../../../../common/guards/auth.guard'
 import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pipe'
 import { UpdateProfileSchema } from '../../../../../common/shared-schemas'
-import { UserRepository } from '../../../infrastructure/user.repository'
-import { MembershipRepository } from '../../../../memberships/infrastructure/membership.repository'
+import { UserRepository } from '../../../domain/user.repository'
+import { MembershipRepository } from '../../../../memberships/domain/membership.repository'
 import { SessionService } from '../../../../sessions/application/session.service'
 
 @Controller('me')

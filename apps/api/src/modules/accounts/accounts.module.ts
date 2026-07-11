@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { AccountService } from './application/account.service'
-import { AccountRepository } from './infrastructure/account.repository'
+import { AccountRepository } from './domain/account.repository'
+import { PrismaAccountRepository } from './infrastructure/prisma-account.repository'
 import { AccountsController } from './interfaces/http/v1/accounts.controller'
 import { MembershipsModule } from '../memberships/memberships.module'
 import { SessionsModule } from '../sessions/sessions.module'
@@ -14,7 +15,7 @@ import { RoleGuard } from '../../common/guards/role.guard'
   controllers: [AccountsController],
   providers: [
     AccountService,
-    AccountRepository,
+    { provide: AccountRepository, useClass: PrismaAccountRepository },
     AuthGuard,
     TenantGuard,
     RoleGuard,

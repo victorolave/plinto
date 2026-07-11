@@ -5,12 +5,19 @@ import { AuthGuard } from '../../common/guards/auth.guard'
 import { TenantGuard } from '../../common/guards/tenant.guard'
 import { RoleGuard } from '../../common/guards/role.guard'
 import { ReportService } from './application/report.service'
-import { ReportRepository } from './infrastructure/report.repository'
+import { ReportRepository } from './domain/report.repository'
+import { PrismaReportRepository } from './infrastructure/prisma-report.repository'
 import { ReportsController } from './interfaces/http/v1/reports.controller'
 
 @Module({
   imports: [MembershipsModule, SessionsModule],
   controllers: [ReportsController],
-  providers: [ReportService, ReportRepository, AuthGuard, TenantGuard, RoleGuard],
+  providers: [
+    ReportService,
+    { provide: ReportRepository, useClass: PrismaReportRepository },
+    AuthGuard,
+    TenantGuard,
+    RoleGuard,
+  ],
 })
 export class ReportsModule {}

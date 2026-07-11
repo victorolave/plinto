@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import { User } from '../domain/user.entity'
+import { UserRepository } from '../domain/user.repository'
 
+/**
+ * Prisma adapter for the UserRepository port. This is the only unit that
+ * knows about Prisma for the users aggregate; swapping ORMs means adding a
+ * sibling adapter and rebinding the port in UsersModule.
+ */
 @Injectable()
-export class UserRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaUserRepository extends UserRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super()
+  }
 
   async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } })

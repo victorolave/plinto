@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { RecurringTransactionRepository } from '../recurring-transaction.repository'
+import { PrismaRecurringTransactionRepository } from '../prisma-recurring-transaction.repository'
 
 const makePrisma = () => ({
   recurringTransactionRule: {
@@ -55,7 +55,7 @@ describe('RecurringTransactionRepository', () => {
       updatedAt: new Date(),
     }
     prisma.recurringTransactionRule.create.mockResolvedValue(rule)
-    const repository = new RecurringTransactionRepository(prisma as any)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
     const result = await repository.createRule({
       tenantId: 'tenant-1',
@@ -84,7 +84,7 @@ describe('RecurringTransactionRepository', () => {
   it('lists tenant rules without crossing tenant boundaries', async () => {
     const prisma = makePrisma()
     prisma.recurringTransactionRule.findMany.mockResolvedValue([{ id: 'rule-1' }])
-    const repository = new RecurringTransactionRepository(prisma as any)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
     const result = await repository.listRulesByTenantId('tenant-1')
 
@@ -98,7 +98,7 @@ describe('RecurringTransactionRepository', () => {
   it('excludes rules of archived accounts from the tenant listing', async () => {
     const prisma = makePrisma()
     prisma.recurringTransactionRule.findMany.mockResolvedValue([])
-    const repository = new RecurringTransactionRepository(prisma as any)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
     await repository.listRulesByTenantId('tenant-1')
 
@@ -109,7 +109,7 @@ describe('RecurringTransactionRepository', () => {
   it('checks execution uniqueness by tenant and deterministic idempotency key', async () => {
     const prisma = makePrisma()
     prisma.recurringTransactionExecution.findUnique.mockResolvedValue({ id: 'exec-1' })
-    const repository = new RecurringTransactionRepository(prisma as any)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
     const result = await repository.findExecutionByKey(
       'tenant-1',
@@ -131,7 +131,7 @@ describe('RecurringTransactionRepository', () => {
     const prisma = makePrisma()
     const rule = makeRule()
     prisma.recurringTransactionRule.findMany.mockResolvedValue([rule])
-    const repository = new RecurringTransactionRepository(prisma as any)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
     const result = await repository.listActiveMonthlyRulesDueBy(
       new Date('2026-07-05T12:00:00.000Z'),
@@ -156,7 +156,7 @@ describe('RecurringTransactionRepository', () => {
       dayOfMonth: 5,
     })
     prisma.recurringTransactionRule.findMany.mockResolvedValue([futureStartedRule])
-    const repository = new RecurringTransactionRepository(prisma as any)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
     const result = await repository.listActiveMonthlyRulesDueBy(
       new Date('2026-07-21T00:00:00.000Z'),
@@ -182,7 +182,7 @@ describe('RecurringTransactionRepository', () => {
     tx.recurringTransactionExecution.create.mockResolvedValue({ id: 'exec-1' })
     tx.auditEvent.create.mockResolvedValue({ id: 'audit-1' })
     prisma.$transaction.mockImplementation((callback) => callback(tx))
-    const repository = new RecurringTransactionRepository(prisma as any)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
     const result = await repository.createExecutionTransaction({
       rule: makeRule(),
@@ -230,7 +230,7 @@ describe('RecurringTransactionRepository', () => {
     tx.recurringTransactionExecution.create.mockResolvedValue({ id: 'exec-1' })
     tx.auditEvent.create.mockRejectedValue(new Error('audit failed'))
     prisma.$transaction.mockImplementation((callback) => callback(tx))
-    const repository = new RecurringTransactionRepository(prisma as any)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
     await expect(
       repository.createExecutionTransaction({

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { SESSION_TTL_MINUTES } from '../../../config/constants'
-import { MembershipRepository } from '../../memberships/infrastructure/membership.repository'
-import { SessionRepository } from '../../sessions/infrastructure/session.repository'
-import { UserRepository } from '../../users/infrastructure/user.repository'
+import { MembershipRepository } from '../../memberships/domain/membership.repository'
+import { SessionRepository } from '../../sessions/domain/session.repository'
+import { UserRepository } from '../../users/domain/user.repository'
 import { UserProvisioningService } from '../../users/application/user-provisioning.service'
 
 @Injectable()

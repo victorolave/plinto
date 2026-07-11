@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { ExpenseByCategoryItemDto } from '@plinto/shared'
-import { ReportRepository } from '../infrastructure/report.repository'
+import { ReportRepository } from '../domain/report.repository'
 
 @Injectable()
 export class ReportService {

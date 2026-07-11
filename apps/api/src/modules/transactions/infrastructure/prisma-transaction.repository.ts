@@ -1,10 +1,19 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import { Transaction, TransactionType, Transfer } from '../domain/transaction.entity'
+import { TransactionRepository } from '../domain/transaction.repository'
 
+/**
+ * Prisma adapter for the TransactionRepository port. This is the only unit
+ * that knows about Prisma for the transactions aggregate; swapping ORMs
+ * means adding a sibling adapter and rebinding the port in
+ * TransactionsModule.
+ */
 @Injectable()
-export class TransactionRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaTransactionRepository extends TransactionRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super()
+  }
 
   async create(data: {
     tenantId: string

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { CategoryRepository } from '../infrastructure/category.repository'
+import { CategoryRepository } from '../domain/category.repository'
 import { AuditService } from '../../audit/application/audit.service'
 import { Category } from '../domain/category.entity'
 import { TransactionType } from '../../transactions/domain/transaction.entity'

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
-import { TenantRepository } from './infrastructure/tenant.repository'
+import { TenantRepository } from './domain/tenant.repository'
+import { PrismaTenantRepository } from './infrastructure/prisma-tenant.repository'
 import { TenantsController } from './interfaces/http/v1/tenants.controller'
 import { OnboardingService } from './application/onboarding.service'
 import { MembershipsModule } from '../memberships/memberships.module'
@@ -11,7 +12,11 @@ import { AuthGuard } from '../../common/guards/auth.guard'
 @Module({
   imports: [MembershipsModule, UsersModule, AuditModule, SessionsModule],
   controllers: [TenantsController],
-  providers: [TenantRepository, OnboardingService, AuthGuard],
+  providers: [
+    { provide: TenantRepository, useClass: PrismaTenantRepository },
+    OnboardingService,
+    AuthGuard,
+  ],
   exports: [TenantRepository, OnboardingService],
 })
 export class TenantsModule {}

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { TransactionService } from './application/transaction.service'
-import { TransactionRepository } from './infrastructure/transaction.repository'
+import { TransactionRepository } from './domain/transaction.repository'
+import { PrismaTransactionRepository } from './infrastructure/prisma-transaction.repository'
 import { TransactionsController } from './interfaces/http/v1/transactions.controller'
 import { MembershipsModule } from '../memberships/memberships.module'
 import { SessionsModule } from '../sessions/sessions.module'
@@ -16,7 +17,7 @@ import { RoleGuard } from '../../common/guards/role.guard'
   controllers: [TransactionsController],
   providers: [
     TransactionService,
-    TransactionRepository,
+    { provide: TransactionRepository, useClass: PrismaTransactionRepository },
     AuthGuard,
     TenantGuard,
     RoleGuard,

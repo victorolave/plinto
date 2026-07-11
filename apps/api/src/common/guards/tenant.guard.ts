@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common'
 import { RequestContext } from '../types/request-context'
-import { MembershipRepository } from '../../modules/memberships/infrastructure/membership.repository'
+import { MembershipRepository } from '../../modules/memberships/domain/membership.repository'
 import { SessionService } from '../../modules/sessions/application/session.service'
 
 /**

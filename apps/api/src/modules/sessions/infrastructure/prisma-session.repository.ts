@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import { Session } from '../domain/session.entity'
+import { SessionRepository } from '../domain/session.repository'
 
+/**
+ * Prisma adapter for the SessionRepository port. This is the only unit that
+ * knows about Prisma for the sessions aggregate; swapping ORMs means adding
+ * a sibling adapter and rebinding the port in SessionsModule.
+ */
 @Injectable()
-export class SessionRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaSessionRepository extends SessionRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super()
+  }
 
   async create(data: {
     userId: string

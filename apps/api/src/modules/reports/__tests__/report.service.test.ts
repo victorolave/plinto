@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ReportService } from '../application/report.service'
-import type { ReportRepository } from '../infrastructure/report.repository'
+import type { ReportRepository } from '../domain/report.repository'
 
 const makeRepository = () => ({
   sumExpensesByCategory: vi.fn(),

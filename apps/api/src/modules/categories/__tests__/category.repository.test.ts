@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { CategoryRepository } from '../infrastructure/category.repository'
+import { PrismaCategoryRepository } from '../infrastructure/prisma-category.repository'
 
 const makePrisma = () => ({
   category: {
@@ -35,11 +35,11 @@ const makeCategory = (overrides = {}) => ({
 
 describe('CategoryRepository', () => {
   let prisma: ReturnType<typeof makePrisma>
-  let repository: CategoryRepository
+  let repository: PrismaCategoryRepository
 
   beforeEach(() => {
     prisma = makePrisma()
-    repository = new CategoryRepository(prisma as any)
+    repository = new PrismaCategoryRepository(prisma as any)
   })
 
   describe('listByTenantId', () => {
