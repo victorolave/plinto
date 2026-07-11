@@ -367,11 +367,26 @@ export class TransactionService {
     return updated
   }
 
-  async listTransactions(tenantId: string, accountId?: string): Promise<Transaction[]> {
-    if (accountId) {
-      return this.transactionRepository.listByAccountId(tenantId, accountId)
+  async listTransactions(
+    tenantId: string,
+    params: { accountId?: string; page: number; pageSize: number },
+  ): Promise<{ transactions: Transaction[]; total: number }> {
+    const skip = (params.page - 1) * params.pageSize
+    const take = params.pageSize
+
+    if (params.accountId) {
+      const [transactions, total] = await Promise.all([
+        this.transactionRepository.listByAccountId(tenantId, params.accountId, { skip, take }),
+        this.transactionRepository.countByAccountId(tenantId, params.accountId),
+      ])
+      return { transactions, total }
     }
-    return this.transactionRepository.listByTenantId(tenantId)
+
+    const [transactions, total] = await Promise.all([
+      this.transactionRepository.listByTenantId(tenantId, { skip, take }),
+      this.transactionRepository.countByTenantId(tenantId),
+    ])
+    return { transactions, total }
   }
 
   async getBalances(tenantId: string): Promise<AccountBalance[]> {

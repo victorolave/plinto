@@ -72,8 +72,8 @@ export function DashboardOverview() {
     queryFn: async () => (await listBalances()).data.balances,
   })
   const transactionsQuery = useQuery({
-    queryKey: queryKeys.transactions(),
-    queryFn: async () => (await listTransactions()).data.transactions,
+    queryKey: queryKeys.recentTransactions,
+    queryFn: async () => (await listTransactions({ pageSize: 6 })).data.transactions,
   })
 
   const accounts = accountsQuery.data ?? []

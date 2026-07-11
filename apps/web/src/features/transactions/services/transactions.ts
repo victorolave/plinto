@@ -42,9 +42,26 @@ export interface Transfer {
   createdAt: string
 }
 
-export async function listTransactions(accountId?: string): Promise<{ data: { transactions: Transaction[] } }> {
-  const url = accountId ? `/transactions?accountId=${encodeURIComponent(accountId)}` : '/transactions'
-  return apiFetch<{ data: { transactions: Transaction[] } }>(url)
+export interface PaginationMeta {
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export async function listTransactions(params?: {
+  accountId?: string
+  page?: number
+  pageSize?: number
+}): Promise<{ data: { transactions: Transaction[] }; meta: { pagination: PaginationMeta } }> {
+  const query = new URLSearchParams()
+  if (params?.accountId) query.set('accountId', params.accountId)
+  if (params?.page !== undefined) query.set('page', String(params.page))
+  if (params?.pageSize !== undefined) query.set('pageSize', String(params.pageSize))
+
+  const queryString = query.toString()
+  const url = queryString ? `/transactions?${queryString}` : '/transactions'
+  return apiFetch<{ data: { transactions: Transaction[] }; meta: { pagination: PaginationMeta } }>(url)
 }
 
 export async function createTransaction(input: {

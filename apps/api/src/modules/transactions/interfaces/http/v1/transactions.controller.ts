@@ -23,6 +23,7 @@ import {
   CreateTransactionSchema,
   UpdateTransactionSchema,
   CreateTransferSchema,
+  PaginationQuerySchema,
 } from '../../../../../common/shared-schemas'
 import { TransactionService } from '../../../application/transaction.service'
 
@@ -40,12 +41,29 @@ export class TransactionsController {
   async listTransactions(
     @Req() req: RequestContext,
     @Query('accountId') accountId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    const transactions = await this.transactionService.listTransactions(
+    const { page: parsedPage, pageSize: parsedPageSize } = new ZodValidationPipe(
+      PaginationQuerySchema,
+    ).transform({ page, pageSize })
+
+    const { transactions, total } = await this.transactionService.listTransactions(
       req.tenantId as string,
-      accountId,
+      { accountId, page: parsedPage, pageSize: parsedPageSize },
     )
-    return { data: { transactions } }
+
+    return {
+      data: { transactions },
+      meta: {
+        pagination: {
+          page: parsedPage,
+          pageSize: parsedPageSize,
+          total,
+          totalPages: Math.ceil(total / parsedPageSize),
+        },
+      },
+    }
   }
 
   @Get('balances')

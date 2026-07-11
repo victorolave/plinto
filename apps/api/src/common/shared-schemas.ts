@@ -11,4 +11,5 @@ export {
   CreateRecurringTransactionRuleSchema,
   CreateCategorySchema,
   UpdateCategorySchema,
+  PaginationQuerySchema,
 } from '@plinto/shared'

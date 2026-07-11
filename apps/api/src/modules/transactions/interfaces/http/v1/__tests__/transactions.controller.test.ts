@@ -41,9 +41,9 @@ describe('TransactionsController', () => {
     expect(permission).toBe('transaction:write')
   })
 
-  it('lists transactions using the resolved tenant context', async () => {
+  it('lists transactions using the resolved tenant context, defaulting page and pageSize', async () => {
     const transactionService = {
-      listTransactions: vi.fn().mockResolvedValue([{ id: 'tx-1' }]),
+      listTransactions: vi.fn().mockResolvedValue({ transactions: [{ id: 'tx-1' }], total: 1 }),
     }
     const controller = new TransactionsController(transactionService as any)
 
@@ -52,8 +52,69 @@ describe('TransactionsController', () => {
       undefined,
     )
 
-    expect(transactionService.listTransactions).toHaveBeenCalledWith('tenant-1', undefined)
-    expect(result).toEqual({ data: { transactions: [{ id: 'tx-1' }] } })
+    expect(transactionService.listTransactions).toHaveBeenCalledWith('tenant-1', {
+      accountId: undefined,
+      page: 1,
+      pageSize: 50,
+    })
+    expect(result).toEqual({
+      data: { transactions: [{ id: 'tx-1' }] },
+      meta: { pagination: { page: 1, pageSize: 50, total: 1, totalPages: 1 } },
+    })
+  })
+
+  it('computes totalPages from total and pageSize', async () => {
+    const transactionService = {
+      listTransactions: vi.fn().mockResolvedValue({ transactions: [], total: 125 }),
+    }
+    const controller = new TransactionsController(transactionService as any)
+
+    const result = await controller.listTransactions(
+      { tenantId: 'tenant-1' } as any,
+      undefined,
+      '1',
+      '50',
+    )
+
+    expect(result).toEqual({
+      data: { transactions: [] },
+      meta: { pagination: { page: 1, pageSize: 50, total: 125, totalPages: 3 } },
+    })
+  })
+
+  it('rejects a pageSize above 100 with a validation error (max cap enforced)', async () => {
+    const transactionService = {
+      listTransactions: vi.fn(),
+    }
+    const controller = new TransactionsController(transactionService as any)
+
+    await expect(
+      controller.listTransactions({ tenantId: 'tenant-1' } as any, undefined, '1', '500'),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'VALIDATION_ERROR' }),
+    })
+
+    expect(transactionService.listTransactions).not.toHaveBeenCalled()
+  })
+
+  it('passes accountId through to the service alongside pagination', async () => {
+    const transactionService = {
+      listTransactions: vi.fn().mockResolvedValue({ transactions: [], total: 0 }),
+    }
+    const controller = new TransactionsController(transactionService as any)
+
+    await controller.listTransactions(
+      { tenantId: 'tenant-1' } as any,
+      'account-1',
+      '2',
+      '10',
+    )
+
+    expect(transactionService.listTransactions).toHaveBeenCalledWith('tenant-1', {
+      accountId: 'account-1',
+      page: 2,
+      pageSize: 10,
+    })
   })
 
   it('lists balances using the resolved tenant context', async () => {

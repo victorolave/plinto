@@ -34,6 +34,8 @@ const makeTransactionRepo = () => ({
   updateForTenant: vi.fn(),
   listByTenantId: vi.fn(),
   listByAccountId: vi.fn(),
+  countByTenantId: vi.fn(),
+  countByAccountId: vi.fn(),
   sumByAccount: vi.fn(),
 })
 
@@ -600,25 +602,51 @@ describe('TransactionService', () => {
   })
 
   describe('listTransactions', () => {
-    it('returns all transactions for a tenant when no accountId filter', async () => {
+    it('returns all transactions for a tenant when no accountId filter, with pagination applied', async () => {
       const transactions = [makeTransaction(), makeTransaction({ id: 'tx-2', accountId: 'account-2' })]
       transactionRepository.listByTenantId.mockResolvedValue(transactions)
+      transactionRepository.countByTenantId.mockResolvedValue(2)
 
-      const result = await service.listTransactions('tenant-1')
+      const result = await service.listTransactions('tenant-1', { page: 1, pageSize: 50 })
 
-      expect(transactionRepository.listByTenantId).toHaveBeenCalledWith('tenant-1')
-      expect(result).toBe(transactions)
+      expect(transactionRepository.listByTenantId).toHaveBeenCalledWith('tenant-1', {
+        skip: 0,
+        take: 50,
+      })
+      expect(transactionRepository.countByTenantId).toHaveBeenCalledWith('tenant-1')
+      expect(result).toEqual({ transactions, total: 2 })
     })
 
     it('filters transactions by accountId at the repository level when provided', async () => {
       const tx1 = makeTransaction({ id: 'tx-1', accountId: 'account-1' })
       transactionRepository.listByAccountId.mockResolvedValue([tx1])
+      transactionRepository.countByAccountId.mockResolvedValue(1)
 
-      const result = await service.listTransactions('tenant-1', 'account-1')
+      const result = await service.listTransactions('tenant-1', {
+        accountId: 'account-1',
+        page: 1,
+        pageSize: 50,
+      })
 
-      expect(transactionRepository.listByAccountId).toHaveBeenCalledWith('tenant-1', 'account-1')
+      expect(transactionRepository.listByAccountId).toHaveBeenCalledWith('tenant-1', 'account-1', {
+        skip: 0,
+        take: 50,
+      })
+      expect(transactionRepository.countByAccountId).toHaveBeenCalledWith('tenant-1', 'account-1')
       expect(transactionRepository.listByTenantId).not.toHaveBeenCalled()
-      expect(result).toEqual([tx1])
+      expect(result).toEqual({ transactions: [tx1], total: 1 })
+    })
+
+    it('computes skip from page and pageSize for later pages', async () => {
+      transactionRepository.listByTenantId.mockResolvedValue([])
+      transactionRepository.countByTenantId.mockResolvedValue(0)
+
+      await service.listTransactions('tenant-1', { page: 3, pageSize: 20 })
+
+      expect(transactionRepository.listByTenantId).toHaveBeenCalledWith('tenant-1', {
+        skip: 40,
+        take: 20,
+      })
     })
   })
 

@@ -59,7 +59,7 @@ export function TransactionsPanel() {
   })
   const transactionsQuery = useQuery({
     queryKey: queryKeys.transactions(),
-    queryFn: async () => (await listTransactions()).data.transactions,
+    queryFn: async () => listTransactions({ pageSize: 100 }),
   })
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories,
@@ -72,7 +72,9 @@ export function TransactionsPanel() {
 
   const accounts = accountsQuery.data ?? []
   const balances = balancesQuery.data ?? []
-  const transactions = transactionsQuery.data ?? []
+  const transactions = transactionsQuery.data?.data.transactions ?? []
+  const transactionsTotal = transactionsQuery.data?.meta.pagination.total ?? 0
+  const hasMoreTransactions = transactionsTotal > transactions.length
   const categories = categoriesQuery.data ?? []
   const rules = rulesQuery.data ?? []
 
@@ -257,6 +259,12 @@ export function TransactionsPanel() {
             />
           </div>
         </div>
+      ) : null}
+
+      {!loading && hasMoreTransactions ? (
+        <p className="muted">
+          Showing the latest {transactions.length} of {transactionsTotal} transactions.
+        </p>
       ) : null}
 
       {/* Transaction list — the focus of the view */}

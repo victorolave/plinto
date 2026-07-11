@@ -129,7 +129,10 @@ export class PrismaTransactionRepository extends TransactionRepository {
     })
   }
 
-  async listByTenantId(tenantId: string): Promise<Transaction[]> {
+  async listByTenantId(
+    tenantId: string,
+    pagination?: { skip: number; take: number },
+  ): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
       // Exclude transactions whose account has been archived: an archived
       // account is hidden everywhere, so its movements must not leak into the
@@ -137,13 +140,33 @@ export class PrismaTransactionRepository extends TransactionRepository {
       // Restoring the account re-includes them, since the filter is dynamic.
       where: { tenantId, account: { archivedAt: null } },
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
+      ...(pagination ? { skip: pagination.skip, take: pagination.take } : {}),
     })
   }
 
-  async listByAccountId(tenantId: string, accountId: string): Promise<Transaction[]> {
+  async listByAccountId(
+    tenantId: string,
+    accountId: string,
+    pagination?: { skip: number; take: number },
+  ): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
       where: { tenantId, accountId },
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
+      ...(pagination ? { skip: pagination.skip, take: pagination.take } : {}),
+    })
+  }
+
+  async countByTenantId(tenantId: string): Promise<number> {
+    // Same archived-account exclusion as listByTenantId so the reported total
+    // matches what the list actually returns.
+    return this.prisma.transaction.count({
+      where: { tenantId, account: { archivedAt: null } },
+    })
+  }
+
+  async countByAccountId(tenantId: string, accountId: string): Promise<number> {
+    return this.prisma.transaction.count({
+      where: { tenantId, accountId },
     })
   }
 

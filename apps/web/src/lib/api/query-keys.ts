@@ -8,6 +8,12 @@ export const queryKeys = {
   accounts: (includeArchived = false) => ['accounts', { includeArchived }] as const,
   balances: ['balances'] as const,
   transactions: (accountId?: string) => ['transactions', { accountId: accountId ?? null }] as const,
+  // Separate key from `transactions()`: the dashboard only loads a small page
+  // (pageSize: 6) for the "recent activity" widget, while `transactions()` loads
+  // up to 100 rows for the ledger panel. Sharing one key would let a 30s-stale
+  // cache entry from either page silently serve the other page's smaller/larger
+  // result set.
+  recentTransactions: ['transactions', 'recent'] as const,
   recurringRules: ['recurring-rules'] as const,
   tenants: ['tenants'] as const,
 } as const

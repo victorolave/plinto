@@ -51,9 +51,20 @@ export abstract class TransactionRepository {
     }>,
   ): Promise<Transaction | null>
 
-  abstract listByTenantId(tenantId: string): Promise<Transaction[]>
+  abstract listByTenantId(
+    tenantId: string,
+    pagination?: { skip: number; take: number },
+  ): Promise<Transaction[]>
 
-  abstract listByAccountId(tenantId: string, accountId: string): Promise<Transaction[]>
+  abstract listByAccountId(
+    tenantId: string,
+    accountId: string,
+    pagination?: { skip: number; take: number },
+  ): Promise<Transaction[]>
+
+  abstract countByTenantId(tenantId: string): Promise<number>
+
+  abstract countByAccountId(tenantId: string, accountId: string): Promise<number>
 
   /**
    * Aggregates signed movement totals per account and type in SQL, so balances
