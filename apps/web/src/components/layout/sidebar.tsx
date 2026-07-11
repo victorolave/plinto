@@ -1,6 +1,8 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import type { ComponentType } from 'react'
 import {
   Home,
@@ -15,14 +17,9 @@ import {
 import { Avatar } from '../ui/avatar'
 import { IconButton } from '../ui/button'
 import { TenantSwitcher, type TenantOption } from './tenant-switcher'
+import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
 
-export type DashboardSection =
-  | 'overview'
-  | 'accounts'
-  | 'transactions'
-  | 'categories'
-  | 'reports'
-  | 'settings'
+export type { DashboardSection } from './dashboard-nav'
 
 interface NavEntry {
   id: DashboardSection
@@ -44,8 +41,6 @@ export interface SidebarUser {
 }
 
 export interface SidebarProps {
-  active: DashboardSection
-  onNavigate: (section: DashboardSection) => void
   tenants: TenantOption[]
   activeTenantId: string | null
   onSelectTenant: (tenantId: string) => void
@@ -54,34 +49,23 @@ export interface SidebarProps {
   loggingOut?: boolean
 }
 
-function NavItem({
-  entry,
-  active,
-  onNavigate,
-}: {
-  entry: NavEntry
-  active: DashboardSection
-  onNavigate: (section: DashboardSection) => void
-}) {
+function NavItem({ entry, active }: { entry: NavEntry; active: DashboardSection }) {
   const Icon = entry.icon
   const isActive = entry.id === active
   return (
-    <button
-      type="button"
+    <Link
+      href={SECTION_HREF[entry.id]}
       className={`nav-item ${isActive ? 'is-active' : ''}`.trim()}
       aria-current={isActive ? 'page' : undefined}
-      onClick={() => onNavigate(entry.id)}
     >
       <span className="nav-item-marker" />
       <Icon size={19} stroke={isActive ? 2.2 : 2} />
       {entry.label}
-    </button>
+    </Link>
   )
 }
 
 export function Sidebar({
-  active,
-  onNavigate,
   tenants,
   activeTenantId,
   onSelectTenant,
@@ -89,6 +73,7 @@ export function Sidebar({
   onLogout,
   loggingOut = false,
 }: SidebarProps) {
+  const active = sectionFromPath(usePathname() ?? '')
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -109,20 +94,20 @@ export function Sidebar({
 
       <nav className="sidebar-nav">
         {NAV.map((entry) => (
-          <NavItem key={entry.id} entry={entry} active={active} onNavigate={onNavigate} />
+          <NavItem key={entry.id} entry={entry} active={active} />
         ))}
       </nav>
 
       <div className="sidebar-footer">
-        <button
-          type="button"
+        <Link
+          href={SECTION_HREF.settings}
           className={`nav-item ${active === 'settings' ? 'is-active' : ''}`.trim()}
-          onClick={() => onNavigate('settings')}
+          aria-current={active === 'settings' ? 'page' : undefined}
         >
           <span className="nav-item-marker" />
           <Settings size={19} />
           Settings
-        </button>
+        </Link>
 
         <div className="sidebar-user">
           <Avatar name={user.name} size="sm" />

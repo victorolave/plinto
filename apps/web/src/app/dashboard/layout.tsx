@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { DashboardShell } from '../../components/layout/dashboard-shell'
 
-// Auth gating, the app shell and section navigation are all owned by
-// <DashboardApp /> (rendered by the page), so the layout is a pass-through.
+// The persistent app chrome (sidebar, top bar, bottom nav) and the auth/tenant
+// bootstrap live in the shell so they survive navigation between section routes;
+// only the active page (`children`) remounts.
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  return children
+  return <DashboardShell>{children}</DashboardShell>
 }

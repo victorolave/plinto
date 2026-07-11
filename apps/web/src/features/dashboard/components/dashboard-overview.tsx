@@ -1,6 +1,7 @@
 'use client'
 
 import { type CSSProperties, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { listAccounts, type Account } from '../../accounts/services/accounts'
 import {
   listBalances,
@@ -20,7 +21,8 @@ import {
   ChevronRight,
   accountTypeIcon,
 } from '../../../components/ui/icons'
-import type { DashboardSection } from '../../../components/layout/sidebar'
+import { SECTION_HREF } from '../../../components/layout/dashboard-nav'
+import { useDashboard } from '../../../components/layout/dashboard-context'
 
 interface CurrencyTotal {
   currency: string
@@ -55,13 +57,9 @@ const monthLabel = new Date().toLocaleDateString(undefined, {
   year: 'numeric',
 })
 
-export function DashboardOverview({
-  tenantName,
-  onNavigate,
-}: {
-  tenantName: string
-  onNavigate: (section: DashboardSection) => void
-}) {
+export function DashboardOverview() {
+  const router = useRouter()
+  const { activeTenantName: tenantName } = useDashboard()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [balances, setBalances] = useState<AccountBalance[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -134,7 +132,9 @@ export function DashboardOverview({
                   Add an account and record your first transaction to see your
                   household balance here.
                 </p>
-                <Button onClick={() => onNavigate('accounts')}>Add account</Button>
+                <Button onClick={() => router.push(SECTION_HREF.accounts)}>
+                  Add account
+                </Button>
               </div>
             </Card>
           )}
@@ -158,7 +158,7 @@ export function DashboardOverview({
                       variant="ghost"
                       size="sm"
                       rightIcon={<ChevronRight size={15} />}
-                      onClick={() => onNavigate('transactions')}
+                      onClick={() => router.push(SECTION_HREF.transactions)}
                     >
                       See all
                     </Button>
@@ -216,7 +216,11 @@ export function DashboardOverview({
               <CardHeader
                 title="Accounts"
                 action={
-                  <Button variant="ghost" size="sm" onClick={() => onNavigate('accounts')}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push(SECTION_HREF.accounts)}
+                  >
                     Manage
                   </Button>
                 }

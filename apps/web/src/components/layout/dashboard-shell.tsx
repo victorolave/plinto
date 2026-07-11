@@ -1,25 +1,25 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { apiFetch } from '../../lib/api/client'
 import { listTenants, selectTenant } from '../../features/tenants/services/tenant-selection'
-import { AccountsPanel } from '../../features/accounts/components/accounts-panel'
-import { TransactionsPanel } from '../../features/transactions/components/transactions-panel'
-import { CategoriesPanel } from '../../features/categories/components/categories-panel'
-import { ExpenseReportPanel } from '../../features/categories/components/expense-report-panel'
-import { DashboardOverview } from '../../features/dashboard/components/dashboard-overview'
-import { Sidebar, type DashboardSection } from './sidebar'
+import { Sidebar } from './sidebar'
 import { BottomNav } from './bottom-nav'
 import { TopBar } from './top-bar'
+import { DashboardProvider } from './dashboard-context'
+import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
 import type { TenantOption } from './tenant-switcher'
-import { Settings } from '../ui/icons'
 
 interface MeUser {
   name?: string | null
   email?: string | null
 }
 
-const TITLES: Record<DashboardSection, [string, (ctx: { name: string; tenant: string }) => string]> = {
+const TITLES: Record<
+  DashboardSection,
+  [string, (ctx: { name: string; tenant: string }) => string]
+> = {
   overview: ['Dashboard', ({ name }) => (name ? `Welcome back, ${name}` : 'Your household at a glance')],
   accounts: ['Accounts', () => 'Balances by currency'],
   transactions: ['Transactions', ({ tenant }) => (tenant ? `${tenant} ledger` : 'Income, expenses and transfers')],
@@ -28,9 +28,17 @@ const TITLES: Record<DashboardSection, [string, (ctx: { name: string; tenant: st
   settings: ['Settings', () => 'Household & members'],
 }
 
-export function DashboardApp() {
+/**
+ * Persistent dashboard chrome (sidebar, top bar, bottom nav) plus the auth/tenant
+ * bootstrap. Lives in the dashboard layout so it survives client-side navigation
+ * between section routes; only `{children}` (the active page) remounts.
+ */
+export function DashboardShell({ children }: { children: ReactNode }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const section = sectionFromPath(pathname)
+
   const [booting, setBooting] = useState(true)
-  const [section, setSection] = useState<DashboardSection>('overview')
   const [user, setUser] = useState<MeUser>({})
   const [tenants, setTenants] = useState<TenantOption[]>([])
   const [activeTenantId, setActiveTenantId] = useState<string | null>(null)
@@ -86,39 +94,7 @@ export function DashboardApp() {
   const activeTenantName = tenants.find((t) => t.id === activeTenantId)?.name ?? ''
   const [title, subtitleFn] = TITLES[section]
   const subtitle = subtitleFn({ name: firstName, tenant: activeTenantName })
-
-  const body = useMemo(() => {
-    switch (section) {
-      case 'overview':
-        return <DashboardOverview tenantName={activeTenantName} onNavigate={setSection} />
-      case 'accounts':
-        return <AccountsPanel />
-      case 'transactions':
-        return <TransactionsPanel />
-      case 'categories':
-        return <CategoriesPanel />
-      case 'reports':
-        return <ExpenseReportPanel />
-      case 'settings':
-        return (
-          <div className="page">
-            <div className="plinto-card">
-              <div className="empty-state">
-                <span className="stat-icon">
-                  <Settings size={18} />
-                </span>
-                <strong style={{ color: 'var(--text-strong)' }}>Settings</strong>
-                <p className="muted">
-                  Household and member settings live here. This area is coming next.
-                </p>
-              </div>
-            </div>
-          </div>
-        )
-      default:
-        return null
-    }
-  }, [section, activeTenantName])
+  const goToAdd = () => router.push(SECTION_HREF.transactions)
 
   if (booting) {
     return (
@@ -130,33 +106,31 @@ export function DashboardApp() {
   }
 
   return (
-    <div className="app-shell">
-      <Sidebar
-        active={section}
-        onNavigate={setSection}
-        tenants={tenants}
-        activeTenantId={activeTenantId}
-        onSelectTenant={handleSelectTenant}
-        user={{ name: user.name || 'Your account', email: user.email || undefined }}
-        onLogout={handleLogout}
-        loggingOut={loggingOut}
-      />
-      <div className="app-main">
-        <TopBar title={title} subtitle={subtitle} onAdd={() => setSection('transactions')} />
-        <div className="app-scroll">{body}</div>
-      </div>
+    <DashboardProvider value={{ activeTenantName }}>
+      <div className="app-shell">
+        <Sidebar
+          tenants={tenants}
+          activeTenantId={activeTenantId}
+          onSelectTenant={handleSelectTenant}
+          user={{ name: user.name || 'Your account', email: user.email || undefined }}
+          onLogout={handleLogout}
+          loggingOut={loggingOut}
+        />
+        <div className="app-main">
+          <TopBar title={title} subtitle={subtitle} onAdd={goToAdd} />
+          <div className="app-scroll">{children}</div>
+        </div>
 
-      <BottomNav
-        active={section}
-        onNavigate={setSection}
-        onAdd={() => setSection('transactions')}
-        tenants={tenants}
-        activeTenantId={activeTenantId}
-        onSelectTenant={handleSelectTenant}
-        user={{ name: user.name || 'Your account', email: user.email || undefined }}
-        onLogout={handleLogout}
-        loggingOut={loggingOut}
-      />
-    </div>
+        <BottomNav
+          onAdd={goToAdd}
+          tenants={tenants}
+          activeTenantId={activeTenantId}
+          onSelectTenant={handleSelectTenant}
+          user={{ name: user.name || 'Your account', email: user.email || undefined }}
+          onLogout={handleLogout}
+          loggingOut={loggingOut}
+        />
+      </div>
+    </DashboardProvider>
   )
 }

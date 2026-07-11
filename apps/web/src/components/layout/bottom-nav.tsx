@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import type { ComponentType } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   Home,
   Wallet,
@@ -17,7 +19,7 @@ import {
 } from '../ui/icons'
 import { Avatar } from '../ui/avatar'
 import { TenantSwitcher, type TenantOption } from './tenant-switcher'
-import type { DashboardSection } from './sidebar'
+import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
 
 interface BarEntry {
   id: DashboardSection
@@ -42,8 +44,6 @@ const MORE_SECTIONS: BarEntry[] = [
 ]
 
 export interface BottomNavProps {
-  active: DashboardSection
-  onNavigate: (section: DashboardSection) => void
   onAdd: () => void
   tenants: TenantOption[]
   activeTenantId: string | null
@@ -53,33 +53,22 @@ export interface BottomNavProps {
   loggingOut?: boolean
 }
 
-function BarButton({
-  entry,
-  active,
-  onClick,
-}: {
-  entry: BarEntry
-  active: DashboardSection
-  onClick: () => void
-}) {
+function BarLink({ entry, active }: { entry: BarEntry; active: DashboardSection }) {
   const Icon = entry.icon
   const isActive = entry.id === active
   return (
-    <button
-      type="button"
+    <Link
+      href={SECTION_HREF[entry.id]}
       className={`bottom-nav-item ${isActive ? 'is-active' : ''}`.trim()}
       aria-current={isActive ? 'page' : undefined}
-      onClick={onClick}
     >
       <Icon size={21} stroke={isActive ? 2.3 : 2} />
       <span>{entry.label}</span>
-    </button>
+    </Link>
   )
 }
 
 export function BottomNav({
-  active,
-  onNavigate,
   onAdd,
   tenants,
   activeTenantId,
@@ -89,6 +78,7 @@ export function BottomNav({
   loggingOut = false,
 }: BottomNavProps) {
   const [moreOpen, setMoreOpen] = useState(false)
+  const active = sectionFromPath(usePathname() ?? '')
 
   // Lock the scrollable shell (.app-scroll) while the sheet is open — locking
   // body is a no-op here since body never scrolls, and on iOS touch would bleed
@@ -104,11 +94,6 @@ export function BottomNav({
     }
   }, [moreOpen])
 
-  const go = (section: DashboardSection) => {
-    setMoreOpen(false)
-    onNavigate(section)
-  }
-
   // "More" is active when the current section isn't one of the bar's own slots.
   const barIds = ['overview', 'accounts', 'transactions']
   const moreActive = !barIds.includes(active)
@@ -117,7 +102,7 @@ export function BottomNav({
     <>
       <nav className="bottom-nav" aria-label="Primary">
         {PRIMARY.map((entry) => (
-          <BarButton key={entry.id} entry={entry} active={active} onClick={() => go(entry.id)} />
+          <BarLink key={entry.id} entry={entry} active={active} />
         ))}
 
         <button
@@ -133,7 +118,7 @@ export function BottomNav({
         </button>
 
         {SECONDARY.map((entry) => (
-          <BarButton key={entry.id} entry={entry} active={active} onClick={() => go(entry.id)} />
+          <BarLink key={entry.id} entry={entry} active={active} />
         ))}
 
         <button
@@ -192,15 +177,16 @@ export function BottomNav({
                 const Icon = entry.icon
                 const isActive = entry.id === active
                 return (
-                  <button
+                  <Link
                     key={entry.id}
-                    type="button"
+                    href={SECTION_HREF[entry.id]}
                     className={`more-sheet-item ${isActive ? 'is-active' : ''}`.trim()}
-                    onClick={() => go(entry.id)}
+                    aria-current={isActive ? 'page' : undefined}
+                    onClick={() => setMoreOpen(false)}
                   >
                     <Icon size={20} stroke={isActive ? 2.3 : 2} />
                     {entry.label}
-                  </button>
+                  </Link>
                 )
               })}
             </div>
