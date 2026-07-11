@@ -122,7 +122,11 @@ export class TransactionRepository {
 
   async listByTenantId(tenantId: string): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
-      where: { tenantId },
+      // Exclude transactions whose account has been archived: an archived
+      // account is hidden everywhere, so its movements must not leak into the
+      // tenant-wide list (or the balance computation that shares this query).
+      // Restoring the account re-includes them, since the filter is dynamic.
+      where: { tenantId, account: { archivedAt: null } },
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
     })
   }

@@ -89,10 +89,21 @@ describe('RecurringTransactionRepository', () => {
     const result = await repository.listRulesByTenantId('tenant-1')
 
     expect(prisma.recurringTransactionRule.findMany).toHaveBeenCalledWith({
-      where: { tenantId: 'tenant-1' },
+      where: { tenantId: 'tenant-1', account: { archivedAt: null } },
       orderBy: { createdAt: 'desc' },
     })
     expect(result).toEqual([{ id: 'rule-1' }])
+  })
+
+  it('excludes rules of archived accounts from the tenant listing', async () => {
+    const prisma = makePrisma()
+    prisma.recurringTransactionRule.findMany.mockResolvedValue([])
+    const repository = new RecurringTransactionRepository(prisma as any)
+
+    await repository.listRulesByTenantId('tenant-1')
+
+    const where = prisma.recurringTransactionRule.findMany.mock.calls[0][0].where
+    expect(where.account).toEqual({ archivedAt: null })
   })
 
   it('checks execution uniqueness by tenant and deterministic idempotency key', async () => {
@@ -131,6 +142,7 @@ describe('RecurringTransactionRepository', () => {
         active: true,
         frequency: 'monthly',
         startDate: { lte: new Date('2026-07-05T12:00:00.000Z') },
+        account: { archivedAt: null },
       },
       orderBy: { createdAt: 'asc' },
     })
@@ -155,6 +167,7 @@ describe('RecurringTransactionRepository', () => {
         active: true,
         frequency: 'monthly',
         startDate: { lte: new Date('2026-07-21T00:00:00.000Z') },
+        account: { archivedAt: null },
       },
       orderBy: { createdAt: 'asc' },
     })
