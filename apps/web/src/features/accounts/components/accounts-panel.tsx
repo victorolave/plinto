@@ -1,6 +1,7 @@
 'use client'
 
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Account,
   AccountType,
@@ -14,19 +15,13 @@ import {
   listBalances,
   type AccountBalance,
 } from '../../transactions/services/transactions'
-import { Button, IconButton } from '../../../components/ui/button'
+import { queryKeys } from '../../../lib/api/query-keys'
+import { AccountGroup } from './account-group'
+import { Button } from '../../../components/ui/button'
 import { Field, Input, Select } from '../../../components/ui/field'
-import { Amount, CurrencyTag } from '../../../components/ui/amount'
 import { Modal } from '../../../components/ui/modal'
 import { EmptyState } from '../../../components/ui/empty-state'
-import {
-  Plus,
-  Pencil,
-  Trash,
-  Wallet,
-  MoreVertical,
-  accountTypeIcon,
-} from '../../../components/ui/icons'
+import { Plus, Wallet } from '../../../components/ui/icons'
 import { AccountsSkeleton } from './accounts-skeleton'
 
 const accountTypeOptions: Array<{ value: AccountType; label: string }> = [
@@ -38,86 +33,25 @@ const accountTypeOptions: Array<{ value: AccountType; label: string }> = [
 
 type FormMode = 'create' | 'edit'
 
-/** Per-card actions menu opened by the kebab (⋮) button. */
-function AccountActionsMenu({
-  onEdit,
-  onArchive,
-}: {
-  onEdit: () => void
-  onArchive: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onPointer = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onPointer)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onPointer)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
-  return (
-    <div className="account-menu" ref={ref}>
-      <IconButton
-        label="Account actions"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((prev) => !prev)}
-      >
-        <MoreVertical size={16} />
-      </IconButton>
-
-      {open ? (
-        <div className="account-menu-list" role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            className="account-menu-item"
-            onClick={() => {
-              setOpen(false)
-              onEdit()
-            }}
-          >
-            <Pencil size={15} />
-            Edit
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="account-menu-item account-menu-item--danger"
-            onClick={() => {
-              setOpen(false)
-              onArchive()
-            }}
-          >
-            <Trash size={15} />
-            Archive
-          </button>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 export function AccountsPanel() {
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [balances, setBalances] = useState<AccountBalance[]>([])
+  const queryClient = useQueryClient()
+
+  const accountsQuery = useQuery({
+    queryKey: queryKeys.accounts(true),
+    queryFn: async () => (await listAccounts({ includeArchived: true })).data.accounts,
+  })
+  const balancesQuery = useQuery({
+    queryKey: queryKeys.balances,
+    queryFn: async () => (await listBalances()).data.balances,
+  })
+
+  const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data])
+  const balances = useMemo(() => balancesQuery.data ?? [], [balancesQuery.data])
+  const loading = accountsQuery.isLoading || balancesQuery.isLoading
+
   const [name, setName] = useState('')
   const [type, setType] = useState<AccountType>('bank')
   const [currency, setCurrency] = useState('COP')
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -126,30 +60,42 @@ export function AccountsPanel() {
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const [pendingArchive, setPendingArchive] = useState<Account | null>(null)
-  const [archiving, setArchiving] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
 
-  const loadAccounts = async () => {
-    const [accountsRes, balancesRes] = await Promise.all([
-      listAccounts({ includeArchived: true }),
-      listBalances(),
-    ])
-    setAccounts(accountsRes.data.accounts)
-    setBalances(balancesRes.data.balances)
+  const invalidateAccountData = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.accounts(true) })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.balances })
   }
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        await loadAccounts()
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load accounts')
-      } finally {
-        setLoading(false)
-      }
-    }
-    void run()
-  }, [])
+  const createMutation = useMutation({
+    mutationFn: (input: { name: string; type: AccountType; currency: string }) =>
+      createAccount(input),
+    onSuccess: invalidateAccountData,
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string
+      input: { name: string; type: AccountType }
+    }) => updateAccount(id, input),
+    onSuccess: invalidateAccountData,
+  })
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => deleteAccount(id),
+    onSuccess: invalidateAccountData,
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => restoreAccount(id),
+    onSuccess: invalidateAccountData,
+  })
+
+  const submitting = createMutation.isPending || updateMutation.isPending
+  const archiving = archiveMutation.isPending
 
   const balanceByAccount = useMemo(
     () => new Map(balances.map((b) => [b.accountId, b])),
@@ -197,46 +143,41 @@ export function AccountsPanel() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    setSubmitting(true)
     setError(null)
 
     try {
       if (mode === 'edit' && editingId) {
-        await updateAccount(editingId, { name, type })
+        await updateMutation.mutateAsync({ id: editingId, input: { name, type } })
       } else {
-        await createAccount({ name, type, currency: currency.trim().toUpperCase() })
+        await createMutation.mutateAsync({
+          name,
+          type,
+          currency: currency.trim().toUpperCase(),
+        })
       }
       setOpen(false)
-      await loadAccounts()
     } catch (err) {
       const fallback =
         mode === 'edit' ? 'Failed to update account' : 'Failed to create account'
       setError(err instanceof Error ? err.message : fallback)
-    } finally {
-      setSubmitting(false)
     }
   }
 
   const confirmArchive = async () => {
     if (!pendingArchive) return
-    setArchiving(true)
     setActionError(null)
     try {
-      await deleteAccount(pendingArchive.id)
+      await archiveMutation.mutateAsync(pendingArchive.id)
       setPendingArchive(null)
-      await loadAccounts()
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to archive account')
-    } finally {
-      setArchiving(false)
     }
   }
 
   const handleRestore = async (account: Account) => {
     setActionError(null)
     try {
-      await restoreAccount(account.id)
-      await loadAccounts()
+      await restoreMutation.mutateAsync(account.id)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to restore account')
     }
@@ -261,68 +202,17 @@ export function AccountsPanel() {
         />
       ) : null}
 
-      {groups.map(([groupCurrency, groupAccounts]) => {
-        const total = groupAccounts.reduce(
-          (sum, account) => sum + (balanceByAccount.get(account.id)?.balanceMinor ?? 0),
-          0,
-        )
-        return (
-          <section key={groupCurrency}>
-            <div className="section-head">
-              <CurrencyTag currency={groupCurrency} />
-              <h2 className="card-title">
-                {groupAccounts.length} account{groupAccounts.length > 1 ? 's' : ''}
-              </h2>
-              <div className="section-total">
-                <span className="plinto-eyebrow">Total in {groupCurrency}</span>
-                <Amount minor={total} currency={groupCurrency} size="lg" />
-              </div>
-            </div>
-
-            <div className="account-grid">
-              {groupAccounts.map((account) => {
-                const AccountIcon = accountTypeIcon[account.type]
-                const balance = balanceByAccount.get(account.id)
-                return (
-                  <div key={account.id} className="account-card">
-                    <div className="account-card-head">
-                      <span className="account-icon">
-                        <AccountIcon size={20} />
-                      </span>
-                      <div className="account-card-id">
-                        <div className="account-name">{account.name}</div>
-                        <div className="account-type">{account.type}</div>
-                      </div>
-                      <div className="account-card-actions">
-                        <AccountActionsMenu
-                          onEdit={() => openEdit(account)}
-                          onArchive={() => setPendingArchive(account)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="account-card-balance">
-                      <span className="plinto-eyebrow">Balance</span>
-                      <Amount
-                        minor={balance?.balanceMinor ?? 0}
-                        currency={account.currency}
-                        size="lg"
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-
-              <button type="button" className="account-add" onClick={openCreate}>
-                <span className="account-add-icon">
-                  <Plus size={20} />
-                </span>
-                Add account
-              </button>
-            </div>
-          </section>
-        )
-      })}
+      {groups.map(([groupCurrency, groupAccounts]) => (
+        <AccountGroup
+          key={groupCurrency}
+          currency={groupCurrency}
+          accounts={groupAccounts}
+          balanceByAccount={balanceByAccount}
+          onEdit={openEdit}
+          onArchive={setPendingArchive}
+          onAddAccount={openCreate}
+        />
+      ))}
 
       {archivedAccounts.length > 0 ? (
         <section className="archived-section">
