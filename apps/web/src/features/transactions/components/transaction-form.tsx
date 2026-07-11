@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useState } from 'react'
+import { CreateTransactionSchema, UpdateTransactionSchema } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import type { Category } from '../../categories/services/categories'
 import {
@@ -56,43 +57,55 @@ export function TransactionForm({
     event.preventDefault()
 
     const parsedAmount = parseFloat(amount)
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError('Enter an amount greater than zero')
+    const amountMinor = Math.round(parsedAmount * 100)
+    const trimmedDescription = description.trim()
+
+    if (editing) {
+      const input = buildTransactionUpdateInput({
+        accountId: selectedAccountId,
+        type,
+        amountMinor,
+        description: trimmedDescription || null,
+        occurredAt: toOccurredAtIso(occurredAt),
+        categoryId,
+      })
+      const result = UpdateTransactionSchema.safeParse(input)
+      if (!result.success) {
+        setError(result.error.issues[0]?.message ?? 'Invalid transaction')
+        return
+      }
+
+      setSubmitting(true)
+      setError(null)
+      try {
+        await updateTransaction(editing.id, input)
+        await onSaved()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to save transaction')
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
+
+    const input = buildTransactionCreateInput({
+      accountId: selectedAccountId,
+      type,
+      amountMinor,
+      description: trimmedDescription || undefined,
+      occurredAt: toOccurredAtIso(occurredAt),
+      ...(categoryId !== null ? { categoryId } : {}),
+    })
+    const result = CreateTransactionSchema.safeParse(input)
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? 'Invalid transaction')
       return
     }
 
     setSubmitting(true)
     setError(null)
-
     try {
-      const amountMinor = Math.round(parsedAmount * 100)
-      const trimmedDescription = description.trim()
-
-      if (editing) {
-        await updateTransaction(
-          editing.id,
-          buildTransactionUpdateInput({
-            accountId: selectedAccountId,
-            type,
-            amountMinor,
-            description: trimmedDescription || null,
-            occurredAt: toOccurredAtIso(occurredAt),
-            categoryId,
-          }),
-        )
-      } else {
-        await createTransaction(
-          buildTransactionCreateInput({
-            accountId: selectedAccountId,
-            type,
-            amountMinor,
-            description: trimmedDescription || undefined,
-            occurredAt: toOccurredAtIso(occurredAt),
-            ...(categoryId !== null ? { categoryId } : {}),
-          }),
-        )
-      }
-
+      await createTransaction(input)
       await onSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save transaction')

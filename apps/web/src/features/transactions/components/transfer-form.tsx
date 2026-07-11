@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useEffect, useState } from 'react'
+import { CreateTransferSchema } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import { createTransfer } from '../services/transactions'
 import { Button } from '../../../components/ui/button'
@@ -44,60 +45,45 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
 
-    const parsedAmount = parseFloat(amount)
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError('Enter an amount greater than zero')
-      return
-    }
     if (!sourceAccountId || !destAccountId) {
       setError('Select both source and destination accounts')
       return
     }
-    if (sourceAccountId === destAccountId) {
-      setError('Source and destination accounts must differ')
-      return
-    }
 
-    const sourceAmountMinor = Math.round(parsedAmount * 100)
+    const sourceAmountMinor = Math.round(parseFloat(amount) * 100)
     let destinationAmountMinor: number | undefined
     let fxRateValue: string | undefined
 
     if (isCrossCurrency) {
-      const parsedDestAmount = parseFloat(destAmount)
-      if (Number.isNaN(parsedDestAmount) || parsedDestAmount <= 0) {
-        setError('Enter a destination amount greater than zero')
-        return
-      }
-      const fxRateTrimmed = fxRate.trim()
-      if (!fxRateTrimmed || !/^\d{1,12}(\.\d{1,8})?$/.test(fxRateTrimmed)) {
-        setError('Enter a valid FX rate (e.g. 4200.00)')
-        return
-      }
-      destinationAmountMinor = Math.round(parsedDestAmount * 100)
-      fxRateValue = fxRateTrimmed
+      destinationAmountMinor = Math.round(parseFloat(destAmount) * 100)
+      fxRateValue = fxRate.trim() || undefined
     }
 
-    const parsedFee = feeMinor.trim() ? parseInt(feeMinor, 10) : undefined
-    const fee =
-      parsedFee !== undefined && !Number.isNaN(parsedFee) && parsedFee >= 0
-        ? parsedFee
-        : undefined
+    const fee = feeMinor.trim() ? parseInt(feeMinor, 10) : undefined
+    const trimmedDescription = description.trim()
+
+    const payload = {
+      sourceAccountId,
+      destinationAccountId: destAccountId,
+      sourceAmountMinor,
+      destinationAmountMinor,
+      fxRate: fxRateValue,
+      feeMinor: fee,
+      description: trimmedDescription || undefined,
+      occurredAt: toOccurredAtIso(occurredAt),
+    }
+
+    const result = CreateTransferSchema.safeParse(payload)
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? 'Invalid transfer')
+      return
+    }
 
     setSubmitting(true)
     setError(null)
 
     try {
-      const trimmedDescription = description.trim()
-      await createTransfer({
-        sourceAccountId,
-        destinationAccountId: destAccountId,
-        sourceAmountMinor,
-        destinationAmountMinor,
-        fxRate: fxRateValue,
-        feeMinor: fee,
-        description: trimmedDescription || undefined,
-        occurredAt: toOccurredAtIso(occurredAt),
-      })
+      await createTransfer(payload)
       await onSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create transfer')

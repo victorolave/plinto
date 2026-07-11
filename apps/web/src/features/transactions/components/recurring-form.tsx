@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useState } from 'react'
+import { CreateRecurringTransactionRuleSchema } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import type { TransactionType } from '../services/transactions'
 import { createRecurringTransactionRule } from '../services/recurring-transactions'
@@ -12,6 +13,15 @@ const recurringTypeOptions: Array<{ value: TransactionType; label: string }> = [
   { value: 'income', label: 'Income' },
   { value: 'expense', label: 'Expense' },
 ]
+
+/** Converts a date-only input (YYYY-MM-DD) to a UTC-midnight ISO instant.
+ * Returns an empty string (rather than throwing) for an empty or invalid
+ * value, so the schema can surface a proper validation error. */
+function toStartDateIso(value: string): string {
+  if (!value) return ''
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString()
+}
 
 export interface RecurringFormProps {
   accounts: Account[]
@@ -33,19 +43,20 @@ export function RecurringForm({ accounts, onSaved }: RecurringFormProps) {
     event.preventDefault()
 
     const parsedAmount = parseFloat(amount)
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError('Enter an amount greater than zero')
-      return
-    }
-
     const parsedDay = parseInt(dayOfMonth, 10)
-    if (Number.isNaN(parsedDay) || parsedDay < 1 || parsedDay > 28) {
-      setError('Choose a day from 1 to 28')
-      return
+
+    const payload = {
+      name: name.trim(),
+      accountId,
+      type,
+      amountMinor: Math.round(parsedAmount * 100),
+      dayOfMonth: parsedDay,
+      startDate: toStartDateIso(startDate),
     }
 
-    if (!startDate) {
-      setError('Choose a start date')
+    const result = CreateRecurringTransactionRuleSchema.safeParse(payload)
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? 'Invalid recurring rule')
       return
     }
 
@@ -53,14 +64,7 @@ export function RecurringForm({ accounts, onSaved }: RecurringFormProps) {
     setError(null)
 
     try {
-      await createRecurringTransactionRule({
-        name: name.trim(),
-        accountId,
-        type,
-        amountMinor: Math.round(parsedAmount * 100),
-        dayOfMonth: parsedDay,
-        startDate: new Date(`${startDate}T00:00:00.000Z`).toISOString(),
-      })
+      await createRecurringTransactionRule(payload)
       await onSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save recurring rule')

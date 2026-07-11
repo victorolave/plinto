@@ -2,6 +2,7 @@
 
 import { type FormEvent, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { CreateAccountSchema, UpdateAccountSchema } from '@plinto/shared'
 import {
   Account,
   AccountType,
@@ -145,21 +146,39 @@ export function AccountsPanel() {
     event.preventDefault()
     setError(null)
 
-    try {
-      if (mode === 'edit' && editingId) {
-        await updateMutation.mutateAsync({ id: editingId, input: { name, type } })
-      } else {
-        await createMutation.mutateAsync({
-          name,
-          type,
-          currency: currency.trim().toUpperCase(),
-        })
+    if (mode === 'edit' && editingId) {
+      const input = { name, type }
+      const result = UpdateAccountSchema.safeParse(input)
+      if (!result.success) {
+        setError(result.error.issues[0]?.message ?? 'Invalid account')
+        return
       }
+
+      try {
+        await updateMutation.mutateAsync({ id: editingId, input })
+        setOpen(false)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to update account')
+      }
+      return
+    }
+
+    const input = {
+      name,
+      type,
+      currency: currency.trim().toUpperCase(),
+    }
+    const result = CreateAccountSchema.safeParse(input)
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? 'Invalid account')
+      return
+    }
+
+    try {
+      await createMutation.mutateAsync(input)
       setOpen(false)
     } catch (err) {
-      const fallback =
-        mode === 'edit' ? 'Failed to update account' : 'Failed to create account'
-      setError(err instanceof Error ? err.message : fallback)
+      setError(err instanceof Error ? err.message : 'Failed to create account')
     }
   }
 

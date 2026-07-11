@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useState } from 'react'
+import { CreateCategorySchema, UpdateCategorySchema } from '@plinto/shared'
 import {
   type Category,
   type CategoryType,
@@ -50,23 +51,48 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+
+    const trimmedColor = color.trim()
+
+    if (editing) {
+      const payload = {
+        name: name.trim(),
+        color: trimmedColor || null,
+      }
+      const result = UpdateCategorySchema.safeParse(payload)
+      if (!result.success) {
+        setError(result.error.issues[0]?.message ?? 'Invalid category')
+        return
+      }
+
+      setSubmitting(true)
+      setError(null)
+      try {
+        await updateCategory(editing.id, payload)
+        await onSaved()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to save category')
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
+
+    const payload = {
+      name: name.trim(),
+      type,
+      ...(trimmedColor ? { color: trimmedColor } : {}),
+    }
+    const result = CreateCategorySchema.safeParse(payload)
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? 'Invalid category')
+      return
+    }
+
     setSubmitting(true)
     setError(null)
-
     try {
-      const trimmedColor = color.trim()
-      if (editing) {
-        await updateCategory(editing.id, {
-          name: name.trim(),
-          color: trimmedColor || null,
-        })
-      } else {
-        await createCategory({
-          name: name.trim(),
-          type,
-          ...(trimmedColor ? { color: trimmedColor } : {}),
-        })
-      }
+      await createCategory(payload)
       await onSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save category')
