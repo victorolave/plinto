@@ -36,7 +36,9 @@ export class RecurringTransactionRepository {
 
   async listRulesByTenantId(tenantId: string): Promise<RecurringTransactionRule[]> {
     return this.prisma.recurringTransactionRule.findMany({
-      where: { tenantId },
+      // Hide rules whose account has been archived — consistent with archived
+      // accounts disappearing from every active surface.
+      where: { tenantId, account: { archivedAt: null } },
       orderBy: { createdAt: 'desc' },
     })
   }
@@ -58,6 +60,9 @@ export class RecurringTransactionRepository {
         active: true,
         frequency: 'monthly',
         startDate: { lte: dueDate },
+        // Never auto-post into an archived account: its rules stay dormant until
+        // (and unless) the account is restored.
+        account: { archivedAt: null },
       },
       orderBy: { createdAt: 'asc' },
     })
