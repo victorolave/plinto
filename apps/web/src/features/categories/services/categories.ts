@@ -13,11 +13,11 @@ export interface Category {
 }
 
 export async function listCategories(): Promise<{ data: { categories: Category[] } }> {
-  return apiFetch('/categories')
+  return apiFetch<{ data: { categories: Category[] } }>('/categories')
 }
 
 export async function getCategory(id: string): Promise<{ data: { category: Category } }> {
-  return apiFetch(`/categories/${encodeURIComponent(id)}`)
+  return apiFetch<{ data: { category: Category } }>(`/categories/${encodeURIComponent(id)}`)
 }
 
 export async function createCategory(input: {
@@ -25,7 +25,7 @@ export async function createCategory(input: {
   type: CategoryType
   color?: string
 }): Promise<{ data: { category: Category } }> {
-  return apiFetch('/categories', {
+  return apiFetch<{ data: { category: Category } }>('/categories', {
     method: 'POST',
     body: JSON.stringify(input),
   })
@@ -38,12 +38,12 @@ export async function updateCategory(
     color?: string | null
   },
 ): Promise<{ data: { category: Category } }> {
-  return apiFetch(`/categories/${encodeURIComponent(id)}`, {
+  return apiFetch<{ data: { category: Category } }>(`/categories/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
   })
 }
 
 export async function deleteCategory(id: string): Promise<{ data: { deleted: boolean } }> {
-  return apiFetch(`/categories/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  return apiFetch<{ data: { deleted: boolean } }>(`/categories/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }

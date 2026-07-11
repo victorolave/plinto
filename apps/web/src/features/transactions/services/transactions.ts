@@ -44,7 +44,7 @@ export interface Transfer {
 
 export async function listTransactions(accountId?: string): Promise<{ data: { transactions: Transaction[] } }> {
   const url = accountId ? `/transactions?accountId=${encodeURIComponent(accountId)}` : '/transactions'
-  return apiFetch(url)
+  return apiFetch<{ data: { transactions: Transaction[] } }>(url)
 }
 
 export async function createTransaction(input: {
@@ -55,7 +55,7 @@ export async function createTransaction(input: {
   occurredAt?: string
   categoryId?: string
 }): Promise<{ data: { transaction: Transaction } }> {
-  return apiFetch('/transactions', {
+  return apiFetch<{ data: { transaction: Transaction } }>('/transactions', {
     method: 'POST',
     body: JSON.stringify(input),
   })
@@ -72,14 +72,14 @@ export async function updateTransaction(
     categoryId?: string | null
   },
 ): Promise<{ data: { transaction: Transaction } }> {
-  return apiFetch(`/transactions/${encodeURIComponent(id)}`, {
+  return apiFetch<{ data: { transaction: Transaction } }>(`/transactions/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
   })
 }
 
 export async function listBalances(): Promise<{ data: { balances: AccountBalance[] } }> {
-  return apiFetch('/transactions/balances')
+  return apiFetch<{ data: { balances: AccountBalance[] } }>('/transactions/balances')
 }
 
 export async function createTransfer(input: {
@@ -92,7 +92,7 @@ export async function createTransfer(input: {
   description?: string
   occurredAt?: string
 }): Promise<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }> {
-  return apiFetch('/transactions/transfers', {
+  return apiFetch<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }>('/transactions/transfers', {
     method: 'POST',
     body: JSON.stringify(input),
   })

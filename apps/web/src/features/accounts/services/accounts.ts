@@ -16,7 +16,7 @@ export async function listAccounts(options: {
   includeArchived?: boolean
 } = {}): Promise<{ data: { accounts: Account[] } }> {
   const query = options.includeArchived ? '?includeArchived=true' : ''
-  return apiFetch(`/accounts${query}`)
+  return apiFetch<{ data: { accounts: Account[] } }>(`/accounts${query}`)
 }
 
 export async function createAccount(input: {
@@ -24,7 +24,7 @@ export async function createAccount(input: {
   type: AccountType
   currency: string
 }): Promise<{ data: { account: Account } }> {
-  return apiFetch('/accounts', {
+  return apiFetch<{ data: { account: Account } }>('/accounts', {
     method: 'POST',
     body: JSON.stringify(input),
   })
@@ -37,7 +37,7 @@ export async function updateAccount(
     type?: AccountType
   },
 ): Promise<{ data: { account: Account } }> {
-  return apiFetch(`/accounts/${encodeURIComponent(id)}`, {
+  return apiFetch<{ data: { account: Account } }>(`/accounts/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
   })
@@ -47,13 +47,13 @@ export async function updateAccount(
 export async function deleteAccount(
   id: string,
 ): Promise<{ data: { account: Account } }> {
-  return apiFetch(`/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  return apiFetch<{ data: { account: Account } }>(`/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
 export async function restoreAccount(
   id: string,
 ): Promise<{ data: { account: Account } }> {
-  return apiFetch(`/accounts/${encodeURIComponent(id)}/restore`, {
+  return apiFetch<{ data: { account: Account } }>(`/accounts/${encodeURIComponent(id)}/restore`, {
     method: 'POST',
   })
 }

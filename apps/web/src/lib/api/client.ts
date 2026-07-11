@@ -3,7 +3,7 @@
  * 401 means the session genuinely ended (idle timeout or absolute cap) — send
  * the user back to login rather than attempting a refresh.
  */
-export async function apiFetch(path: string, init?: RequestInit): Promise<any> {
+export async function apiFetch<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api'
 
   const response = await fetch(`${baseUrl}${path}`, {
@@ -29,8 +29,8 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<any> {
   }
 
   if (response.status === 204) {
-    return null
+    return null as T
   }
 
-  return response.json()
+  return (await response.json()) as T
 }

@@ -47,7 +47,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     const run = async () => {
       try {
-        const me = await apiFetch('/me')
+        const me = await apiFetch<{
+          data: {
+            activeTenantId: string | null
+            user: { name?: string; email?: string }
+          }
+        }>('/me')
         const tenantId = me?.data?.activeTenantId ?? null
         if (!tenantId) {
           window.location.href = '/select-tenant'
