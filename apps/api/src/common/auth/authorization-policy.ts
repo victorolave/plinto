@@ -8,6 +8,7 @@ export type Permission =
   | 'member:change-role'
   | 'account:write'
   | 'account:read'
+  | 'account:delete'
   | 'transaction:write'
   | 'transaction:read'
   | 'report:read'
@@ -24,6 +25,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'member:change-role',
     'account:write',
     'account:read',
+    'account:delete',
     'transaction:write',
     'transaction:read',
     'report:read',
@@ -34,6 +36,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'tenant:select',
     'account:write',
     'account:read',
+    'account:delete',
     'transaction:write',
     'transaction:read',
     'report:read',

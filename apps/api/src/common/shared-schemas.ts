@@ -4,6 +4,7 @@ export {
   SelectTenantSchema,
   CreateSessionSchema,
   CreateAccountSchema,
+  UpdateAccountSchema,
   CreateTransactionSchema,
   UpdateTransactionSchema,
   CreateTransferSchema,

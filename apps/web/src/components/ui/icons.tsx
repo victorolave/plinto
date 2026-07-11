@@ -197,6 +197,13 @@ export const Trash = (p: IconProps) =>
     <path key="3" d="M10 11v6M14 11v6" />,
   ])
 
+export const MoreVertical = (p: IconProps) =>
+  svg(p, [
+    <circle key="0" cx="12" cy="5" r="1" />,
+    <circle key="1" cx="12" cy="12" r="1" />,
+    <circle key="2" cx="12" cy="19" r="1" />,
+  ])
+
 export const Repeat = (p: IconProps) =>
   svg(p, [
     <path key="0" d="M17 2l4 4-4 4" />,

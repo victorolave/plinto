@@ -44,11 +44,12 @@ model Tenant {
 model Account {
   id        String      @id @default(uuid())
   tenantId  String      @map("tenant_id")
-  name      String
-  type      AccountType
-  currency  String
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  name       String
+  type       AccountType
+  currency   String
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  archivedAt DateTime?   @map("archived_at")
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   transactions Transaction[]
@@ -57,6 +58,7 @@ model Account {
   recurringRules RecurringTransactionRule[]
 
   @@index([tenantId])
+  @@index([tenantId, archivedAt])
   @@map("accounts")
 }
 

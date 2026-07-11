@@ -801,37 +801,100 @@
 }
 
 /* ============================================================
-   Account card (4px colored left rail)
+   Account card
    ============================================================ */
 .account-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--space-4);
 }
 .account-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
   background: var(--surface-card);
   border: 1px solid var(--border-default);
-  border-left: 4px solid var(--plinto-red-500);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-sm);
   padding: var(--space-5);
-  min-height: 132px;
+  min-height: 148px;
   text-align: left;
-  cursor: pointer;
-  transition: box-shadow var(--duration-fast), transform var(--duration-fast);
+  transition: box-shadow var(--duration-fast), transform var(--duration-fast),
+    border-color var(--duration-fast);
 }
 .account-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
 }
-.account-card-top {
+.account-card-head {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+.account-card-id {
+  min-width: 0;
+  flex: 1;
+}
+/* kebab actions menu, pinned to the top-right of the card */
+.account-card-actions {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.account-menu {
+  position: relative;
+}
+.account-menu .icon-btn {
+  width: 32px;
+  height: 32px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-subtle);
+}
+.account-menu .icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-body);
+}
+.account-menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: var(--z-dropdown);
+  min-width: 168px;
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+.account-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-body);
+  text-align: left;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+.account-menu-item:hover {
+  background: var(--surface-hover);
+}
+.account-menu-item--danger {
+  color: var(--status-danger);
+}
+.account-menu-item--danger:hover {
+  background: var(--plinto-red-50);
 }
 .account-icon {
   width: 38px;
@@ -844,15 +907,52 @@
   justify-content: center;
   flex-shrink: 0;
 }
+/* on the accounts page the icon becomes a branded badge */
+.account-card .account-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-brand-subtle);
+  color: var(--plinto-red-500);
+}
 .account-name {
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   color: var(--text-strong);
 }
+.account-card-id .account-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-type {
+  margin-top: 1px;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+/* shared meta line (dashboard, recurring, archived list) */
 .account-meta {
   font-size: var(--text-xs);
   color: var(--text-subtle);
   text-transform: capitalize;
+}
+/* balance sits at the foot of the card, separated by a hairline */
+.account-card-balance {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.account-card-balance::before {
+  content: '';
+  display: block;
+  height: 1px;
+  background: var(--border-subtle);
+  margin-bottom: var(--space-3);
 }
 .account-add {
   border: 1.5px dashed var(--border-strong);
@@ -864,16 +964,195 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  min-height: 132px;
+  gap: var(--space-3);
+  min-height: 148px;
   font-family: var(--font-sans);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-  transition: border-color var(--duration-fast), color var(--duration-fast);
+  transition: border-color var(--duration-fast), color var(--duration-fast),
+    background var(--duration-fast);
+}
+.account-add-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  transition: background var(--duration-fast), color var(--duration-fast);
 }
 .account-add:hover {
   border-color: var(--plinto-red-300);
   color: var(--text-brand);
+  background: var(--surface-brand-subtle);
+}
+.account-add:hover .account-add-icon {
+  background: var(--plinto-red-100);
+  color: var(--plinto-red-500);
+}
+
+/* ---- loading skeletons ---- */
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--neutral-100) 25%,
+    var(--neutral-200) 37%,
+    var(--neutral-100) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+.account-card--skeleton {
+  pointer-events: none;
+}
+.skeleton-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+.skeleton-chip {
+  width: 46px;
+  height: 22px;
+  border-radius: var(--radius-chip);
+}
+.skeleton-line {
+  height: 12px;
+}
+.skeleton-line--name {
+  width: 62%;
+  height: 14px;
+}
+.skeleton-line--type {
+  width: 34%;
+  height: 9px;
+  margin-top: var(--space-2);
+}
+.skeleton-line--eyebrow {
+  width: 52px;
+  height: 9px;
+  margin-bottom: 6px;
+}
+.skeleton-line--amount {
+  width: 56%;
+  height: 18px;
+}
+.skeleton-line--heading {
+  width: 96px;
+}
+.skeleton-line--total {
+  width: 132px;
+  height: 16px;
+}
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--neutral-100);
+  }
+}
+
+/* ---- rich empty state (shared: EmptyState component) ---- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-4);
+  max-width: 420px;
+  margin: var(--space-7) auto;
+  padding: var(--space-7) var(--space-5);
+}
+.empty-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-brand-subtle);
+  color: var(--plinto-red-500);
+}
+.empty-title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+.empty-text {
+  font-size: var(--text-md);
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: calc(-1 * var(--space-2)) 0 var(--space-1);
+}
+.empty-action {
+  margin-top: var(--space-1);
+}
+/* compact variant for in-card / sub-section empties */
+.empty--compact {
+  gap: var(--space-3);
+  margin: var(--space-4) auto;
+  padding: var(--space-6) var(--space-4);
+}
+.empty--compact .empty-badge {
+  width: 52px;
+  height: 52px;
+}
+.empty--compact .empty-title {
+  font-size: var(--text-lg);
+}
+.empty--compact .empty-text {
+  font-size: var(--text-sm);
+}
+
+/* archived accounts (soft-deleted) */
+.archived-section {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+.archived-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  transition: color var(--duration-fast);
+}
+.archived-toggle:hover {
+  color: var(--text-body);
+}
+.archived-list {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.archived-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+.archived-row .account-name {
+  color: var(--text-body);
 }
 
 /* ============================================================
@@ -1303,6 +1582,9 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
+  /* size each field to its own content so an asymmetric hint (e.g. the
+     currency note) can't stretch the sibling and push its control down */
+  align-items: start;
 }
 .form-grid--amount {
   grid-template-columns: 1fr 120px;
