@@ -134,12 +134,6 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@20.19.27)(terser@5.44.1)
 
-  packages/config:
-    devDependencies:
-      typescript:
-        specifier: ^5.5.0
-        version: 5.9.3
-
   packages/shared:
     dependencies:
       zod:

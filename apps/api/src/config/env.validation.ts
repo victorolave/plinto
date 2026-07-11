@@ -1,12 +1,11 @@
 import { z } from 'zod'
 
+// OIDC is handled entirely by the web BFF (see ADR 0003); the API only ever
+// consumes an already-authenticated identity via the internal key, so it does
+// not declare or read any OIDC_* variables.
 const envSchema = z.object({
   NODE_ENV: z.string().optional(),
   PORT: z.string().optional(),
-  OIDC_ISSUER_URL: z.string().url(),
-  OIDC_CLIENT_ID: z.string().min(1),
-  OIDC_CLIENT_SECRET: z.string().min(1),
-  OIDC_REDIRECT_URI: z.string().url(),
   INTERNAL_API_KEY: z.string().min(1),
   WEB_ORIGIN: z.string().url().optional(),
   DATABASE_URL: z.string().url().optional(),

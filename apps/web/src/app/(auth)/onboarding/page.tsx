@@ -1,64 +1,24 @@
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
 import { OnboardingForm } from '../../../features/auth/components/onboarding-form'
 import { AuthLayout } from '../../../components/layout/auth-layout'
+import { fetchCurrentUser } from '../../../lib/auth/server-session'
 
-async function checkOnboardingStatus() {
-  const sessionCookie = cookies().get('plinto_session')?.value
-  if (!sessionCookie) {
+// Guards the onboarding screen: no session → login; already onboarded → move on
+// to the dashboard or household selection.
+async function redirectIfOnboarded() {
+  const session = await fetchCurrentUser()
+  if (!session?.user) {
     redirect('/login')
   }
 
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api'
-  
-  // Ensure we have an absolute URL for server-side fetch
-  const meUrl = apiBase.startsWith('http')
-    ? `${apiBase}/me`
-    : `http://localhost:3001${apiBase}/me`
-
-  try {
-    const response = await fetch(meUrl, {
-      headers: {
-        Cookie: `plinto_session=${sessionCookie}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    })
-
-    if (!response.ok) {
-      redirect('/login')
-    }
-
-    const data = await response.json()
-    const user = data?.data?.user
-    const memberships = data?.data?.memberships ?? []
-    const activeTenantId = data?.data?.activeTenantId
-
-    // If user has name and at least one membership, onboarding is complete
-    if (user?.name && memberships.length > 0) {
-      // Redirect to dashboard or tenant selection
-      if (activeTenantId) {
-        redirect('/dashboard')
-      } else {
-        redirect('/select-tenant')
-      }
-    }
-  } catch (error: unknown) {
-    // NEXT_REDIRECT is a special error thrown by Next.js redirect() function
-    // We need to re-throw it to allow the redirect to work
-    if (error && typeof error === 'object' && 'digest' in error) {
-      const digest = (error as { digest?: string }).digest
-      if (digest && digest.startsWith('NEXT_REDIRECT')) {
-        throw error
-      }
-    }
-    // If we can't verify status, redirect to login
-    redirect('/login')
+  const { user, memberships, activeTenantId } = session
+  if (user.name && memberships.length > 0) {
+    redirect(activeTenantId ? '/dashboard' : '/select-tenant')
   }
 }
 
 export default async function OnboardingPage() {
-  await checkOnboardingStatus()
+  await redirectIfOnboarded()
 
   return (
     <AuthLayout
