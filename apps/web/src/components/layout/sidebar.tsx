@@ -9,7 +9,6 @@ import {
   Wallet,
   List,
   Tag,
-  Chart,
   Settings,
   LogOut,
   type IconProps,
@@ -32,7 +31,6 @@ const NAV: NavEntry[] = [
   { id: 'accounts', label: 'Accounts', icon: Wallet },
   { id: 'transactions', label: 'Transactions', icon: List },
   { id: 'categories', label: 'Categories', icon: Tag },
-  { id: 'reports', label: 'Reports', icon: Chart },
 ]
 
 export interface SidebarUser {

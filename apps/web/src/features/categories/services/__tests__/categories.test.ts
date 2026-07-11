@@ -5,7 +5,6 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-  getExpenseReport,
 } from '../categories'
 import { apiFetch } from '../../../../lib/api/client'
 
@@ -83,22 +82,5 @@ describe('categories API service', () => {
 
     expect(apiFetch).toHaveBeenCalledWith('/categories/cat-1', { method: 'DELETE' })
     expect(result).toEqual({ data: { deleted: true } })
-  })
-
-  it('fetches expense report with from and to date params', async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce({ data: { from: '2026-01-01', to: '2026-01-31', items: [] } })
-
-    const result = await getExpenseReport('2026-01-01', '2026-01-31')
-
-    expect(apiFetch).toHaveBeenCalledWith('/reports/expenses-by-category?from=2026-01-01&to=2026-01-31')
-    expect(result).toEqual({ data: { from: '2026-01-01', to: '2026-01-31', items: [] } })
-  })
-
-  it('encodes date params in the expense report URL', async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce({ data: { items: [] } })
-
-    await getExpenseReport('2026-01-01', '2026-12-31')
-
-    expect(apiFetch).toHaveBeenCalledWith('/reports/expenses-by-category?from=2026-01-01&to=2026-12-31')
   })
 })
