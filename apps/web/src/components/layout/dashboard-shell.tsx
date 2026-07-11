@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { apiFetch } from '../../lib/api/client'
 import { listTenants, selectTenant } from '../../features/tenants/services/tenant-selection'
@@ -98,9 +99,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   if (booting) {
     return (
-      <div className="app-loading">
-        <span className="brand-square">P</span>
-        <span className="muted">Loading your household…</span>
+      <div className="app-loading" role="status" aria-live="polite">
+        <span className="app-loading__brand">
+          <Image
+            src="/brand/logo-horizontal.png"
+            alt="Plinto"
+            width={144}
+            height={44}
+            priority
+          />
+        </span>
+        <span className="app-loading__label">Loading your household…</span>
+        <span className="app-loading__bar" aria-hidden="true" />
       </div>
     )
   }
