@@ -896,6 +896,147 @@
 .account-menu-item--danger:hover {
   background: var(--plinto-red-50);
 }
+
+/* ---- reusable kebab actions menu (ActionsMenu) ---- */
+.actions-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+.actions-menu .icon-btn {
+  width: 32px;
+  height: 32px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-subtle);
+}
+.actions-menu .icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-body);
+}
+.actions-menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: var(--z-dropdown);
+  min-width: 168px;
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+.actions-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-body);
+  text-align: left;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+.actions-menu-item:hover {
+  background: var(--surface-hover);
+}
+.actions-menu-item--danger {
+  color: var(--status-danger);
+}
+.actions-menu-item--danger:hover {
+  background: var(--plinto-red-50);
+}
+
+/* ---- categories view ---- */
+.categories-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.category-list {
+  padding: var(--space-2) var(--space-4);
+}
+.category-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+.category-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+}
+/* color selector: preset palette + native picker + hex (category form) */
+.color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.color-swatch-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform var(--duration-fast), border-color var(--duration-fast);
+}
+.color-swatch-btn:hover {
+  transform: scale(1.12);
+}
+.color-swatch-btn.is-active {
+  border-color: var(--text-strong);
+}
+.color-custom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.color-native {
+  width: var(--control-md);
+  height: var(--control-md);
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.color-native::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+.color-native::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+.color-native::-moz-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+.color-custom .input {
+  flex: 1;
+  min-width: 0;
+}
+
 .account-icon {
   width: 38px;
   height: 38px;
