@@ -4,7 +4,7 @@
  * the user back to login rather than attempting a refresh.
  */
 export async function apiFetch(path: string, init?: RequestInit): Promise<any> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api/v1'
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api'
 
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
