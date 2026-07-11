@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
 import { Inter, Montserrat, Roboto_Mono } from 'next/font/google'
+import { QueryProvider } from '../components/providers/query-provider'
 import '../styles/globals.css'
 
 // Inter — product UI, body & data (the SaaS-native workhorse).
@@ -38,7 +39,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={`${inter.variable} ${montserrat.variable} ${robotoMono.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   )
 }

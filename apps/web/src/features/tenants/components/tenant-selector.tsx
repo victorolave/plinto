@@ -1,37 +1,33 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { listTenants, selectTenant } from '../services/tenant-selection'
+import { queryKeys } from '../../../lib/api/query-keys'
 import { ChevronRight } from '../../../components/ui/icons'
 
 export function TenantSelector() {
-  const [tenants, setTenants] = useState<Array<{ id: string; name: string }>>([])
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const {
+    data: tenants = [],
+    isLoading: loading,
+    error: loadError,
+  } = useQuery({
+    queryKey: queryKeys.tenants,
+    queryFn: async () => (await listTenants()).data.tenants,
+  })
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        const response = await listTenants()
-        setTenants(response?.data?.tenants ?? [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load tenants')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void run()
-  }, [])
-
-  const handleSelect = async (tenantId: string) => {
-    try {
-      await selectTenant(tenantId)
+  const selectMutation = useMutation({
+    mutationFn: (tenantId: string) => selectTenant(tenantId),
+    onSuccess: () => {
       window.location.href = '/dashboard'
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to select tenant')
-    }
+    },
+  })
+
+  const handleSelect = (tenantId: string) => {
+    selectMutation.mutate(tenantId)
   }
+
+  const activeError = selectMutation.error ?? loadError
+  const error = activeError instanceof Error ? activeError.message : null
 
   if (loading) {
     return <p className="muted">Loading households…</p>

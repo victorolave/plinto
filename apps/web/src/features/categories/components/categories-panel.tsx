@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Category,
   deleteCategory,
   listCategories,
 } from '../services/categories'
+import { queryKeys } from '../../../lib/api/query-keys'
 import { CategoryForm } from './category-form'
 import { CategoriesSkeleton } from './categories-skeleton'
 import { Card } from '../../../components/ui/card'
@@ -18,32 +20,32 @@ import { ActionsMenu } from '../../../components/ui/actions-menu'
 import { Plus, Pencil, Trash, Tag } from '../../../components/ui/icons'
 
 export function CategoriesPanel() {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  const {
+    data: categories = [],
+    isLoading: loading,
+    error: loadError,
+  } = useQuery({
+    queryKey: queryKeys.categories,
+    queryFn: async () => (await listCategories()).data.categories,
+  })
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Category | null>(null)
-  const [deleting, setDeleting] = useState(false)
 
-  const loadCategories = async () => {
-    const response = await listCategories()
-    setCategories(response.data.categories)
-  }
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteCategory(id),
+    onSuccess: () => {
+      setPendingDelete(null)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.categories })
+    },
+  })
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        await loadCategories()
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load categories')
-      } finally {
-        setLoading(false)
-      }
-    }
-    void run()
-  }, [])
+  const activeError = deleteMutation.error ?? loadError
+  const error = activeError instanceof Error ? activeError.message : null
+  const deleting = deleteMutation.isPending
 
   const openCreate = () => {
     setEditing(null)
@@ -60,24 +62,14 @@ export function CategoriesPanel() {
     setEditing(null)
   }
 
-  const handleSaved = async () => {
-    await loadCategories()
+  const handleSaved = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.categories })
     closeDrawer()
   }
 
-  const confirmDelete = async () => {
+  const confirmDelete = () => {
     if (!pendingDelete) return
-    setDeleting(true)
-    setError(null)
-    try {
-      await deleteCategory(pendingDelete.id)
-      setPendingDelete(null)
-      await loadCategories()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete category')
-    } finally {
-      setDeleting(false)
-    }
+    deleteMutation.mutate(pendingDelete.id)
   }
 
   return (

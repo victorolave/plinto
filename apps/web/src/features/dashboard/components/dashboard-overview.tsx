@@ -1,14 +1,16 @@
 'use client'
 
-import { type CSSProperties, useEffect, useState } from 'react'
+import { type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
-import { listAccounts, type Account } from '../../accounts/services/accounts'
+import { useQuery } from '@tanstack/react-query'
+import { listAccounts } from '../../accounts/services/accounts'
 import {
   listBalances,
   listTransactions,
   type AccountBalance,
   type Transaction,
 } from '../../transactions/services/transactions'
+import { queryKeys } from '../../../lib/api/query-keys'
 import { Card, CardHeader } from '../../../components/ui/card'
 import { StatCard } from '../../../components/ui/stat-card'
 import { Amount } from '../../../components/ui/amount'
@@ -60,31 +62,27 @@ const monthLabel = new Date().toLocaleDateString(undefined, {
 export function DashboardOverview() {
   const router = useRouter()
   const { activeTenantName: tenantName } = useDashboard()
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [balances, setBalances] = useState<AccountBalance[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        const [accountsRes, balancesRes, transactionsRes] = await Promise.all([
-          listAccounts(),
-          listBalances(),
-          listTransactions(),
-        ])
-        setAccounts(accountsRes.data.accounts)
-        setBalances(balancesRes.data.balances)
-        setTransactions(transactionsRes.data.transactions)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load your dashboard')
-      } finally {
-        setLoading(false)
-      }
-    }
-    void run()
-  }, [])
+  const accountsQuery = useQuery({
+    queryKey: queryKeys.accounts(),
+    queryFn: async () => (await listAccounts()).data.accounts,
+  })
+  const balancesQuery = useQuery({
+    queryKey: queryKeys.balances,
+    queryFn: async () => (await listBalances()).data.balances,
+  })
+  const transactionsQuery = useQuery({
+    queryKey: queryKeys.transactions(),
+    queryFn: async () => (await listTransactions()).data.transactions,
+  })
+
+  const accounts = accountsQuery.data ?? []
+  const balances: AccountBalance[] = balancesQuery.data ?? []
+  const transactions: Transaction[] = transactionsQuery.data ?? []
+  const loading =
+    accountsQuery.isLoading || balancesQuery.isLoading || transactionsQuery.isLoading
+  const loadError = accountsQuery.error ?? balancesQuery.error ?? transactionsQuery.error
+  const error = loadError instanceof Error ? loadError.message : null
 
   const totals = sumByCurrency(balances)
   const recent = transactions.slice(0, 6)
