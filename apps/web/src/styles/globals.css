@@ -1308,6 +1308,212 @@
   gap: var(--space-5);
 }
 
+/* ============================================================
+   Drawer (right-side panel / bottom sheet on mobile)
+   ============================================================ */
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(10, 10, 10, 0.42);
+  backdrop-filter: blur(2px);
+  animation: drawer-fade var(--duration-fast) ease-out;
+}
+.drawer {
+  display: flex;
+  flex-direction: column;
+  width: 440px;
+  max-width: 100%;
+  height: 100%;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-xl);
+  animation: drawer-slide var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1);
+}
+.drawer--lg {
+  width: 640px;
+}
+.drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.drawer-description {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+.drawer-footer {
+  padding: var(--space-5) var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+/* forms fill the drawer so their action row can pin to the bottom */
+.drawer-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: 100%;
+}
+.drawer-form-actions {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+@keyframes drawer-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes drawer-slide {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (max-width: 560px) {
+  /* becomes a bottom sheet */
+  .drawer-scrim {
+    justify-content: stretch;
+    align-items: flex-end;
+  }
+  .drawer,
+  .drawer--lg {
+    width: 100%;
+    height: auto;
+    max-height: 92vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    animation: drawer-slide-up var(--duration-base) cubic-bezier(0.32, 0.72, 0, 1);
+  }
+}
+@keyframes drawer-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drawer-scrim,
+  .drawer,
+  .drawer--lg {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   Transactions view
+   ============================================================ */
+.balance-strip {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+  scrollbar-width: thin;
+}
+.balance-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  min-width: 148px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+}
+.balance-pill-name {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tx-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.tx-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.tx-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+/* the search Input wraps in .input-group (leftIcon), so grow the wrapper */
+.tx-filters .input-group {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.tx-account-filter {
+  width: 200px;
+  flex-shrink: 0;
+}
+.tx-date-range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.tx-date-preset {
+  width: 140px;
+  flex-shrink: 0;
+}
+.tx-date-input {
+  width: 150px;
+  flex-shrink: 0;
+}
+.tx-date-sep {
+  color: var(--text-subtle);
+}
+@media (max-width: 560px) {
+  .tx-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tx-account-filter,
+  .tx-date-range,
+  .tx-date-preset,
+  .tx-date-input {
+    width: 100%;
+  }
+  .tx-date-input {
+    flex: 1;
+  }
+}
+.tx-list {
+  padding: var(--space-2) var(--space-4);
+}
+
 /* category chips */
 .chip-row {
   display: flex;
