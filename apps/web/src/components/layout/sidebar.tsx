@@ -15,8 +15,9 @@ import {
 } from '../ui/icons'
 import { Avatar } from '../ui/avatar'
 import { IconButton } from '../ui/button'
-import { TenantSwitcher, type TenantOption } from './tenant-switcher'
+import { TenantSwitcher } from './tenant-switcher'
 import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
+import { useDashboard } from './dashboard-context'
 
 export type { DashboardSection } from './dashboard-nav'
 
@@ -32,20 +33,6 @@ const NAV: NavEntry[] = [
   { id: 'transactions', label: 'Transactions', icon: List },
   { id: 'categories', label: 'Categories', icon: Tag },
 ]
-
-export interface SidebarUser {
-  name: string
-  email?: string
-}
-
-export interface SidebarProps {
-  tenants: TenantOption[]
-  activeTenantId: string | null
-  onSelectTenant: (tenantId: string) => void
-  user: SidebarUser
-  onLogout: () => void
-  loggingOut?: boolean
-}
 
 function NavItem({ entry, active }: { entry: NavEntry; active: DashboardSection }) {
   const Icon = entry.icon
@@ -63,14 +50,12 @@ function NavItem({ entry, active }: { entry: NavEntry; active: DashboardSection 
   )
 }
 
-export function Sidebar({
-  tenants,
-  activeTenantId,
-  onSelectTenant,
-  user,
-  onLogout,
-  loggingOut = false,
-}: SidebarProps) {
+/** Reads tenant/user/logout state from DashboardContext — see dashboard-shell.tsx,
+ * which is the single provider for this and BottomNav so neither needs the
+ * tenants/activeTenantId/onSelectTenant/user/onLogout/loggingOut props threaded in. */
+export function Sidebar() {
+  const { tenants, activeTenantId, onSelectTenant, user, onLogout, loggingOut } =
+    useDashboard()
   const active = sectionFromPath(usePathname() ?? '')
   return (
     <aside className="sidebar">

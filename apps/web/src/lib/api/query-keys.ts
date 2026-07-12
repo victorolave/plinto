@@ -4,6 +4,7 @@
  * key a query reads, so shared resources refresh consistently across pages.
  */
 export const queryKeys = {
+  me: ['me'] as const,
   categories: ['categories'] as const,
   accounts: (includeArchived = false) => ['accounts', { includeArchived }] as const,
   balances: ['balances'] as const,

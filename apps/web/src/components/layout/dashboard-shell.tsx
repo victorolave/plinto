@@ -1,20 +1,23 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { apiFetch } from '../../lib/api/client'
 import { listTenants, selectTenant } from '../../features/tenants/services/tenant-selection'
+import { queryKeys } from '../../lib/api/query-keys'
 import { Sidebar } from './sidebar'
 import { BottomNav } from './bottom-nav'
 import { TopBar } from './top-bar'
 import { DashboardProvider } from './dashboard-context'
 import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
-import type { TenantOption } from './tenant-switcher'
 
-interface MeUser {
-  name?: string | null
-  email?: string | null
+interface MeResponse {
+  data: {
+    activeTenantId: string | null
+    user: { name?: string; email?: string }
+  }
 }
 
 const TITLES: Record<
@@ -38,43 +41,51 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const section = sectionFromPath(pathname)
 
-  const [booting, setBooting] = useState(true)
-  const [user, setUser] = useState<MeUser>({})
-  const [tenants, setTenants] = useState<TenantOption[]>([])
-  const [activeTenantId, setActiveTenantId] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
 
+  // Bootstrap: who is the current user, and which tenant is active. Kept on
+  // TanStack Query so it shares the same cache/retry story as the rest of the
+  // app, but the redirect side-effects below preserve the original imperative
+  // bootstrap's behavior exactly: no session/failed fetch -> /login, no active
+  // tenant -> /select-tenant.
+  const meQuery = useQuery({
+    queryKey: queryKeys.me,
+    queryFn: () => apiFetch<MeResponse>('/me'),
+    retry: false,
+  })
+
+  const activeTenantId = meQuery.data?.data?.activeTenantId ?? null
+  const hasActiveSession = meQuery.isSuccess && activeTenantId !== null
+
+  // Only fetched once the /me bootstrap resolved a tenant — mirrors the
+  // original sequential `await listTenants()` after the tenant id was known.
+  const tenantsQuery = useQuery({
+    queryKey: queryKeys.tenants,
+    queryFn: async () => (await listTenants())?.data?.tenants ?? [],
+    enabled: hasActiveSession,
+    retry: false,
+  })
+
   useEffect(() => {
-    const run = async () => {
-      try {
-        const me = await apiFetch<{
-          data: {
-            activeTenantId: string | null
-            user: { name?: string; email?: string }
-          }
-        }>('/me')
-        const tenantId = me?.data?.activeTenantId ?? null
-        if (!tenantId) {
-          window.location.href = '/select-tenant'
-          return
-        }
-        setUser({ name: me?.data?.user?.name, email: me?.data?.user?.email })
-        setActiveTenantId(tenantId)
-
-        try {
-          const tenantsRes = await listTenants()
-          setTenants(tenantsRes?.data?.tenants ?? [])
-        } catch {
-          // Non-fatal: the switcher just shows the active household name fallback.
-        }
-        setBooting(false)
-      } catch {
-        window.location.href = '/login'
-      }
+    if (meQuery.isError) {
+      window.location.href = '/login'
+      return
     }
+    if (meQuery.isSuccess && activeTenantId === null) {
+      window.location.href = '/select-tenant'
+    }
+  }, [meQuery.isError, meQuery.isSuccess, activeTenantId])
 
-    void run()
-  }, [])
+  // Stays true (loading screen shown) until the session AND tenant list have
+  // both settled — same gate as the original `setBooting(false)` call, which
+  // only ran after `listTenants()` (success or swallowed failure) completed.
+  const booting = !hasActiveSession || tenantsQuery.isPending
+
+  const user = {
+    name: meQuery.data?.data?.user?.name,
+    email: meQuery.data?.data?.user?.email,
+  }
+  const tenants = tenantsQuery.data ?? []
 
   const handleSelectTenant = async (tenantId: string) => {
     try {
@@ -120,30 +131,25 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <DashboardProvider value={{ activeTenantName }}>
+    <DashboardProvider
+      value={{
+        activeTenantName,
+        tenants,
+        activeTenantId,
+        onSelectTenant: handleSelectTenant,
+        user: { name: user.name || 'Your account', email: user.email || undefined },
+        onLogout: handleLogout,
+        loggingOut,
+      }}
+    >
       <div className="app-shell">
-        <Sidebar
-          tenants={tenants}
-          activeTenantId={activeTenantId}
-          onSelectTenant={handleSelectTenant}
-          user={{ name: user.name || 'Your account', email: user.email || undefined }}
-          onLogout={handleLogout}
-          loggingOut={loggingOut}
-        />
+        <Sidebar />
         <div className="app-main">
           <TopBar title={title} subtitle={subtitle} onAdd={goToAdd} />
           <div className="app-scroll">{children}</div>
         </div>
 
-        <BottomNav
-          onAdd={goToAdd}
-          tenants={tenants}
-          activeTenantId={activeTenantId}
-          onSelectTenant={handleSelectTenant}
-          user={{ name: user.name || 'Your account', email: user.email || undefined }}
-          onLogout={handleLogout}
-          loggingOut={loggingOut}
-        />
+        <BottomNav onAdd={goToAdd} />
       </div>
     </DashboardProvider>
   )

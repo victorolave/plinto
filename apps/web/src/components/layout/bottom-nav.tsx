@@ -17,8 +17,9 @@ import {
   type IconProps,
 } from '../ui/icons'
 import { Avatar } from '../ui/avatar'
-import { TenantSwitcher, type TenantOption } from './tenant-switcher'
+import { TenantSwitcher } from './tenant-switcher'
 import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
+import { useDashboard } from './dashboard-context'
 
 interface BarEntry {
   id: DashboardSection
@@ -43,12 +44,6 @@ const MORE_SECTIONS: BarEntry[] = [
 
 export interface BottomNavProps {
   onAdd: () => void
-  tenants: TenantOption[]
-  activeTenantId: string | null
-  onSelectTenant: (tenantId: string) => void
-  user: { name: string; email?: string }
-  onLogout: () => void
-  loggingOut?: boolean
 }
 
 function BarLink({ entry, active }: { entry: BarEntry; active: DashboardSection }) {
@@ -66,15 +61,12 @@ function BarLink({ entry, active }: { entry: BarEntry; active: DashboardSection 
   )
 }
 
-export function BottomNav({
-  onAdd,
-  tenants,
-  activeTenantId,
-  onSelectTenant,
-  user,
-  onLogout,
-  loggingOut = false,
-}: BottomNavProps) {
+/** Reads tenant/user/logout state from DashboardContext — see dashboard-shell.tsx,
+ * which is the single provider for this and Sidebar so neither needs the
+ * tenants/activeTenantId/onSelectTenant/user/onLogout/loggingOut props threaded in. */
+export function BottomNav({ onAdd }: BottomNavProps) {
+  const { tenants, activeTenantId, onSelectTenant, user, onLogout, loggingOut } =
+    useDashboard()
   const [moreOpen, setMoreOpen] = useState(false)
   const active = sectionFromPath(usePathname() ?? '')
 
