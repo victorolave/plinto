@@ -14,6 +14,36 @@ export class TransactionService {
     private readonly categoryRepository: CategoryRepository,
   ) {}
 
+  /**
+   * Resolves a category for a tenant and asserts it matches the given
+   * transaction type. Centralizes the CATEGORY_NOT_FOUND / CATEGORY_TYPE_MISMATCH
+   * invariant shared by createTransaction and the explicit-categoryId path of
+   * updateTransaction, so the check codes/messages can't drift between them.
+   */
+  private async resolveCategoryForType(
+    categoryId: string,
+    type: TransactionType,
+    tenantId: string,
+  ): Promise<string> {
+    const category = await this.categoryRepository.findByIdForTenant(categoryId, tenantId)
+
+    if (!category) {
+      throw new NotFoundException({
+        code: 'CATEGORY_NOT_FOUND',
+        message: 'Category not found for the active tenant',
+      })
+    }
+
+    if (category.type !== type) {
+      throw new UnprocessableEntityException({
+        code: 'CATEGORY_TYPE_MISMATCH',
+        message: 'Category type must match the transaction type',
+      })
+    }
+
+    return categoryId
+  }
+
   async createTransaction(params: {
     tenantId: string
     actorUserId: string | null
@@ -39,23 +69,11 @@ export class TransactionService {
 
     let resolvedCategoryId: string | null = null
     if (params.categoryId) {
-      const category = await this.categoryRepository.findByIdForTenant(
+      resolvedCategoryId = await this.resolveCategoryForType(
         params.categoryId,
+        params.type,
         params.tenantId,
       )
-      if (!category) {
-        throw new NotFoundException({
-          code: 'CATEGORY_NOT_FOUND',
-          message: 'Category not found for the active tenant',
-        })
-      }
-      if (category.type !== params.type) {
-        throw new UnprocessableEntityException({
-          code: 'CATEGORY_TYPE_MISMATCH',
-          message: 'Category type must match the transaction type',
-        })
-      }
-      resolvedCategoryId = params.categoryId
     }
 
     const transaction = await this.transactionRepository.create({
@@ -275,23 +293,11 @@ export class TransactionService {
       resolvedCategoryId = null
     } else if (typeof params.categoryId === 'string') {
       // Caller provided an explicit new category — validate type match against effectiveType
-      const category = await this.categoryRepository.findByIdForTenant(
+      resolvedCategoryId = await this.resolveCategoryForType(
         params.categoryId,
+        effectiveType,
         params.tenantId,
       )
-      if (!category) {
-        throw new NotFoundException({
-          code: 'CATEGORY_NOT_FOUND',
-          message: 'Category not found for the active tenant',
-        })
-      }
-      if (category.type !== effectiveType) {
-        throw new UnprocessableEntityException({
-          code: 'CATEGORY_TYPE_MISMATCH',
-          message: 'Category type must match the transaction type',
-        })
-      }
-      resolvedCategoryId = params.categoryId
     } else if (
       params.type !== undefined &&
       params.type !== existing.type &&
