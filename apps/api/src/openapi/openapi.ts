@@ -24,6 +24,10 @@ import {
   CreateSessionSchema,
   UserSchema,
   MembershipSchema,
+  TenantSchema,
+  CreateTenantSchema,
+  SelectTenantSchema,
+  UpdateProfileSchema,
   ErrorResponseSchema,
 } from '@plinto/shared'
 
@@ -102,6 +106,11 @@ const CreateSessionSchemaRef = registry.register('CreateSession', CreateSessionS
 const UserSchemaRef = registry.register('User', UserSchema)
 const MembershipSchemaRef = registry.register('Membership', MembershipSchema)
 
+const TenantSchemaRef = registry.register('Tenant', TenantSchema)
+const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
+const SelectTenantSchemaRef = registry.register('SelectTenant', SelectTenantSchema)
+const UpdateProfileSchemaRef = registry.register('UpdateProfile', UpdateProfileSchema)
+
 const ErrorResponseSchemaRef = registry.register('ErrorResponse', ErrorResponseSchema)
 
 // Registry-only composite schemas: these compose existing shared schemas for
@@ -148,6 +157,32 @@ const DeletedResultSchema = z
 const LogoutResultSchema = z
   .object({ success: z.boolean() })
   .openapi('LogoutResult')
+
+const ListTenantsResultSchema = z
+  .object({
+    tenants: z.array(TenantSchemaRef),
+    memberships: z.array(MembershipSchemaRef),
+  })
+  .openapi('ListTenantsResult')
+
+const CreateTenantResultSchema = z
+  .object({
+    tenant: TenantSchemaRef,
+    membership: MembershipSchemaRef,
+  })
+  .openapi('CreateTenantResult')
+
+const ActiveTenantResultSchema = z
+  .object({ activeTenantId: z.string().nullable() })
+  .openapi('ActiveTenantResult')
+
+const MeResultSchema = z
+  .object({
+    user: UserSchemaRef.nullable(),
+    memberships: z.array(MembershipSchemaRef),
+    activeTenantId: z.string().nullable(),
+  })
+  .openapi('MeResult')
 
 // ---------------------------------------------------------------------------
 // Response helpers
@@ -532,8 +567,99 @@ registry.registerPath({
 })
 
 // ---------------------------------------------------------------------------
+// Tenants
+// ---------------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/tenants',
+  tags: ['Tenants'],
+  summary: 'List tenants and memberships for the authenticated user',
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse(
+      'Tenants and memberships the authenticated user belongs to.',
+      ListTenantsResultSchema,
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/tenants',
+  tags: ['Tenants'],
+  summary: 'Create a tenant and complete onboarding for the authenticated user',
+  security: sessionCookieAuth,
+  request: {
+    body: { content: { 'application/json': { schema: CreateTenantSchemaRef } } },
+  },
+  responses: {
+    201: dataResponse('Tenant and owner membership created.', CreateTenantResultSchema),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/tenants/active',
+  tags: ['Tenants'],
+  summary: 'Get the active tenant for the authenticated user',
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse(
+      'Active tenant id, or null if none is selected.',
+      ActiveTenantResultSchema,
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/tenants/active',
+  tags: ['Tenants'],
+  summary: 'Select the active tenant for the authenticated user',
+  security: sessionCookieAuth,
+  request: {
+    body: { content: { 'application/json': { schema: SelectTenantSchemaRef } } },
+  },
+  responses: {
+    200: dataResponse('Active tenant updated.', ActiveTenantResultSchema),
+    ...errorResponses,
+  },
+})
+
+// ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/me',
+  tags: ['Auth'],
+  summary: 'Get the authenticated user profile, memberships, and active tenant',
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse('Authenticated user profile.', MeResultSchema),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/me',
+  tags: ['Auth'],
+  summary: "Update the authenticated user's profile",
+  security: sessionCookieAuth,
+  request: {
+    body: { content: { 'application/json': { schema: UpdateProfileSchemaRef } } },
+  },
+  responses: {
+    200: dataResponse('Profile updated.', UserSchemaRef),
+    ...errorResponses,
+  },
+})
 
 registry.registerPath({
   method: 'post',
