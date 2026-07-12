@@ -70,6 +70,18 @@ describe('RecurringExecutionService', () => {
     expect(result).toEqual({ created: 1, skipped: 0 })
   })
 
+  it('counts a duplicate-signal (null) result as skipped, not created', async () => {
+    const rule = makeRule()
+    repository.listActiveMonthlyRulesDueBy.mockResolvedValue([rule])
+    repository.findExecutionByKey.mockResolvedValue(null)
+    repository.createExecutionTransaction.mockResolvedValue(null)
+
+    const result = await service.executeDue({ dueDate: '2026-07-05T12:00:00.000Z', jobId: 'job-1' })
+
+    expect(repository.createExecutionTransaction).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({ created: 0, skipped: 1 })
+  })
+
   it('skips already executed rule periods', async () => {
     repository.listActiveMonthlyRulesDueBy.mockResolvedValue([makeRule()])
     repository.findExecutionByKey.mockResolvedValue({ id: 'exec-existing' })

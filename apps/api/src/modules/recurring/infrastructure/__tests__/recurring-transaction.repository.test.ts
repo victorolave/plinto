@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { Prisma } from '@prisma/client'
 import { PrismaRecurringTransactionRepository } from '../prisma-recurring-transaction.repository'
 
 const makePrisma = () => ({
@@ -221,6 +222,52 @@ describe('RecurringTransactionRepository', () => {
       }),
     })
     expect(result).toEqual({ transaction: { id: 'tx-1' }, execution: { id: 'exec-1' } })
+  })
+
+  it('returns null when a concurrent execution wins the unique-constraint race (P2002)', async () => {
+    const prisma = makePrisma()
+    const tx = makePrisma()
+    const uniqueConstraintError = new Prisma.PrismaClientKnownRequestError(
+      'Unique constraint failed on the fields: (`tenant_id`,`idempotency_key`)',
+      { code: 'P2002', clientVersion: '5.0.0' },
+    )
+    tx.transaction.create.mockResolvedValue({ id: 'tx-1' })
+    tx.recurringTransactionExecution.create.mockRejectedValue(uniqueConstraintError)
+    prisma.$transaction.mockImplementation((callback) => callback(tx))
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+    const result = await repository.createExecutionTransaction({
+      rule: makeRule(),
+      period: '2026-07',
+      idempotencyKey: 'recurring:rule-1:2026-07',
+      occurredAt: new Date('2026-07-05T00:00:00.000Z'),
+      jobId: 'job-1',
+    })
+
+    expect(result).toBeNull()
+  })
+
+  it('re-throws non-P2002 Prisma errors instead of swallowing them', async () => {
+    const prisma = makePrisma()
+    const tx = makePrisma()
+    const otherError = new Prisma.PrismaClientKnownRequestError('Foreign key violation', {
+      code: 'P2003',
+      clientVersion: '5.0.0',
+    })
+    tx.transaction.create.mockResolvedValue({ id: 'tx-1' })
+    tx.recurringTransactionExecution.create.mockRejectedValue(otherError)
+    prisma.$transaction.mockImplementation((callback) => callback(tx))
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+    await expect(
+      repository.createExecutionTransaction({
+        rule: makeRule(),
+        period: '2026-07',
+        idempotencyKey: 'recurring:rule-1:2026-07',
+        occurredAt: new Date('2026-07-05T00:00:00.000Z'),
+        jobId: 'job-1',
+      }),
+    ).rejects.toBe(otherError)
   })
 
   it('propagates audit failures so the Prisma transaction rolls back', async () => {

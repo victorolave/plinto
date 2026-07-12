@@ -29,13 +29,23 @@ export class RecurringExecutionService {
         continue
       }
 
-      await this.recurringRepository.createExecutionTransaction({
+      const result = await this.recurringRepository.createExecutionTransaction({
         rule,
         period,
         idempotencyKey,
         occurredAt: toUtcOccurrenceDate(period, rule.dayOfMonth),
         jobId: params.jobId,
       })
+
+      // null means a concurrent caller already created this execution
+      // between the findExecutionByKey check above and this call (TOCTOU) —
+      // treat it the same as the pre-existing-execution branch: skipped, not
+      // created.
+      if (result === null) {
+        skipped += 1
+        continue
+      }
+
       created += 1
     }
 

@@ -38,11 +38,19 @@ export abstract class RecurringTransactionRepository {
 
   abstract listActiveMonthlyRulesDueBy(dueDate: Date): Promise<RecurringTransactionRule[]>
 
+  /**
+   * Creates the transaction + execution record for a due rule occurrence.
+   * Returns null if a concurrent caller already created an execution for the
+   * same (tenantId, idempotencyKey) pair — i.e. the unique constraint that
+   * backs findExecutionByKey was hit as a race rather than as the initial
+   * check. Callers must treat null the same as a pre-existing execution
+   * (skip), not as an error.
+   */
   abstract createExecutionTransaction(input: {
     rule: RecurringTransactionRule
     period: string
     idempotencyKey: string
     occurredAt: Date
     jobId?: string
-  }): Promise<RecurringExecutionResult>
+  }): Promise<RecurringExecutionResult | null>
 }

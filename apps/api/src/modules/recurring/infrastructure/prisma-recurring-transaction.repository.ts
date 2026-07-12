@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import {
   RecurringTransactionExecution,
@@ -82,6 +83,32 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
   }
 
   async createExecutionTransaction(input: {
+    rule: RecurringTransactionRule
+    period: string
+    idempotencyKey: string
+    occurredAt: Date
+    jobId?: string
+  }): Promise<RecurringExecutionResult | null> {
+    try {
+      return await this.runExecutionTransaction(input)
+    } catch (error) {
+      // A concurrent execution of the same (tenantId, idempotencyKey) — or
+      // (ruleId, period) — pair raced past the findExecutionByKey check and
+      // landed first. Signal "duplicate" with null (the same convention this
+      // codebase uses elsewhere for "not found", e.g. PrismaAccountRepository)
+      // instead of letting the raw Prisma error surface as an unhandled 500.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return null
+      }
+
+      throw error
+    }
+  }
+
+  private async runExecutionTransaction(input: {
     rule: RecurringTransactionRule
     period: string
     idempotencyKey: string
