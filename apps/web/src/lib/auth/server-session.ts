@@ -13,7 +13,7 @@ export interface CurrentUser {
  * components can't use a relative `/api` path, so a relative configured base is
  * anchored to the local API origin as a development fallback.
  */
-function resolveApiBase(): string {
+export function resolveApiBase(): string {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api'
   return apiBase.startsWith('http') ? apiBase : `http://localhost:3001${apiBase}`
 }

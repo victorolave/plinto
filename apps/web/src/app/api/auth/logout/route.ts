@@ -1,17 +1,16 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { resolveApiBase } from '../../../../lib/auth/server-session'
 
 export async function POST() {
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL
+  const apiBaseConfigured = process.env.NEXT_PUBLIC_API_BASE_URL
   const internalKey = process.env.INTERNAL_API_KEY
   const sessionCookie = cookies().get('plinto_session')?.value
 
   // Always try to revoke the session on the API if we have the necessary info
-  if (apiBase && internalKey && sessionCookie) {
+  if (apiBaseConfigured && internalKey && sessionCookie) {
     try {
-      const apiUrl = apiBase.startsWith('http')
-        ? `${apiBase}/auth/logout`
-        : `http://localhost:3001${apiBase}/auth/logout`
+      const apiUrl = `${resolveApiBase()}/auth/logout`
 
       await fetch(apiUrl, {
         method: 'POST',

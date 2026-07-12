@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { AuthLayout } from '../../../components/layout/auth-layout'
 import { fetchCurrentUser } from '../../../lib/auth/server-session'
+import { Repeat } from '../../../components/ui/icons'
 
 // Already-authenticated visitors skip the login screen and land where their
 // account state points. redirect() throws NEXT_REDIRECT, which propagates out
@@ -76,7 +77,7 @@ const BENEFITS = [
   {
     title: 'Recurring transactions on autopilot',
     sub: 'Set a rule once and let the monthly entries post themselves.',
-    icon: <RepeatIcon />,
+    icon: <Repeat size={20} />,
   },
 ] as const
 
@@ -127,17 +128,6 @@ function LedgerIcon() {
     <svg {...iconProps()} aria-hidden="true">
       <rect x="5" y="4" width="14" height="16" rx="2" />
       <path d="M9 8h6M9 12h6M9 16h3" />
-    </svg>
-  )
-}
-
-function RepeatIcon() {
-  return (
-    <svg {...iconProps()} aria-hidden="true">
-      <path d="M17 3l3 3-3 3" />
-      <path d="M20 6H8a4 4 0 0 0-4 4v1" />
-      <path d="M7 21l-3-3 3-3" />
-      <path d="M4 18h12a4 4 0 0 0 4-4v-1" />
     </svg>
   )
 }
