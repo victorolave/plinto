@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { CreateTransactionSchema, UpdateTransactionSchema } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import type { Category } from '../../categories/services/categories'
@@ -50,10 +51,35 @@ export function TransactionForm({
   const [occurredAt, setOccurredAt] = useState(
     editing ? editing.occurredAt.slice(0, 10) : '',
   )
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
-  const handleSubmit = async (event: FormEvent) => {
+  const createMutation = useMutation({
+    mutationFn: (input: ReturnType<typeof buildTransactionCreateInput>) =>
+      createTransaction(input),
+    onSuccess: () => {
+      void onSaved()
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string
+      input: ReturnType<typeof buildTransactionUpdateInput>
+    }) => updateTransaction(id, input),
+    onSuccess: () => {
+      void onSaved()
+    },
+  })
+
+  const submitting = createMutation.isPending || updateMutation.isPending
+  const mutationError = editing ? updateMutation.error : createMutation.error
+  const error =
+    validationError ?? (mutationError instanceof Error ? mutationError.message : null)
+
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
 
     const parsedAmount = parseFloat(amount)
@@ -71,20 +97,12 @@ export function TransactionForm({
       })
       const result = UpdateTransactionSchema.safeParse(input)
       if (!result.success) {
-        setError(result.error.issues[0]?.message ?? 'Invalid transaction')
+        setValidationError(result.error.issues[0]?.message ?? 'Invalid transaction')
         return
       }
 
-      setSubmitting(true)
-      setError(null)
-      try {
-        await updateTransaction(editing.id, input)
-        await onSaved()
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to save transaction')
-      } finally {
-        setSubmitting(false)
-      }
+      setValidationError(null)
+      updateMutation.mutate({ id: editing.id, input })
       return
     }
 
@@ -98,20 +116,12 @@ export function TransactionForm({
     })
     const result = CreateTransactionSchema.safeParse(input)
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? 'Invalid transaction')
+      setValidationError(result.error.issues[0]?.message ?? 'Invalid transaction')
       return
     }
 
-    setSubmitting(true)
-    setError(null)
-    try {
-      await createTransaction(input)
-      await onSaved()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save transaction')
-    } finally {
-      setSubmitting(false)
-    }
+    setValidationError(null)
+    createMutation.mutate(input)
   }
 
   return (

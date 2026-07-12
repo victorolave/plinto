@@ -1,8 +1,7 @@
 'use client'
 
-import { type FormEvent, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CreateAccountSchema, UpdateAccountSchema } from '@plinto/shared'
 import {
   Account,
   AccountType,
@@ -18,21 +17,12 @@ import {
 } from '../../transactions/services/transactions'
 import { queryKeys } from '../../../lib/api/query-keys'
 import { AccountGroup } from './account-group'
+import { AccountForm } from './account-form'
 import { Button } from '../../../components/ui/button'
-import { Field, Input, Select } from '../../../components/ui/field'
 import { Modal } from '../../../components/ui/modal'
 import { EmptyState } from '../../../components/ui/empty-state'
 import { Plus, Wallet } from '../../../components/ui/icons'
 import { AccountsSkeleton } from './accounts-skeleton'
-
-const accountTypeOptions: Array<{ value: AccountType; label: string }> = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'bank', label: 'Bank' },
-  { value: 'credit', label: 'Credit' },
-  { value: 'savings', label: 'Savings' },
-]
-
-type FormMode = 'create' | 'edit'
 
 export function AccountsPanel() {
   const queryClient = useQueryClient()
@@ -50,15 +40,10 @@ export function AccountsPanel() {
   const balances = useMemo(() => balancesQuery.data ?? [], [balancesQuery.data])
   const loading = accountsQuery.isLoading || balancesQuery.isLoading
 
-  const [name, setName] = useState('')
-  const [type, setType] = useState<AccountType>('bank')
-  const [currency, setCurrency] = useState('COP')
-  const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const [open, setOpen] = useState(false)
-  const [mode, setMode] = useState<FormMode>('create')
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
 
   const [pendingArchive, setPendingArchive] = useState<Account | null>(null)
   const [showArchived, setShowArchived] = useState(false)
@@ -72,10 +57,16 @@ export function AccountsPanel() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.balances })
   }
 
+  // AccountForm owns field state and validation; it calls these mutations
+  // directly so the panel keeps sole ownership of cache invalidation and the
+  // Modal open/close lifecycle (see onSuccess below).
   const createMutation = useMutation({
     mutationFn: (input: { name: string; type: AccountType; currency: string }) =>
       createAccount(input),
-    onSuccess: invalidateAccountData,
+    onSuccess: () => {
+      invalidateAccountData()
+      setOpen(false)
+    },
   })
 
   const updateMutation = useMutation({
@@ -86,7 +77,10 @@ export function AccountsPanel() {
       id: string
       input: { name: string; type: AccountType }
     }) => updateAccount(id, input),
-    onSuccess: invalidateAccountData,
+    onSuccess: () => {
+      invalidateAccountData()
+      setOpen(false)
+    },
   })
 
   const archiveMutation = useMutation({
@@ -127,63 +121,13 @@ export function AccountsPanel() {
   }, [activeAccounts])
 
   const openCreate = () => {
-    setMode('create')
-    setEditingId(null)
-    setName('')
-    setType('bank')
-    setCurrency('COP')
-    setError(null)
+    setEditingAccount(null)
     setOpen(true)
   }
 
   const openEdit = (account: Account) => {
-    setMode('edit')
-    setEditingId(account.id)
-    setName(account.name)
-    setType(account.type)
-    setCurrency(account.currency)
-    setError(null)
+    setEditingAccount(account)
     setOpen(true)
-  }
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
-    setError(null)
-
-    if (mode === 'edit' && editingId) {
-      const input = { name, type }
-      const result = UpdateAccountSchema.safeParse(input)
-      if (!result.success) {
-        setError(result.error.issues[0]?.message ?? 'Invalid account')
-        return
-      }
-
-      try {
-        await updateMutation.mutateAsync({ id: editingId, input })
-        setOpen(false)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to update account')
-      }
-      return
-    }
-
-    const input = {
-      name,
-      type,
-      currency: currency.trim().toUpperCase(),
-    }
-    const result = CreateAccountSchema.safeParse(input)
-    if (!result.success) {
-      setError(result.error.issues[0]?.message ?? 'Invalid account')
-      return
-    }
-
-    try {
-      await createMutation.mutateAsync(input)
-      setOpen(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create account')
-    }
   }
 
   const confirmArchive = async () => {
@@ -275,7 +219,7 @@ export function AccountsPanel() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title={mode === 'edit' ? 'Edit account' : 'Add account'}
+        title={editingAccount ? 'Edit account' : 'Add account'}
         footer={
           <>
             <Button variant="secondary" onClick={() => setOpen(false)}>
@@ -283,64 +227,21 @@ export function AccountsPanel() {
             </Button>
             <Button type="submit" form="account-form" disabled={submitting}>
               {submitting
-                ? mode === 'edit'
+                ? editingAccount
                   ? 'Saving…'
                   : 'Creating…'
-                : mode === 'edit'
+                : editingAccount
                   ? 'Save changes'
                   : 'Create account'}
             </Button>
           </>
         }
       >
-        <form id="account-form" onSubmit={handleSubmit} className="stack">
-          <Field label="Account name" htmlFor="account-name">
-            <Input
-              id="account-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. Family checking"
-              required
-            />
-          </Field>
-
-          <div className="form-grid">
-            <Field label="Account type" htmlFor="account-type">
-              <Select
-                id="account-type"
-                value={type}
-                onChange={(event) => setType(event.target.value as AccountType)}
-              >
-                {accountTypeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <Field
-              label="Currency"
-              htmlFor="account-currency"
-              hint={
-                mode === 'edit'
-                  ? 'Currency cannot change once the account exists.'
-                  : undefined
-              }
-            >
-              <Input
-                id="account-currency"
-                value={currency}
-                onChange={(event) => setCurrency(event.target.value)}
-                maxLength={3}
-                required
-                disabled={mode === 'edit'}
-              />
-            </Field>
-          </div>
-
-          {error ? <p className="error-text">{error}</p> : null}
-        </form>
+        <AccountForm
+          editing={editingAccount}
+          createMutation={createMutation}
+          updateMutation={updateMutation}
+        />
       </Modal>
 
       <Modal

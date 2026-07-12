@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useEffect, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { CreateTransferSchema } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import { createTransfer } from '../services/transactions'
@@ -26,8 +27,19 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
   const [feeMinor, setFeeMinor] = useState('')
   const [description, setDescription] = useState('')
   const [occurredAt, setOccurredAt] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
+
+  const transferMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof createTransfer>[0]) => createTransfer(payload),
+    onSuccess: () => {
+      void onSaved()
+    },
+  })
+
+  const submitting = transferMutation.isPending
+  const error =
+    validationError ??
+    (transferMutation.error instanceof Error ? transferMutation.error.message : null)
 
   const sourceAccount = accounts.find((a) => a.id === sourceAccountId)
   const destAccount = accounts.find((a) => a.id === destAccountId)
@@ -42,11 +54,11 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
     }
   }, [isCrossCurrency])
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
 
     if (!sourceAccountId || !destAccountId) {
-      setError('Select both source and destination accounts')
+      setValidationError('Select both source and destination accounts')
       return
     }
 
@@ -75,21 +87,12 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
 
     const result = CreateTransferSchema.safeParse(payload)
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? 'Invalid transfer')
+      setValidationError(result.error.issues[0]?.message ?? 'Invalid transfer')
       return
     }
 
-    setSubmitting(true)
-    setError(null)
-
-    try {
-      await createTransfer(payload)
-      await onSaved()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create transfer')
-    } finally {
-      setSubmitting(false)
-    }
+    setValidationError(null)
+    transferMutation.mutate(payload)
   }
 
   const canSubmit =

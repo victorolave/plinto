@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { CreateRecurringTransactionRuleSchema } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import type { TransactionType } from '../services/transactions'
@@ -36,10 +37,22 @@ export function RecurringForm({ accounts, onSaved }: RecurringFormProps) {
   const [amount, setAmount] = useState('')
   const [dayOfMonth, setDayOfMonth] = useState('1')
   const [startDate, setStartDate] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
-  const handleSubmit = async (event: FormEvent) => {
+  const createMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof createRecurringTransactionRule>[0]) =>
+      createRecurringTransactionRule(payload),
+    onSuccess: () => {
+      void onSaved()
+    },
+  })
+
+  const submitting = createMutation.isPending
+  const error =
+    validationError ??
+    (createMutation.error instanceof Error ? createMutation.error.message : null)
+
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
 
     const parsedAmount = parseFloat(amount)
@@ -56,21 +69,12 @@ export function RecurringForm({ accounts, onSaved }: RecurringFormProps) {
 
     const result = CreateRecurringTransactionRuleSchema.safeParse(payload)
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? 'Invalid recurring rule')
+      setValidationError(result.error.issues[0]?.message ?? 'Invalid recurring rule')
       return
     }
 
-    setSubmitting(true)
-    setError(null)
-
-    try {
-      await createRecurringTransactionRule(payload)
-      await onSaved()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save recurring rule')
-    } finally {
-      setSubmitting(false)
-    }
+    setValidationError(null)
+    createMutation.mutate(payload)
   }
 
   return (
