@@ -12,23 +12,20 @@ import { AuthGuard } from '../../../../../common/guards/auth.guard'
 import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pipe'
 import { CreateTenantSchema } from '../../../../../common/shared-schemas'
 import { OnboardingService } from '../../../application/onboarding.service'
-import { TenantRepository } from '../../../domain/tenant.repository'
-import { MembershipRepository } from '../../../../memberships/domain/membership.repository'
+import { TenantService } from '../../../application/tenant.service'
 
 @Controller('tenants')
 @UseGuards(AuthGuard)
 export class TenantsController {
   constructor(
     private readonly onboardingService: OnboardingService,
-    private readonly tenantRepository: TenantRepository,
-    private readonly membershipRepository: MembershipRepository,
+    private readonly tenantService: TenantService,
   ) {}
 
   @Get()
   async listTenants(@Req() req: RequestContext) {
     const userId = req.user?.id ?? ''
-    const tenants = await this.tenantRepository.listByUserId(userId)
-    const memberships = await this.membershipRepository.listByUserId(userId)
+    const { tenants, memberships } = await this.tenantService.listTenantsForUser(userId)
 
     return {
       data: {
