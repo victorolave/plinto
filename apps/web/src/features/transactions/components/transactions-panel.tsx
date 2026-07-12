@@ -129,7 +129,11 @@ export function TransactionsPanel() {
   // child form reports success, the container invalidates the query cache so
   // the ledger and balances refetch through React Query.
   const handleSaved = () => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.transactions() })
+    // Invalidate by the ['transactions'] prefix so both the ledger
+    // (queryKeys.transactions()) and the dashboard's recent-activity widget
+    // (queryKeys.recentTransactions, keyed ['transactions', 'recent']) refetch.
+    // Keying only transactions() would leave the dashboard widget stale.
+    void queryClient.invalidateQueries({ queryKey: ['transactions'] })
     void queryClient.invalidateQueries({ queryKey: queryKeys.balances })
     closeDrawer()
   }

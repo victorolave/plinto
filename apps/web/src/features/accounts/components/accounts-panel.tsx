@@ -64,7 +64,11 @@ export function AccountsPanel() {
   const [showArchived, setShowArchived] = useState(false)
 
   const invalidateAccountData = () => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.accounts(true) })
+    // Invalidate by the ['accounts'] prefix so BOTH includeArchived variants
+    // refresh: this panel reads accounts(true), while the transactions panel and
+    // dashboard read accounts(false). A key-specific invalidation would leave
+    // those other views showing a stale account list until staleTime elapses.
+    void queryClient.invalidateQueries({ queryKey: ['accounts'] })
     void queryClient.invalidateQueries({ queryKey: queryKeys.balances })
   }
 
