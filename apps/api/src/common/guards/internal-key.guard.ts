@@ -5,7 +5,22 @@ import {
   UnauthorizedException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { timingSafeEqual } from 'node:crypto'
 import { RequestContext } from '../types/request-context'
+
+/**
+ * Constant-time string comparison. Returns false for mismatched lengths without
+ * calling timingSafeEqual (which throws on unequal-length buffers); the length
+ * check is not itself a meaningful side channel for a random key.
+ */
+function safeKeyEqual(provided: string, expected: string): boolean {
+  const providedBuffer = Buffer.from(provided)
+  const expectedBuffer = Buffer.from(expected)
+  if (providedBuffer.length !== expectedBuffer.length) {
+    return false
+  }
+  return timingSafeEqual(providedBuffer, expectedBuffer)
+}
 
 /**
  * Guards system-to-system endpoints (schedulers, workers, other trusted
@@ -23,7 +38,7 @@ export class InternalKeyGuard implements CanActivate {
     const providedKey = Array.isArray(header) ? header[0] : header
     const expectedKey = this.configService.get<string>('internalApiKey')
 
-    if (!expectedKey || !providedKey || providedKey !== expectedKey) {
+    if (!expectedKey || !providedKey || !safeKeyEqual(providedKey, expectedKey)) {
       throw new UnauthorizedException('Invalid internal key')
     }
 
