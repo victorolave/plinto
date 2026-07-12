@@ -150,7 +150,10 @@ export class PrismaTransactionRepository extends TransactionRepository {
     pagination?: { skip: number; take: number },
   ): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
-      where: { tenantId, accountId },
+      // Same archived-account exclusion as listByTenantId: an archived
+      // account is hidden everywhere, including when filtering to just its
+      // own transactions.
+      where: { tenantId, accountId, account: { archivedAt: null } },
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
       ...(pagination ? { skip: pagination.skip, take: pagination.take } : {}),
     })
@@ -165,8 +168,10 @@ export class PrismaTransactionRepository extends TransactionRepository {
   }
 
   async countByAccountId(tenantId: string, accountId: string): Promise<number> {
+    // Same archived-account exclusion as countByTenantId so the reported
+    // total matches what listByAccountId actually returns.
     return this.prisma.transaction.count({
-      where: { tenantId, accountId },
+      where: { tenantId, accountId, account: { archivedAt: null } },
     })
   }
 
