@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { createTenant, updateProfile } from '../services/onboarding'
 import { Button } from '../../../components/ui/button'
 import { Field, Input } from '../../../components/ui/field'
@@ -9,23 +10,26 @@ export function OnboardingForm() {
   const [name, setName] = useState('')
   const [tenantName, setTenantName] = useState('')
   const [baseCurrency, setBaseCurrency] = useState('COP')
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setLoading(true)
-    setError(null)
-
-    try {
+  // Profile then household are a two-step sequence; wrap both in one mutation so
+  // the button state and error surface come from React Query, not hand-rolled.
+  const submitMutation = useMutation({
+    mutationFn: async () => {
       await updateProfile(name)
       await createTenant(tenantName, baseCurrency)
+    },
+    onSuccess: () => {
       window.location.href = '/dashboard'
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unexpected error')
-    } finally {
-      setLoading(false)
-    }
+    },
+  })
+
+  const loading = submitMutation.isPending
+  const error =
+    submitMutation.error instanceof Error ? submitMutation.error.message : null
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    submitMutation.mutate()
   }
 
   return (

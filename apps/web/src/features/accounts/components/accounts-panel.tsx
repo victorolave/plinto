@@ -40,8 +40,6 @@ export function AccountsPanel() {
   const balances = useMemo(() => balancesQuery.data ?? [], [balancesQuery.data])
   const loading = accountsQuery.isLoading || balancesQuery.isLoading
 
-  const [actionError, setActionError] = useState<string | null>(null)
-
   const [open, setOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
 
@@ -85,7 +83,10 @@ export function AccountsPanel() {
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => deleteAccount(id),
-    onSuccess: invalidateAccountData,
+    onSuccess: () => {
+      invalidateAccountData()
+      setPendingArchive(null)
+    },
   })
 
   const restoreMutation = useMutation({
@@ -95,6 +96,10 @@ export function AccountsPanel() {
 
   const submitting = createMutation.isPending || updateMutation.isPending
   const archiving = archiveMutation.isPending
+  // Archive/restore errors are derived straight from the mutations rather than a
+  // separate actionError state.
+  const actionError = archiveMutation.error ?? restoreMutation.error
+  const actionErrorMessage = actionError instanceof Error ? actionError.message : null
 
   const balanceByAccount = useMemo(
     () => new Map(balances.map((b) => [b.accountId, b])),
@@ -130,31 +135,19 @@ export function AccountsPanel() {
     setOpen(true)
   }
 
-  const confirmArchive = async () => {
-    if (!pendingArchive) return
-    setActionError(null)
-    try {
-      await archiveMutation.mutateAsync(pendingArchive.id)
-      setPendingArchive(null)
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to archive account')
-    }
+  const confirmArchive = () => {
+    if (pendingArchive) archiveMutation.mutate(pendingArchive.id)
   }
 
-  const handleRestore = async (account: Account) => {
-    setActionError(null)
-    try {
-      await restoreMutation.mutateAsync(account.id)
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to restore account')
-    }
+  const handleRestore = (account: Account) => {
+    restoreMutation.mutate(account.id)
   }
 
   return (
     <div className="page">
       {loading ? <AccountsSkeleton /> : null}
 
-      {actionError ? <p className="error-text">{actionError}</p> : null}
+      {actionErrorMessage ? <p className="error-text">{actionErrorMessage}</p> : null}
 
       {!loading && activeAccounts.length === 0 ? (
         <EmptyState

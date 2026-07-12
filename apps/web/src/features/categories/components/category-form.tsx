@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { CreateCategorySchema, UpdateCategorySchema } from '@plinto/shared'
 import {
   type Category,
@@ -46,35 +47,39 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
   // Type is fixed once a category exists (it partitions income vs expense).
   const [type, setType] = useState<CategoryType>(editing?.type ?? 'expense')
   const [color, setColor] = useState(editing?.color ?? '')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
-  const handleSubmit = async (event: FormEvent) => {
+  const createMutation = useMutation({
+    mutationFn: (payload: { name: string; type: CategoryType; color?: string }) =>
+      createCategory(payload),
+    onSuccess: () => onSaved(),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (input: { id: string; payload: { name: string; color: string | null } }) =>
+      updateCategory(input.id, input.payload),
+    onSuccess: () => onSaved(),
+  })
+
+  const submitting = createMutation.isPending || updateMutation.isPending
+  const mutationError = createMutation.error ?? updateMutation.error
+  const error =
+    validationError ?? (mutationError instanceof Error ? mutationError.message : null)
+
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
+    setValidationError(null)
 
     const trimmedColor = color.trim()
 
     if (editing) {
-      const payload = {
-        name: name.trim(),
-        color: trimmedColor || null,
-      }
+      const payload = { name: name.trim(), color: trimmedColor || null }
       const result = UpdateCategorySchema.safeParse(payload)
       if (!result.success) {
-        setError(result.error.issues[0]?.message ?? 'Invalid category')
+        setValidationError(result.error.issues[0]?.message ?? 'Invalid category')
         return
       }
-
-      setSubmitting(true)
-      setError(null)
-      try {
-        await updateCategory(editing.id, payload)
-        await onSaved()
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to save category')
-      } finally {
-        setSubmitting(false)
-      }
+      updateMutation.mutate({ id: editing.id, payload })
       return
     }
 
@@ -85,20 +90,10 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
     }
     const result = CreateCategorySchema.safeParse(payload)
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? 'Invalid category')
+      setValidationError(result.error.issues[0]?.message ?? 'Invalid category')
       return
     }
-
-    setSubmitting(true)
-    setError(null)
-    try {
-      await createCategory(payload)
-      await onSaved()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save category')
-    } finally {
-      setSubmitting(false)
-    }
+    createMutation.mutate(payload)
   }
 
   return (
