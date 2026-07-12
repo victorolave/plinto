@@ -28,6 +28,18 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   { path: '/api/me', method: 'patch' },
   { path: '/api/auth/session', method: 'post' },
   { path: '/api/auth/logout', method: 'post' },
+  // Categories (CategoriesController)
+  { path: '/api/categories', method: 'get' },
+  { path: '/api/categories', method: 'post' },
+  { path: '/api/categories/{id}', method: 'get' },
+  { path: '/api/categories/{id}', method: 'patch' },
+  { path: '/api/categories/{id}', method: 'delete' },
+  // Reports (ReportsController)
+  { path: '/api/reports/expenses-by-category', method: 'get' },
+  // Recurring transactions (RecurringTransactionsController, RecurringExecutionController)
+  { path: '/api/recurring-transactions', method: 'get' },
+  { path: '/api/recurring-transactions', method: 'post' },
+  { path: '/api/internal/recurring/execute', method: 'post' },
 ]
 
 describe('buildOpenApiDocument', () => {
