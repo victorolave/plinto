@@ -120,13 +120,27 @@ export class PrismaObligationRepository extends ObligationRepository {
     tenantId: string
     obligationInstanceId: string
     transactionId: string
-  }): Promise<ObligationPayment> {
-    const payment = await this.prisma.obligationPayment.create({
-      data: input,
-      include: { transaction: true },
-    })
+  }): Promise<ObligationPayment | null> {
+    try {
+      const payment = await this.prisma.obligationPayment.create({
+        data: input,
+        include: { transaction: true },
+      })
 
-    return toPayment(payment)
+      return toPayment(payment)
+    } catch (error) {
+      // The global unique index on transaction_id rejected the link: a
+      // concurrent caller reconciled this transaction first. Signal it with
+      // null so the service can report a conflict instead of a 500.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return null
+      }
+
+      throw error
+    }
   }
 
   async findPaymentByTransactionId(

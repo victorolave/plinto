@@ -66,11 +66,17 @@ export abstract class ObligationRepository {
     period: string,
   ): Promise<string[]>
 
+  /**
+   * Links a transaction to an obligation. Returns null when the transaction is
+   * already claimed — the global unique index on transaction_id firing because
+   * a concurrent caller reconciled it between the service's check and this
+   * insert. Callers must surface that as a conflict, not a 500.
+   */
   abstract createPayment(input: {
     tenantId: string
     obligationInstanceId: string
     transactionId: string
-  }): Promise<ObligationPayment>
+  }): Promise<ObligationPayment | null>
 
   /**
    * Looks up the payment that already claims a transaction, so a double

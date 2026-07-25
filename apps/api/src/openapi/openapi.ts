@@ -24,6 +24,9 @@ import {
   UpdateRecurringTransactionRuleSchema,
   GenerateObligationsSchema,
   GenerateObligationsResultSchema,
+  ObligationInstanceSchema,
+  CreateObligationSchema,
+  ReconcileObligationSchema,
   CreateSessionSchema,
   UserSchema,
   MembershipSchema,
@@ -146,6 +149,18 @@ const ExecuteRecurringResultSchema = z
   })
   .openapi('ExecuteRecurringResult')
 
+const ObligationInstanceSchemaRef = registry.register(
+  'ObligationInstance',
+  ObligationInstanceSchema,
+)
+const CreateObligationSchemaRef = registry.register(
+  'CreateObligation',
+  CreateObligationSchema,
+)
+const ReconcileObligationSchemaRef = registry.register(
+  'ReconcileObligation',
+  ReconcileObligationSchema,
+)
 const GenerateObligationsRequestSchemaRef = registry.register(
   'GenerateObligationsRequest',
   GenerateObligationsSchema,
@@ -697,6 +712,105 @@ registry.registerPath({
 // ---------------------------------------------------------------------------
 // Obligations
 // ---------------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/obligations',
+  tags: ['Obligations'],
+  summary: 'List the obligations of a period for the active tenant',
+  description:
+    'Defaults to the current period. Each obligation carries its derived ' +
+    'status (pending / partial / paid / overdue), the amount settled so far ' +
+    'and the transactions that settled it.',
+  security: sessionCookieAuth,
+  request: {
+    query: z.object({
+      period: z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .optional(),
+    }),
+  },
+  responses: {
+    200: dataResponse(
+      'Obligations for the period.',
+      z.object({ obligations: z.array(ObligationInstanceSchemaRef) }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/obligations',
+  tags: ['Obligations'],
+  summary: 'Record a one-off obligation',
+  description:
+    'For obligations with no recurring template behind them — a tax filing, ' +
+    'a school enrolment. The instance is always recorded as `manual`; the ' +
+    'source type is not caller-controlled.',
+  security: sessionCookieAuth,
+  request: {
+    body: { content: { 'application/json': { schema: CreateObligationSchemaRef } } },
+  },
+  responses: {
+    201: dataResponse(
+      'Obligation recorded.',
+      z.object({ obligation: ObligationInstanceSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/obligations/{id}/payments',
+  tags: ['Obligations'],
+  summary: 'Reconcile an obligation with an existing transaction',
+  description:
+    'Declares that a transaction settles (part of) the obligation. The ' +
+    'transaction must belong to the same tenant, be an expense, and carry the ' +
+    'obligation currency. A transaction that already settles another ' +
+    'obligation is rejected with 409 — enforced by a unique index, so a ' +
+    'concurrent caller cannot slip past the check. Several payments may ' +
+    'settle one obligation.',
+  security: sessionCookieAuth,
+  request: {
+    params: idParam,
+    body: { content: { 'application/json': { schema: ReconcileObligationSchemaRef } } },
+  },
+  responses: {
+    200: dataResponse(
+      'Obligation reconciled, with its recalculated status.',
+      z.object({ obligation: ObligationInstanceSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/obligations/{id}/payments/{transactionId}',
+  tags: ['Obligations'],
+  summary: 'Undo a reconciliation',
+  description:
+    'Unlinks the transaction, freeing it to settle another obligation. The ' +
+    'transaction itself is untouched.',
+  security: sessionCookieAuth,
+  request: {
+    params: z.object({
+      id: z.string(),
+      transactionId: z.string(),
+    }),
+  },
+  responses: {
+    200: dataResponse(
+      'Payment removed, with the obligation recalculated status.',
+      z.object({ obligation: ObligationInstanceSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
 
 registry.registerPath({
   method: 'post',

@@ -179,6 +179,36 @@ describe('PrismaObligationRepository', () => {
     expect(result).toEqual(['rule-1', 'rule-2'])
   })
 
+  it('maps a created payment using the amounts of its transaction', async () => {
+    const prisma = makePrisma()
+    prisma.obligationPayment.create.mockResolvedValue(makePrismaPayment())
+    const repository = new PrismaObligationRepository(prisma as any)
+
+    const result = await repository.createPayment({
+      tenantId: 'tenant-1',
+      obligationInstanceId: 'obligation-1',
+      transactionId: 'tx-1',
+    })
+
+    expect(result).toMatchObject({ transactionId: 'tx-1', amountMinor: 100000 })
+  })
+
+  // The global unique index on transaction_id firing means a concurrent caller
+  // reconciled it first — a conflict for the service, never a 500.
+  it('returns null when the transaction is already claimed by another payment', async () => {
+    const prisma = makePrisma()
+    prisma.obligationPayment.create.mockRejectedValue(duplicateError)
+    const repository = new PrismaObligationRepository(prisma as any)
+
+    const result = await repository.createPayment({
+      tenantId: 'tenant-1',
+      obligationInstanceId: 'obligation-1',
+      transactionId: 'tx-1',
+    })
+
+    expect(result).toBeNull()
+  })
+
   it('finds the payment already claiming a transaction, scoped to the tenant', async () => {
     const prisma = makePrisma()
     prisma.obligationPayment.findFirst.mockResolvedValue(makePrismaPayment())
