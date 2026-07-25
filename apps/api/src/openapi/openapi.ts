@@ -21,6 +21,7 @@ import {
   ExpenseByCategoryReportSchema,
   RecurringTransactionRuleSchema,
   CreateRecurringTransactionRuleSchema,
+  UpdateRecurringTransactionRuleSchema,
   CreateSessionSchema,
   UserSchema,
   MembershipSchema,
@@ -100,6 +101,10 @@ const RecurringTransactionRuleSchemaRef = registry.register(
 const CreateRecurringTransactionRuleSchemaRef = registry.register(
   'CreateRecurringTransactionRule',
   CreateRecurringTransactionRuleSchema,
+)
+const UpdateRecurringTransactionRuleSchemaRef = registry.register(
+  'UpdateRecurringTransactionRule',
+  UpdateRecurringTransactionRuleSchema,
 )
 
 const CreateSessionSchemaRef = registry.register('CreateSession', CreateSessionSchema)
@@ -520,9 +525,14 @@ registry.registerPath({
   tags: ['Recurring'],
   summary: 'List recurring transaction rules for the active tenant',
   security: sessionCookieAuth,
+  request: {
+    query: z.object({
+      includeArchived: z.enum(['true', 'false']).optional(),
+    }),
+  },
   responses: {
     200: dataResponse(
-      'Recurring transaction rules.',
+      'Recurring transaction rules. Archived rules are omitted unless includeArchived=true.',
       z.object({ rules: z.array(RecurringTransactionRuleSchemaRef) }),
     ),
     ...errorResponses,
@@ -545,6 +555,113 @@ registry.registerPath({
   responses: {
     201: dataResponse(
       'Recurring transaction rule created.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/recurring-transactions/{id}',
+  tags: ['Recurring'],
+  summary: 'Update a recurring transaction rule',
+  description:
+    'Only name, amountMinor, dayOfMonth and startDate may change. The account, ' +
+    'type, currency and frequency are frozen because past periods are already ' +
+    'materialized as transactions carrying those values. Editing an archived ' +
+    'rule is rejected — restore it first.',
+  security: sessionCookieAuth,
+  request: {
+    params: idParam,
+    body: {
+      content: {
+        'application/json': { schema: UpdateRecurringTransactionRuleSchemaRef },
+      },
+    },
+  },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule updated.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/recurring-transactions/{id}/pause',
+  tags: ['Recurring'],
+  summary: 'Pause a recurring transaction rule',
+  description:
+    'The rule stops being posted by the execution job but stays editable. ' +
+    'Idempotent: pausing an already-paused rule succeeds and changes nothing.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule paused.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/recurring-transactions/{id}/resume',
+  tags: ['Recurring'],
+  summary: 'Resume a paused recurring transaction rule',
+  description:
+    'Returns the rule to the execution job. Archived rules are rejected — ' +
+    'restore first, so leaving the archive always passes through an explicit ' +
+    'act of restoring.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule resumed.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/recurring-transactions/{id}/restore',
+  tags: ['Recurring'],
+  summary: 'Restore an archived recurring transaction rule',
+  description:
+    'The rule comes back as paused, never active, so it cannot post money on ' +
+    'the next job run without someone deciding that it should. Resume it ' +
+    'separately to reactivate.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule restored as paused.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/recurring-transactions/{id}',
+  tags: ['Recurring'],
+  summary: 'Archive a recurring transaction rule',
+  description:
+    'Soft-delete. The rule is retired but never removed: executions reference ' +
+    'it with ON DELETE RESTRICT and its audit history must survive (ADR 0008). ' +
+    'Already-created transactions are untouched.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule archived.',
       z.object({ rule: RecurringTransactionRuleSchemaRef }),
     ),
     ...errorResponses,

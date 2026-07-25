@@ -39,6 +39,11 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   // Recurring transactions (RecurringTransactionsController, RecurringExecutionController)
   { path: '/api/recurring-transactions', method: 'get' },
   { path: '/api/recurring-transactions', method: 'post' },
+  { path: '/api/recurring-transactions/{id}', method: 'patch' },
+  { path: '/api/recurring-transactions/{id}/pause', method: 'post' },
+  { path: '/api/recurring-transactions/{id}/resume', method: 'post' },
+  { path: '/api/recurring-transactions/{id}/restore', method: 'post' },
+  { path: '/api/recurring-transactions/{id}', method: 'delete' },
   { path: '/api/internal/recurring/execute', method: 'post' },
 ]
 
