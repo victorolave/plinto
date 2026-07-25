@@ -9,6 +9,7 @@ import {
   Wallet,
   List,
   Tag,
+  Target,
   Settings,
   LogOut,
   type IconProps,
@@ -31,6 +32,7 @@ const NAV: NavEntry[] = [
   { id: 'overview', label: 'Dashboard', icon: Home },
   { id: 'accounts', label: 'Accounts', icon: Wallet },
   { id: 'transactions', label: 'Transactions', icon: List },
+  { id: 'obligations', label: 'Obligations', icon: Target },
   { id: 'categories', label: 'Categories', icon: Tag },
 ]
 

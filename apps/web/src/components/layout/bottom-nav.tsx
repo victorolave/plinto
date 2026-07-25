@@ -9,6 +9,7 @@ import {
   Wallet,
   List,
   Tag,
+  Target,
   Settings,
   LogOut,
   Plus,
@@ -38,6 +39,7 @@ const SECONDARY: BarEntry[] = [
 
 /** Sections that live inside the "More" sheet (everything not in the bar). */
 const MORE_SECTIONS: BarEntry[] = [
+  { id: 'obligations', label: 'Obligations', icon: Target },
   { id: 'categories', label: 'Categories', icon: Tag },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]

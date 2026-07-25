@@ -27,6 +27,7 @@ const TITLES: Record<
   overview: ['Dashboard', ({ name }) => (name ? `Welcome back, ${name}` : 'Your household at a glance')],
   accounts: ['Accounts', () => 'Balances by currency'],
   transactions: ['Transactions', ({ tenant }) => (tenant ? `${tenant} ledger` : 'Income, expenses and transfers')],
+  obligations: ['Obligations', () => 'What the household owes this month'],
   categories: ['Categories', () => 'Organize your spending'],
   settings: ['Settings', () => 'Household & members'],
 }
