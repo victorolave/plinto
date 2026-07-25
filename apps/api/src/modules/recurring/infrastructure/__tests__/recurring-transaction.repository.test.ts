@@ -6,6 +6,8 @@ const makePrisma = () => ({
   recurringTransactionRule: {
     create: vi.fn(),
     findMany: vi.fn(),
+    findFirst: vi.fn(),
+    updateMany: vi.fn(),
   },
   recurringTransactionExecution: {
     findUnique: vi.fn(),
@@ -90,10 +92,26 @@ describe('RecurringTransactionRepository', () => {
     const result = await repository.listRulesByTenantId('tenant-1')
 
     expect(prisma.recurringTransactionRule.findMany).toHaveBeenCalledWith({
-      where: { tenantId: 'tenant-1', account: { archivedAt: null } },
+      where: {
+        tenantId: 'tenant-1',
+        account: { archivedAt: null },
+        status: { not: 'archived' },
+      },
       orderBy: { createdAt: 'desc' },
     })
     expect(result).toEqual([{ id: 'rule-1' }])
+  })
+
+  it('includes archived rules only when explicitly requested', async () => {
+    const prisma = makePrisma()
+    prisma.recurringTransactionRule.findMany.mockResolvedValue([])
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+    await repository.listRulesByTenantId('tenant-1', { includeArchived: true })
+
+    const where = prisma.recurringTransactionRule.findMany.mock.calls[0][0].where
+    expect(where.status).toBeUndefined()
+    expect(where.tenantId).toBe('tenant-1')
   })
 
   it('excludes rules of archived accounts from the tenant listing', async () => {
@@ -173,6 +191,86 @@ describe('RecurringTransactionRepository', () => {
       orderBy: { createdAt: 'asc' },
     })
     expect(result).toEqual([])
+  })
+
+  it('scopes a rule lookup to the tenant', async () => {
+    const prisma = makePrisma()
+    const rule = makeRule()
+    prisma.recurringTransactionRule.findFirst.mockResolvedValue(rule)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+    const result = await repository.findRuleByIdForTenant('rule-1', 'tenant-1')
+
+    expect(prisma.recurringTransactionRule.findFirst).toHaveBeenCalledWith({
+      where: { id: 'rule-1', tenantId: 'tenant-1' },
+    })
+    expect(result).toBe(rule)
+  })
+
+  it('updates a rule with the tenant in the WHERE clause, not just the id', async () => {
+    const prisma = makePrisma()
+    const updated = makeRule({ amountMinor: 300000 })
+    prisma.recurringTransactionRule.updateMany.mockResolvedValue({ count: 1 })
+    prisma.recurringTransactionRule.findFirst.mockResolvedValue(updated)
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+    const result = await repository.updateRuleForTenant('rule-1', 'tenant-1', {
+      amountMinor: 300000,
+    })
+
+    expect(prisma.recurringTransactionRule.updateMany).toHaveBeenCalledWith({
+      where: { id: 'rule-1', tenantId: 'tenant-1' },
+      data: { amountMinor: 300000 },
+    })
+    expect(result).toBe(updated)
+  })
+
+  // A rule id belonging to another tenant must match zero rows rather than
+  // mutating someone else's data — this is the tenant-isolation guarantee.
+  it('returns null when updating a rule that is not in the tenant', async () => {
+    const prisma = makePrisma()
+    prisma.recurringTransactionRule.updateMany.mockResolvedValue({ count: 0 })
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+    const result = await repository.updateRuleForTenant('rule-1', 'other-tenant', {
+      name: 'Hijacked',
+    })
+
+    expect(result).toBeNull()
+    expect(prisma.recurringTransactionRule.findFirst).not.toHaveBeenCalled()
+  })
+
+  it.each(['paused', 'active', 'archived'] as const)(
+    'persists the %s lifecycle state scoped to the tenant',
+    async (status) => {
+      const prisma = makePrisma()
+      const updated = makeRule({ status })
+      prisma.recurringTransactionRule.updateMany.mockResolvedValue({ count: 1 })
+      prisma.recurringTransactionRule.findFirst.mockResolvedValue(updated)
+      const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+      const result = await repository.setRuleStatusForTenant('rule-1', 'tenant-1', status)
+
+      expect(prisma.recurringTransactionRule.updateMany).toHaveBeenCalledWith({
+        where: { id: 'rule-1', tenantId: 'tenant-1' },
+        data: { status },
+      })
+      expect(result).toBe(updated)
+    },
+  )
+
+  it('returns null when moving the lifecycle of a rule that is not in the tenant', async () => {
+    const prisma = makePrisma()
+    prisma.recurringTransactionRule.updateMany.mockResolvedValue({ count: 0 })
+    const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+    const result = await repository.setRuleStatusForTenant(
+      'rule-1',
+      'other-tenant',
+      'archived',
+    )
+
+    expect(result).toBeNull()
   })
 
   it('atomically creates transaction, execution, and job audit provenance', async () => {

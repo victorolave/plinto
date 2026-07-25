@@ -3,12 +3,14 @@ import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import {
   CreateRecurringRuleStatus,
+  RecurringRuleStatus,
   RecurringTransactionExecution,
   RecurringTransactionRule,
 } from '../domain/recurring-transaction.entity'
 import { TransactionType } from '../../transactions/domain/transaction.entity'
 import {
   RecurringExecutionResult,
+  RecurringRuleUpdate,
   RecurringTransactionRepository,
 } from '../domain/recurring-transaction.repository'
 
@@ -43,13 +45,66 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
     })
   }
 
-  async listRulesByTenantId(tenantId: string): Promise<RecurringTransactionRule[]> {
+  async listRulesByTenantId(
+    tenantId: string,
+    options: { includeArchived?: boolean } = {},
+  ): Promise<RecurringTransactionRule[]> {
     return this.prisma.recurringTransactionRule.findMany({
-      // Hide rules whose account has been archived — consistent with archived
-      // accounts disappearing from every active surface.
-      where: { tenantId, account: { archivedAt: null } },
+      where: {
+        tenantId,
+        // Hide rules whose account has been archived — consistent with archived
+        // accounts disappearing from every active surface.
+        account: { archivedAt: null },
+        ...(options.includeArchived ? {} : { status: { not: 'archived' } }),
+      },
       orderBy: { createdAt: 'desc' },
     })
+  }
+
+  async findRuleByIdForTenant(
+    id: string,
+    tenantId: string,
+  ): Promise<RecurringTransactionRule | null> {
+    return this.prisma.recurringTransactionRule.findFirst({
+      where: { id, tenantId },
+    })
+  }
+
+  async updateRuleForTenant(
+    id: string,
+    tenantId: string,
+    data: RecurringRuleUpdate,
+  ): Promise<RecurringTransactionRule | null> {
+    // updateMany (not update) so the tenant scope is part of the WHERE clause:
+    // a cross-tenant id matches zero rows instead of updating someone else's
+    // rule. Same convention as PrismaAccountRepository.
+    const result = await this.prisma.recurringTransactionRule.updateMany({
+      where: { id, tenantId },
+      data,
+    })
+
+    if (result.count === 0) {
+      return null
+    }
+
+    return this.findRuleByIdForTenant(id, tenantId)
+  }
+
+  async setRuleStatusForTenant(
+    id: string,
+    tenantId: string,
+    status: RecurringRuleStatus,
+  ): Promise<RecurringTransactionRule | null> {
+    const result = await this.prisma.recurringTransactionRule.updateMany({
+      where: { id, tenantId },
+      data: { status },
+    })
+
+    if (result.count === 0) {
+      return null
+    }
+
+    return this.findRuleByIdForTenant(id, tenantId)
   }
 
   async findExecutionByKey(

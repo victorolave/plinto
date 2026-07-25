@@ -1,5 +1,6 @@
 import {
   CreateRecurringRuleStatus,
+  RecurringRuleStatus,
   RecurringTransactionExecution,
   RecurringTransactionRule,
 } from './recurring-transaction.entity'
@@ -8,6 +9,19 @@ import { Transaction, TransactionType } from '../../transactions/domain/transact
 export interface RecurringExecutionResult {
   transaction: Transaction
   execution: RecurringTransactionExecution
+}
+
+/**
+ * The fields a rule may change after creation. accountId, type, currency and
+ * frequency are absent by design: past periods are already materialized as
+ * transactions carrying those values, so editing them would leave the rule
+ * contradicting its own history.
+ */
+export interface RecurringRuleUpdate {
+  name?: string
+  amountMinor?: number
+  dayOfMonth?: number
+  startDate?: Date
 }
 
 /**
@@ -30,7 +44,38 @@ export abstract class RecurringTransactionRepository {
     status: CreateRecurringRuleStatus
   }): Promise<RecurringTransactionRule>
 
-  abstract listRulesByTenantId(tenantId: string): Promise<RecurringTransactionRule[]>
+  /**
+   * Archived rules are hidden unless explicitly requested, mirroring how
+   * archived accounts drop off every active surface.
+   */
+  abstract listRulesByTenantId(
+    tenantId: string,
+    options?: { includeArchived?: boolean },
+  ): Promise<RecurringTransactionRule[]>
+
+  abstract findRuleByIdForTenant(
+    id: string,
+    tenantId: string,
+  ): Promise<RecurringTransactionRule | null>
+
+  /** Returns null when no rule with that id exists inside the tenant. */
+  abstract updateRuleForTenant(
+    id: string,
+    tenantId: string,
+    data: RecurringRuleUpdate,
+  ): Promise<RecurringTransactionRule | null>
+
+  /**
+   * Moves a rule to a lifecycle state. The legal transitions live in the
+   * application layer, which reads the current state first — this port only
+   * persists the decision, scoped to the tenant. Returns null when no rule
+   * with that id exists inside the tenant.
+   */
+  abstract setRuleStatusForTenant(
+    id: string,
+    tenantId: string,
+    status: RecurringRuleStatus,
+  ): Promise<RecurringTransactionRule | null>
 
   abstract findExecutionByKey(
     tenantId: string,
