@@ -53,7 +53,7 @@ describe('RecurringTransactionsController', () => {
         frequency: 'monthly',
         dayOfMonth: 5,
         startDate: '2026-07-01T00:00:00.000Z',
-        active: true,
+        status: 'active',
       },
     )
 
@@ -65,7 +65,7 @@ describe('RecurringTransactionsController', () => {
       amountMinor: 250000,
       dayOfMonth: 5,
       startDate: '2026-07-01T00:00:00.000Z',
-      active: true,
+      status: 'active',
     })
     expect(result).toEqual({ data: { rule: { id: 'rule-1' } } })
   })

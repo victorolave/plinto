@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   CreateRecurringTransactionRuleSchema,
+  RecurringRuleStatusSchema,
   RecurringTransactionFrequencySchema,
   RecurringTransactionRuleSchema,
+  UpdateRecurringTransactionRuleSchema,
 } from '../recurring-transaction.schema'
 
 const validCreateInput = {
@@ -21,7 +23,7 @@ describe('recurring transaction schemas', () => {
     expect(result).toEqual({
       ...validCreateInput,
       frequency: 'monthly',
-      active: true,
+      status: 'active',
     })
     expect('transactionId' in result).toBe(false)
   })
@@ -58,7 +60,38 @@ describe('recurring transaction schemas', () => {
     expect(RecurringTransactionFrequencySchema.safeParse('weekly').success).toBe(false)
   })
 
-  it('serializes listed rule DTOs with tenant, derived currency, and active state', () => {
+  it('accepts a rule created directly in the paused state', () => {
+    const result = CreateRecurringTransactionRuleSchema.parse({
+      ...validCreateInput,
+      status: 'paused',
+    })
+
+    expect(result.status).toBe('paused')
+  })
+
+  // A rule that is born archived has no meaning: archiving retires something
+  // that existed. The create contract is deliberately narrower than the entity.
+  it('rejects creating a rule that is already archived', () => {
+    const result = CreateRecurringTransactionRuleSchema.safeParse({
+      ...validCreateInput,
+      status: 'archived',
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it.each(['active', 'paused', 'archived'])(
+    'recognises %s as a rule lifecycle state',
+    (status) => {
+      expect(RecurringRuleStatusSchema.parse(status)).toBe(status)
+    },
+  )
+
+  it('rejects lifecycle states outside the enum', () => {
+    expect(RecurringRuleStatusSchema.safeParse('deleted').success).toBe(false)
+  })
+
+  it('serializes listed rule DTOs with tenant, derived currency, and lifecycle state', () => {
     const createdAt = '2026-07-01T00:00:00.000Z'
 
     const result = RecurringTransactionRuleSchema.parse({
@@ -72,7 +105,7 @@ describe('recurring transaction schemas', () => {
       frequency: 'monthly',
       dayOfMonth: 1,
       startDate: createdAt,
-      active: true,
+      status: 'active',
       createdAt,
       updatedAt: createdAt,
     })
@@ -88,9 +121,49 @@ describe('recurring transaction schemas', () => {
       frequency: 'monthly',
       dayOfMonth: 1,
       startDate: createdAt,
-      active: true,
+      status: 'active',
       createdAt,
       updatedAt: createdAt,
+    })
+  })
+
+  describe('UpdateRecurringTransactionRuleSchema', () => {
+    it('accepts a partial edit of the mutable fields', () => {
+      const result = UpdateRecurringTransactionRuleSchema.parse({ amountMinor: 300000 })
+
+      expect(result).toEqual({ amountMinor: 300000 })
+    })
+
+    it('rejects an empty payload', () => {
+      const result = UpdateRecurringTransactionRuleSchema.safeParse({})
+
+      expect(result.success).toBe(false)
+    })
+
+    // Past periods are already materialized as transactions carrying the
+    // rule's account, type and currency; letting these change would leave the
+    // rule contradicting its own history.
+    it.each(['accountId', 'type', 'currency', 'frequency'])(
+      'strips the immutable field %s instead of applying it',
+      (field) => {
+        const result = UpdateRecurringTransactionRuleSchema.parse({
+          name: 'Rent',
+          [field]: 'whatever',
+        })
+
+        expect(field in result).toBe(false)
+      },
+    )
+
+    // Lifecycle transitions go through the explicit pause/resume/archive
+    // endpoints, so "stop posting money" is never a side effect of a field edit.
+    it('strips status instead of allowing a lifecycle change through an edit', () => {
+      const result = UpdateRecurringTransactionRuleSchema.parse({
+        name: 'Rent',
+        status: 'archived',
+      })
+
+      expect('status' in result).toBe(false)
     })
   })
 })

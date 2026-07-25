@@ -9,6 +9,7 @@ export {
   UpdateTransactionSchema,
   CreateTransferSchema,
   CreateRecurringTransactionRuleSchema,
+  UpdateRecurringTransactionRuleSchema,
   CreateCategorySchema,
   UpdateCategorySchema,
   PaginationQuerySchema,

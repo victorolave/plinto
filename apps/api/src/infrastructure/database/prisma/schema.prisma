@@ -156,7 +156,7 @@ model RecurringTransactionRule {
   frequency RecurringTransactionFrequency @default(monthly)
   dayOfMonth Int        @map("day_of_month")
   startDate DateTime    @map("start_date")
-  active    Boolean     @default(true)
+  status    RecurringRuleStatus @default(active)
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
 
@@ -166,7 +166,7 @@ model RecurringTransactionRule {
   executions   RecurringTransactionExecution[]
 
   @@index([tenantId])
-  @@index([tenantId, active])
+  @@index([tenantId, status])
   @@map("recurring_transaction_rules")
 }
 
@@ -245,6 +245,15 @@ enum TransactionSource {
 
 enum RecurringTransactionFrequency {
   monthly
+}
+
+/// Single lifecycle state per rule. Replaces the former `active` boolean so
+/// that "paused" and "archived" cannot be asserted at the same time, and so a
+/// rule may only materialize money under one predicate: status = 'active'.
+enum RecurringRuleStatus {
+  active
+  paused
+  archived
 }
 
 enum RecurringExecutionStatus {

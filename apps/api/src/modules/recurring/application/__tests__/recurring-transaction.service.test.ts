@@ -24,7 +24,7 @@ const makeRule = (overrides = {}) => ({
   frequency: 'monthly' as const,
   dayOfMonth: 5,
   startDate: new Date('2026-07-01T00:00:00.000Z'),
-  active: true,
+  status: 'active' as const,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
@@ -82,7 +82,7 @@ describe('RecurringTransactionService', () => {
       currency: 'USD',
       dayOfMonth: 1,
       startDate: new Date('2026-07-01T00:00:00.000Z'),
-      active: true,
+      status: 'active',
     })
     expect(result).toBe(rule)
   })
@@ -105,9 +105,9 @@ describe('RecurringTransactionService', () => {
     expect(repository.createRule).not.toHaveBeenCalled()
   })
 
-  it('preserves explicit inactive state on rule creation', async () => {
+  it('preserves an explicitly paused state on rule creation', async () => {
     accountRepository.findByIdForTenant.mockResolvedValue(makeAccount())
-    repository.createRule.mockResolvedValue(makeRule({ active: false }))
+    repository.createRule.mockResolvedValue(makeRule({ status: 'paused' }))
 
     await service.createRule({
       tenantId: 'tenant-1',
@@ -117,11 +117,11 @@ describe('RecurringTransactionService', () => {
       amountMinor: 10000,
       dayOfMonth: 12,
       startDate: '2026-07-01T00:00:00.000Z',
-      active: false,
+      status: 'paused',
     })
 
     expect(repository.createRule).toHaveBeenCalledWith(
-      expect.objectContaining({ active: false }),
+      expect.objectContaining({ status: 'paused' }),
     )
   })
 

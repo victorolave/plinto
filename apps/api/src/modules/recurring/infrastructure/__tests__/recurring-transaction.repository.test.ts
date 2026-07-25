@@ -31,7 +31,7 @@ const makeRule = (overrides = {}) => ({
   frequency: 'monthly' as const,
   dayOfMonth: 5,
   startDate: new Date('2026-07-01T00:00:00.000Z'),
-  active: true,
+  status: 'active' as const,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
@@ -51,7 +51,7 @@ describe('RecurringTransactionRepository', () => {
       frequency: 'monthly',
       dayOfMonth: 5,
       startDate: new Date('2026-07-01T00:00:00.000Z'),
-      active: true,
+      status: 'active',
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -67,7 +67,7 @@ describe('RecurringTransactionRepository', () => {
       currency: 'COP',
       dayOfMonth: 5,
       startDate: new Date('2026-07-01T00:00:00.000Z'),
-      active: true,
+      status: 'active',
     })
 
     expect(prisma.recurringTransactionRule.create).toHaveBeenCalledWith({
@@ -140,7 +140,7 @@ describe('RecurringTransactionRepository', () => {
 
     expect(prisma.recurringTransactionRule.findMany).toHaveBeenCalledWith({
       where: {
-        active: true,
+        status: 'active',
         frequency: 'monthly',
         startDate: { lte: new Date('2026-07-05T12:00:00.000Z') },
         account: { archivedAt: null },
@@ -165,7 +165,7 @@ describe('RecurringTransactionRepository', () => {
 
     expect(prisma.recurringTransactionRule.findMany).toHaveBeenCalledWith({
       where: {
-        active: true,
+        status: 'active',
         frequency: 'monthly',
         startDate: { lte: new Date('2026-07-21T00:00:00.000Z') },
         account: { archivedAt: null },

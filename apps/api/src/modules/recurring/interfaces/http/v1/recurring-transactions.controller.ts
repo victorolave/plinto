@@ -40,7 +40,7 @@ export class RecurringTransactionsController {
       amountMinor: body.amountMinor,
       dayOfMonth: body.dayOfMonth,
       startDate: body.startDate,
-      active: body.active,
+      status: body.status,
     })
     return { data: { rule } }
   }

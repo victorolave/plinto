@@ -1,7 +1,10 @@
 'use client'
 
 import type { Account } from '../../accounts/services/accounts'
-import type { RecurringTransactionRule } from '../services/recurring-transactions'
+import type {
+  RecurringRuleStatus,
+  RecurringTransactionRule,
+} from '../services/recurring-transactions'
 import { Card, CardHeader } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Amount } from '../../../components/ui/amount'
@@ -9,6 +12,20 @@ import { Badge } from '../../../components/ui/badge'
 import { Plus, Repeat } from '../../../components/ui/icons'
 import { EmptyState } from '../../../components/ui/empty-state'
 import { RecurringListSkeleton } from './transactions-skeleton'
+
+const STATUS_LABEL: Record<RecurringRuleStatus, string> = {
+  active: 'Active',
+  paused: 'Paused',
+  archived: 'Archived',
+}
+
+// Paused is deliberately not `danger`: it is a normal, reversible user choice,
+// not a fault state.
+const STATUS_TONE: Record<RecurringRuleStatus, 'success' | 'warning' | 'neutral'> = {
+  active: 'success',
+  paused: 'warning',
+  archived: 'neutral',
+}
 
 export interface RecurringSectionProps {
   rules: RecurringTransactionRule[]
@@ -72,8 +89,8 @@ export function RecurringSection({
                 {currency ? (
                   <Amount minor={rule.amountMinor} currency={currency} size="sm" />
                 ) : null}
-                <Badge tone={rule.active ? 'success' : 'neutral'}>
-                  {rule.active ? 'Active' : 'Inactive'}
+                <Badge tone={STATUS_TONE[rule.status]}>
+                  {STATUS_LABEL[rule.status]}
                 </Badge>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import {
+  CreateRecurringRuleStatus,
   RecurringTransactionExecution,
   RecurringTransactionRule,
 } from '../domain/recurring-transaction.entity'
@@ -32,7 +33,7 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
     currency: string
     dayOfMonth: number
     startDate: Date
-    active: boolean
+    status: CreateRecurringRuleStatus
   }): Promise<RecurringTransactionRule> {
     return this.prisma.recurringTransactionRule.create({
       data: {
@@ -65,7 +66,9 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
   async listActiveMonthlyRulesDueBy(dueDate: Date): Promise<RecurringTransactionRule[]> {
     const rules = await this.prisma.recurringTransactionRule.findMany({
       where: {
-        active: true,
+        // Only `active` rules materialize money: `paused` and `archived` are
+        // both excluded by this single predicate.
+        status: 'active',
         frequency: 'monthly',
         startDate: { lte: dueDate },
         // Never auto-post into an archived account: its rules stay dormant until

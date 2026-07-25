@@ -13,7 +13,7 @@ const makeRule = (overrides = {}) => ({
   frequency: 'monthly' as const,
   dayOfMonth: 5,
   startDate: new Date('2026-07-01T00:00:00.000Z'),
-  active: true,
+  status: 'active' as const,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,

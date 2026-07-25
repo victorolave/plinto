@@ -1,4 +1,5 @@
 import {
+  CreateRecurringRuleStatus,
   RecurringTransactionExecution,
   RecurringTransactionRule,
 } from './recurring-transaction.entity'
@@ -26,7 +27,7 @@ export abstract class RecurringTransactionRepository {
     currency: string
     dayOfMonth: number
     startDate: Date
-    active: boolean
+    status: CreateRecurringRuleStatus
   }): Promise<RecurringTransactionRule>
 
   abstract listRulesByTenantId(tenantId: string): Promise<RecurringTransactionRule[]>

@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { AccountRepository } from '../../accounts/domain/account.repository'
 import { TransactionType } from '../../transactions/domain/transaction.entity'
-import { RecurringTransactionRule } from '../domain/recurring-transaction.entity'
+import {
+  CreateRecurringRuleStatus,
+  RecurringTransactionRule,
+} from '../domain/recurring-transaction.entity'
 import { RecurringTransactionRepository } from '../domain/recurring-transaction.repository'
 import { RecurringExecutionService } from './recurring-execution.service'
 
@@ -21,7 +24,7 @@ export class RecurringTransactionService {
     amountMinor: number
     dayOfMonth: number
     startDate: string
-    active?: boolean
+    status?: CreateRecurringRuleStatus
   }): Promise<RecurringTransactionRule> {
     const account = await this.accountRepository.findByIdForTenant(
       params.accountId,
@@ -44,7 +47,7 @@ export class RecurringTransactionService {
       currency: account.currency,
       dayOfMonth: params.dayOfMonth,
       startDate: new Date(params.startDate),
-      active: params.active ?? true,
+      status: params.status ?? 'active',
     })
   }
 
