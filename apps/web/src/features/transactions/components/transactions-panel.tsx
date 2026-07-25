@@ -2,12 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listAccounts } from '../../accounts/services/accounts'
 import { Transaction, listBalances, listTransactions } from '../services/transactions'
 import {
   RecurringTransactionRule,
+  archiveRecurringTransactionRule,
   listRecurringTransactionRules,
+  pauseRecurringTransactionRule,
+  restoreRecurringTransactionRule,
+  resumeRecurringTransactionRule,
 } from '../services/recurring-transactions'
 import { queryKeys } from '../../../lib/api/query-keys'
 import { RecurringSection } from './recurring-section'
@@ -65,9 +69,12 @@ export function TransactionsPanel() {
     queryKey: queryKeys.categories,
     queryFn: async () => (await listCategories()).data.categories,
   })
+  // Archived rules are fetched too: the section folds them behind a toggle
+  // rather than hiding them entirely, so restoring one never needs a refetch.
   const rulesQuery = useQuery({
     queryKey: queryKeys.recurringRules,
-    queryFn: async () => (await listRecurringTransactionRules()).data.rules,
+    queryFn: async () =>
+      (await listRecurringTransactionRules({ includeArchived: true })).data.rules,
   })
 
   const accounts = accountsQuery.data ?? []
@@ -91,14 +98,46 @@ export function TransactionsPanel() {
     categoriesQuery.error ??
     balancesQuery.error ??
     rulesQuery.error
-  const error = loadError
-    ? loadError instanceof Error
-      ? loadError.message
-      : 'Failed to load transactions'
-    : null
-
   const [drawer, setDrawer] = useState<ActiveDrawer>(null)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [editingRule, setEditingRule] = useState<RecurringTransactionRule | null>(null)
+
+  // One mutation per lifecycle action, all invalidating the same key the rules
+  // query reads, so the list reflects the new state without a manual refetch.
+  const invalidateRules = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.recurringRules })
+  }
+
+  const pauseRuleMutation = useMutation({
+    mutationFn: (id: string) => pauseRecurringTransactionRule(id),
+    onSuccess: invalidateRules,
+  })
+  const resumeRuleMutation = useMutation({
+    mutationFn: (id: string) => resumeRecurringTransactionRule(id),
+    onSuccess: invalidateRules,
+  })
+  const archiveRuleMutation = useMutation({
+    mutationFn: (id: string) => archiveRecurringTransactionRule(id),
+    onSuccess: invalidateRules,
+  })
+  const restoreRuleMutation = useMutation({
+    mutationFn: (id: string) => restoreRecurringTransactionRule(id),
+    onSuccess: invalidateRules,
+  })
+
+  // A rejected lifecycle action (e.g. resuming an archived rule) must surface
+  // as loudly as a failed load, so both feed the same banner.
+  const activeError =
+    pauseRuleMutation.error ??
+    resumeRuleMutation.error ??
+    archiveRuleMutation.error ??
+    restoreRuleMutation.error ??
+    loadError
+  const error = activeError
+    ? activeError instanceof Error
+      ? activeError.message
+      : 'Failed to load transactions'
+    : null
 
   const {
     historyFilter,
@@ -122,6 +161,7 @@ export function TransactionsPanel() {
   const closeDrawer = () => {
     setDrawer(null)
     setEditingTransaction(null)
+    setEditingRule(null)
   }
 
   // TransactionForm / TransferForm own the actual create/update/transfer API
@@ -139,8 +179,18 @@ export function TransactionsPanel() {
   }
 
   const handleRecurringSaved = () => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.recurringRules })
+    invalidateRules()
     closeDrawer()
+  }
+
+  const openAddRule = () => {
+    setEditingRule(null)
+    setDrawer('recurring')
+  }
+
+  const openEditRule = (rule: RecurringTransactionRule) => {
+    setEditingRule(rule)
+    setDrawer('recurring')
   }
 
   const openAdd = () => {
@@ -290,7 +340,12 @@ export function TransactionsPanel() {
         rules={rules}
         accounts={accounts}
         loading={loading}
-        onAdd={() => setDrawer('recurring')}
+        onAdd={openAddRule}
+        onEdit={openEditRule}
+        onPause={(rule) => pauseRuleMutation.mutate(rule.id)}
+        onResume={(rule) => resumeRuleMutation.mutate(rule.id)}
+        onArchive={(rule) => archiveRuleMutation.mutate(rule.id)}
+        onRestore={(rule) => restoreRuleMutation.mutate(rule.id)}
       />
 
       {/* On-demand transaction create / edit */}
@@ -318,14 +373,18 @@ export function TransactionsPanel() {
         <TransferForm accounts={accounts} onSaved={handleSaved} />
       </Drawer>
 
-      {/* On-demand recurring rule creation */}
+      {/* On-demand recurring rule creation / edit */}
       <Drawer
         open={drawer === 'recurring'}
         onClose={closeDrawer}
-        title="New recurring rule"
+        title={editingRule ? 'Edit recurring rule' : 'New recurring rule'}
         description="Posts automatically each month when due"
       >
-        <RecurringForm accounts={accounts} onSaved={handleRecurringSaved} />
+        <RecurringForm
+          accounts={accounts}
+          editing={editingRule}
+          onSaved={handleRecurringSaved}
+        />
       </Drawer>
     </div>
   )
