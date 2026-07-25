@@ -34,6 +34,8 @@ export class RecurringTransactionsController {
   ) {
     const rule = await this.recurringService.createRule({
       tenantId: req.tenantId as string,
+      actorUserId: req.user?.id ?? null,
+      correlationId: req.requestId ?? 'unknown',
       name: body.name,
       accountId: body.accountId,
       type: body.type,

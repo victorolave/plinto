@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { AccountsModule } from '../accounts/accounts.module'
+import { AuditModule } from '../audit/audit.module'
 import { MembershipsModule } from '../memberships/memberships.module'
 import { SessionsModule } from '../sessions/sessions.module'
 import { AuthGuard } from '../../common/guards/auth.guard'
@@ -14,7 +15,7 @@ import { RecurringTransactionsController } from './interfaces/http/v1/recurring-
 import { RecurringExecutionController } from './interfaces/http/v1/recurring-execution.controller'
 
 @Module({
-  imports: [AccountsModule, MembershipsModule, SessionsModule],
+  imports: [AccountsModule, AuditModule, MembershipsModule, SessionsModule],
   controllers: [RecurringTransactionsController, RecurringExecutionController],
   providers: [
     RecurringTransactionService,

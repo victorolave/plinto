@@ -44,7 +44,7 @@ describe('RecurringTransactionsController', () => {
     const controller = new RecurringTransactionsController(recurringService as any)
 
     const result = await controller.createRule(
-      { tenantId: 'tenant-1' } as any,
+      { tenantId: 'tenant-1', user: { id: 'user-1' }, requestId: 'req-1' } as any,
       {
         name: 'Monthly rent',
         accountId: 'account-1',
@@ -59,6 +59,8 @@ describe('RecurringTransactionsController', () => {
 
     expect(recurringService.createRule).toHaveBeenCalledWith({
       tenantId: 'tenant-1',
+      actorUserId: 'user-1',
+      correlationId: 'req-1',
       name: 'Monthly rent',
       accountId: 'account-1',
       type: 'expense',
