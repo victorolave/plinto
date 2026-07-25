@@ -37,6 +37,8 @@ model Tenant {
   recurringRules RecurringTransactionRule[]
   recurringExecutions RecurringTransactionExecution[]
   categories   Category[]
+  obligationInstances ObligationInstance[]
+  obligationPayments  ObligationPayment[]
 
   @@map("tenants")
 }
@@ -135,6 +137,7 @@ model Transaction {
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   recurringRule RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id])
   recurringExecution RecurringTransactionExecution?
+  obligationPayment ObligationPayment?
 
   @@index([tenantId])
   @@index([accountId])
@@ -164,6 +167,7 @@ model RecurringTransactionRule {
   account      Account     @relation(fields: [accountId], references: [id])
   transactions Transaction[]
   executions   RecurringTransactionExecution[]
+  obligationInstances ObligationInstance[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -189,6 +193,58 @@ model RecurringTransactionExecution {
   @@unique([ruleId, period])
   @@index([tenantId])
   @@map("recurring_transaction_executions")
+}
+
+/// One obligation for one period: what the household is expected to pay, and
+/// when. Deliberately stores only facts — expected amount, due date, origin.
+/// The lifecycle state (pending / partial / paid / overdue) is DERIVED from
+/// the linked payments and the due date, never stored, so it cannot contradict
+/// the payments that back it and no job is needed to age instances.
+model ObligationInstance {
+  id                  String   @id @default(uuid())
+  tenantId            String   @map("tenant_id")
+  sourceType          ObligationSourceType @map("source_type")
+  recurringRuleId     String?  @map("recurring_rule_id")
+  period              String
+  dueDate             DateTime @map("due_date")
+  name                String
+  expectedAmountMinor Int      @map("expected_amount_minor")
+  currency            String
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant                    @relation(fields: [tenantId], references: [id])
+  recurringRule RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id])
+  payments      ObligationPayment[]
+
+  /// Idempotency of generation. Postgres treats NULLs as distinct, so this
+  /// blocks a second instance for the same (rule, period) while still allowing
+  /// any number of one-off obligations inside the same period.
+  @@unique([recurringRuleId, period])
+  @@index([tenantId, period])
+  @@map("obligation_instances")
+}
+
+/// Links a transaction to the obligation it pays. Several payments may settle
+/// one obligation (rent paid in two transfers), but `transactionId` is unique
+/// across the whole table, which is what makes "a transaction cannot reconcile
+/// two obligations" a guarantee of the engine rather than a check somebody has
+/// to remember to write.
+model ObligationPayment {
+  id                   String   @id @default(uuid())
+  tenantId             String   @map("tenant_id")
+  obligationInstanceId String   @map("obligation_instance_id")
+  transactionId        String   @unique @map("transaction_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  obligationInstance ObligationInstance @relation(fields: [obligationInstanceId], references: [id])
+  transaction        Transaction        @relation(fields: [transactionId], references: [id])
+
+  @@unique([obligationInstanceId, transactionId])
+  @@index([tenantId])
+  @@index([obligationInstanceId])
+  @@map("obligation_payments")
 }
 
 model Transfer {
@@ -258,6 +314,15 @@ enum RecurringRuleStatus {
 
 enum RecurringExecutionStatus {
   success
+}
+
+/// Origin of an obligation instance. PRD-007 will add `debt_schedule` together
+/// with its own nullable foreign key; a CHECK constraint keeps the declared
+/// origin and the populated reference in agreement, so "exactly one origin" is
+/// enforced by the database rather than by convention.
+enum ObligationSourceType {
+  recurring_rule
+  manual
 }
 
 enum MembershipRole {
