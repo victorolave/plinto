@@ -22,6 +22,8 @@ import {
   RecurringTransactionRuleSchema,
   CreateRecurringTransactionRuleSchema,
   UpdateRecurringTransactionRuleSchema,
+  GenerateObligationsSchema,
+  GenerateObligationsResultSchema,
   CreateSessionSchema,
   UserSchema,
   MembershipSchema,
@@ -143,6 +145,15 @@ const ExecuteRecurringResultSchema = z
     skipped: z.number().int(),
   })
   .openapi('ExecuteRecurringResult')
+
+const GenerateObligationsRequestSchemaRef = registry.register(
+  'GenerateObligationsRequest',
+  GenerateObligationsSchema,
+)
+const GenerateObligationsResultSchemaRef = registry.register(
+  'GenerateObligationsResult',
+  GenerateObligationsResultSchema,
+)
 
 const CreateSessionResultSchema = z
   .object({
@@ -679,6 +690,37 @@ registry.registerPath({
   },
   responses: {
     200: dataResponse('Execution summary.', ExecuteRecurringResultSchema),
+    ...errorResponses,
+  },
+})
+
+// ---------------------------------------------------------------------------
+// Obligations
+// ---------------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/internal/obligations/generate',
+  tags: ['Obligations'],
+  summary:
+    'Materialize the obligations of one or more periods across tenants (internal/system endpoint)',
+  description:
+    'Creates one obligation instance per active recurring rule for each period ' +
+    'in the horizon. Idempotent by (rule, period): re-running a period never ' +
+    'duplicates an obligation, and instances already present are reported as ' +
+    'skipped. Safe to run ahead of time — generating future periods is what ' +
+    'produces the forward projection. Paused and archived rules are never ' +
+    'materialized.',
+  security: internalKeyAuth,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: GenerateObligationsRequestSchemaRef },
+      },
+    },
+  },
+  responses: {
+    200: dataResponse('Generation summary.', GenerateObligationsResultSchemaRef),
     ...errorResponses,
   },
 })

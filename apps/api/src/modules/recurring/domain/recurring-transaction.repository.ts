@@ -85,6 +85,16 @@ export abstract class RecurringTransactionRepository {
   abstract listActiveMonthlyRulesDueBy(dueDate: Date): Promise<RecurringTransactionRule[]>
 
   /**
+   * Active rules that already existed by the end of `period`, whatever their
+   * day of month. Unlike listActiveMonthlyRulesDueBy this does not require the
+   * occurrence to have passed, because obligations are materialized ahead of
+   * time — that forward projection is the point of the monthly board.
+   */
+  abstract listActiveMonthlyRulesForPeriod(
+    period: string,
+  ): Promise<RecurringTransactionRule[]>
+
+  /**
    * Creates the transaction + execution record for a due rule occurrence.
    * Returns null if a concurrent caller already created an execution for the
    * same (tenantId, idempotencyKey) pair — i.e. the unique constraint that

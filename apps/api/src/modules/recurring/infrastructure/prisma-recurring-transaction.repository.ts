@@ -8,6 +8,7 @@ import {
   RecurringTransactionRule,
 } from '../domain/recurring-transaction.entity'
 import { TransactionType } from '../../transactions/domain/transaction.entity'
+import { endOfPeriod, occurrenceDate } from '../../../common/period'
 import {
   RecurringExecutionResult,
   RecurringRuleUpdate,
@@ -138,6 +139,26 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
 
       return scheduledAt <= dueDate && scheduledAt >= rule.startDate
     })
+  }
+
+  async listActiveMonthlyRulesForPeriod(
+    period: string,
+  ): Promise<RecurringTransactionRule[]> {
+    const rules = await this.prisma.recurringTransactionRule.findMany({
+      where: {
+        status: 'active',
+        frequency: 'monthly',
+        // The rule must already exist by the end of the period; its occurrence
+        // inside that period may still be in the future.
+        startDate: { lte: endOfPeriod(period) },
+        account: { archivedAt: null },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    // A rule starting on the 20th does not owe an obligation for a period
+    // whose occurrence lands on the 5th.
+    return rules.filter((rule) => occurrenceDate(period, rule.dayOfMonth) >= rule.startDate)
   }
 
   async createExecutionTransaction(input: {

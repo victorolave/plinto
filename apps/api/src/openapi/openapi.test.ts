@@ -45,6 +45,8 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   { path: '/api/recurring-transactions/{id}/restore', method: 'post' },
   { path: '/api/recurring-transactions/{id}', method: 'delete' },
   { path: '/api/internal/recurring/execute', method: 'post' },
+  // Obligations (ObligationGenerationController)
+  { path: '/api/internal/obligations/generate', method: 'post' },
 ]
 
 describe('buildOpenApiDocument', () => {

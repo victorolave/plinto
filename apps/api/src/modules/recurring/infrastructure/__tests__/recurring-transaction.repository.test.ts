@@ -273,6 +273,54 @@ describe('RecurringTransactionRepository', () => {
     expect(result).toBeNull()
   })
 
+  describe('listActiveMonthlyRulesForPeriod', () => {
+    // Obligations are materialized ahead of time, so unlike the executor this
+    // must not require the occurrence to have passed.
+    it('takes every active rule that existed by the end of the period', async () => {
+      const prisma = makePrisma()
+      const rule = makeRule({ dayOfMonth: 5 })
+      prisma.recurringTransactionRule.findMany.mockResolvedValue([rule])
+      const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+      const result = await repository.listActiveMonthlyRulesForPeriod('2026-07')
+
+      expect(prisma.recurringTransactionRule.findMany).toHaveBeenCalledWith({
+        where: {
+          status: 'active',
+          frequency: 'monthly',
+          startDate: { lte: new Date('2026-07-31T23:59:59.999Z') },
+          account: { archivedAt: null },
+        },
+        orderBy: { createdAt: 'asc' },
+      })
+      expect(result).toEqual([rule])
+    })
+
+    it('includes a rule whose occurrence is still in the future', async () => {
+      const prisma = makePrisma()
+      const rule = makeRule({
+        dayOfMonth: 28,
+        startDate: new Date('2026-01-01T00:00:00.000Z'),
+      })
+      prisma.recurringTransactionRule.findMany.mockResolvedValue([rule])
+      const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+      expect(await repository.listActiveMonthlyRulesForPeriod('2026-07')).toEqual([rule])
+    })
+
+    // A rule starting on the 20th owes nothing for a period whose occurrence
+    // lands on the 5th.
+    it('excludes a rule whose occurrence precedes its start date', async () => {
+      const prisma = makePrisma()
+      prisma.recurringTransactionRule.findMany.mockResolvedValue([
+        makeRule({ dayOfMonth: 5, startDate: new Date('2026-07-20T00:00:00.000Z') }),
+      ])
+      const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+      expect(await repository.listActiveMonthlyRulesForPeriod('2026-07')).toEqual([])
+    })
+  })
+
   it('atomically creates transaction, execution, and job audit provenance', async () => {
     const prisma = makePrisma()
     const tx = makePrisma()
