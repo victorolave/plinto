@@ -61,6 +61,7 @@ describe('ObligationService', () => {
     createPayment: ReturnType<typeof vi.fn>
     findPaymentByTransactionId: ReturnType<typeof vi.fn>
     deletePayment: ReturnType<typeof vi.fn>
+    summarizeByCurrency: ReturnType<typeof vi.fn>
   }
   let transactionRepository: { findByIdForTenant: ReturnType<typeof vi.fn> }
   let auditService: { record: ReturnType<typeof vi.fn> }
@@ -74,6 +75,7 @@ describe('ObligationService', () => {
       createPayment: vi.fn().mockResolvedValue(makePayment()),
       findPaymentByTransactionId: vi.fn().mockResolvedValue(null),
       deletePayment: vi.fn().mockResolvedValue(true),
+      summarizeByCurrency: vi.fn().mockResolvedValue([]),
     }
     transactionRepository = {
       findByIdForTenant: vi.fn().mockResolvedValue(makeTransaction()),
@@ -97,6 +99,46 @@ describe('ObligationService', () => {
       expect(obligation.status).toBe('partial')
       expect(obligation.paidAmountMinor).toBe(100000)
       expect(obligation.outstandingAmountMinor).toBe(130000)
+    })
+  })
+
+  describe('getPeriodSummary', () => {
+    it('returns the period totals per currency, straight from the aggregate', async () => {
+      obligationRepository.summarizeByCurrency.mockResolvedValue([
+        {
+          currency: 'COP',
+          expectedMinor: 330000,
+          paidMinor: 250000,
+          outstandingMinor: 100000,
+        },
+      ])
+
+      const result = await service.getPeriodSummary('tenant-1', '2026-07')
+
+      expect(obligationRepository.summarizeByCurrency).toHaveBeenCalledWith(
+        'tenant-1',
+        '2026-07',
+      )
+      expect(result).toEqual({
+        period: '2026-07',
+        totals: [
+          {
+            currency: 'COP',
+            expectedMinor: 330000,
+            paidMinor: 250000,
+            outstandingMinor: 100000,
+          },
+        ],
+      })
+    })
+
+    it('reports an empty period with no totals', async () => {
+      obligationRepository.summarizeByCurrency.mockResolvedValue([])
+
+      expect(await service.getPeriodSummary('tenant-1', '2026-07')).toEqual({
+        period: '2026-07',
+        totals: [],
+      })
     })
   })
 

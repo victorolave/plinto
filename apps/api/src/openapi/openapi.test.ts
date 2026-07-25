@@ -47,6 +47,7 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   { path: '/api/internal/recurring/execute', method: 'post' },
   // Obligations (ObligationsController, ObligationGenerationController)
   { path: '/api/obligations', method: 'get' },
+  { path: '/api/obligations/summary', method: 'get' },
   { path: '/api/obligations', method: 'post' },
   { path: '/api/obligations/{id}/payments', method: 'post' },
   { path: '/api/obligations/{id}/payments/{transactionId}', method: 'delete' },

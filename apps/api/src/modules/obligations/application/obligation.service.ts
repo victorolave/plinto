@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { AuditService } from '../../audit/application/audit.service'
 import { TransactionRepository } from '../../transactions/domain/transaction.repository'
 import {
+  ObligationPeriodSummary,
   ResolvedObligationInstance,
   resolveObligationInstance,
 } from '../domain/obligation.entity'
@@ -62,6 +63,19 @@ export class ObligationService {
     )
 
     return instances.map((instance) => resolveObligationInstance(instance, now))
+  }
+
+  /**
+   * The spreadsheet's TOTAL / TOTAL PAID / OUTSTANDING rows for a period, one
+   * set per currency. Every figure is aggregated by the database.
+   */
+  async getPeriodSummary(
+    tenantId: string,
+    period: string,
+  ): Promise<ObligationPeriodSummary> {
+    const totals = await this.obligationRepository.summarizeByCurrency(tenantId, period)
+
+    return { period, totals }
   }
 
   /**

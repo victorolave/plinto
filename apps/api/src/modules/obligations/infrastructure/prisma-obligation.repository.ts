@@ -4,8 +4,7 @@ import { PrismaService } from '../../../infrastructure/database/prisma/prisma.se
 import { ObligationInstance, ObligationPayment } from '../domain/obligation.entity'
 import {
   CreateObligationInstanceInput,
-  ObligationExpectedTotal,
-  ObligationPaidTotal,
+  ObligationCurrencyTotalRow,
   ObligationRepository,
 } from '../domain/obligation.repository'
 
@@ -170,48 +169,69 @@ export class PrismaObligationRepository extends ObligationRepository {
     return result.count > 0
   }
 
-  async sumExpectedByCurrency(
-    tenantId: string,
-    period: string,
-  ): Promise<ObligationExpectedTotal[]> {
-    const rows = await this.prisma.obligationInstance.groupBy({
-      by: ['currency'],
-      where: { tenantId, period },
-      _sum: { expectedAmountMinor: true },
-    })
-
-    return rows.map((row) => ({
-      currency: row.currency,
-      expectedMinor: row._sum.expectedAmountMinor ?? 0,
-    }))
-  }
-
   /**
-   * Sums the transactions linked to the period's obligations, grouped by the
-   * transaction's own currency. Aggregation happens in SQL by walking the
-   * payment relation, so no instance or transaction is ever loaded into
-   * application memory to be added up.
+   * The one aggregate in this codebase that cannot be expressed with Prisma's
+   * query builder, and the reason it uses $queryRaw.
+   *
+   * The outstanding total has to be the SUM of each obligation's own shortfall
+   * — GREATEST(expected - paid, 0) per instance, then summed — because the
+   * difference between the totals silently absorbs overpayments: 230k/250k
+   * next to 100k/0 still leaves 100k owed, while subtracting totals reports
+   * 80k. That needs payments grouped per instance BEFORE the currency
+   * grouping, which `groupBy` cannot nest.
+   *
+   * Aggregation still happens entirely in Postgres; nothing is summed in
+   * application memory. Values are parameterized, never interpolated.
    */
-  async sumPaidByCurrency(
+  async summarizeByCurrency(
     tenantId: string,
     period: string,
-  ): Promise<ObligationPaidTotal[]> {
-    const rows = await this.prisma.transaction.groupBy({
-      by: ['currency'],
-      where: {
-        tenantId,
-        obligationPayment: {
-          is: { tenantId, obligationInstance: { is: { tenantId, period } } },
-        },
-      },
-      _sum: { amountMinor: true },
-    })
+  ): Promise<ObligationCurrencyTotalRow[]> {
+    const rows = await this.prisma.$queryRaw<RawSummaryRow[]>`
+      SELECT
+        i."currency" AS currency,
+        SUM(i."expected_amount_minor") AS expected_minor,
+        SUM(COALESCE(p.paid, 0)) AS paid_minor,
+        SUM(GREATEST(i."expected_amount_minor" - COALESCE(p.paid, 0), 0)) AS outstanding_minor
+      FROM "obligation_instances" i
+      LEFT JOIN (
+        SELECT op."obligation_instance_id" AS instance_id, SUM(t."amount_minor") AS paid
+        FROM "obligation_payments" op
+        JOIN "transactions" t ON t."id" = op."transaction_id"
+        GROUP BY op."obligation_instance_id"
+      ) p ON p.instance_id = i."id"
+      WHERE i."tenant_id" = ${tenantId} AND i."period" = ${period}
+      GROUP BY i."currency"
+      ORDER BY i."currency" ASC
+    `
 
     return rows.map((row) => ({
       currency: row.currency,
-      paidMinor: row._sum.amountMinor ?? 0,
+      expectedMinor: toNumber(row.expected_minor),
+      paidMinor: toNumber(row.paid_minor),
+      outstandingMinor: toNumber(row.outstanding_minor),
     }))
   }
+}
+
+/**
+ * Postgres widens SUM(int) to bigint, which the driver hands back as a BigInt
+ * (or a numeric string). Amounts are minor units within safe-integer range, so
+ * narrowing here is lossless and keeps the domain on plain numbers.
+ */
+type RawSummaryRow = {
+  currency: string
+  expected_minor: bigint | string | number | null
+  paid_minor: bigint | string | number | null
+  outstanding_minor: bigint | string | number | null
+}
+
+function toNumber(value: bigint | string | number | null): number {
+  if (value === null) {
+    return 0
+  }
+
+  return Number(value)
 }
 
 function toInstance(instance: PrismaInstanceWithPayments): ObligationInstance {

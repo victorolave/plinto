@@ -25,6 +25,7 @@ import {
   GenerateObligationsSchema,
   GenerateObligationsResultSchema,
   ObligationInstanceSchema,
+  ObligationPeriodSummarySchema,
   CreateObligationSchema,
   ReconcileObligationSchema,
   CreateSessionSchema,
@@ -152,6 +153,10 @@ const ExecuteRecurringResultSchema = z
 const ObligationInstanceSchemaRef = registry.register(
   'ObligationInstance',
   ObligationInstanceSchema,
+)
+const ObligationPeriodSummarySchemaRef = registry.register(
+  'ObligationPeriodSummary',
+  ObligationPeriodSummarySchema,
 )
 const CreateObligationSchemaRef = registry.register(
   'CreateObligation',
@@ -735,6 +740,35 @@ registry.registerPath({
     200: dataResponse(
       'Obligations for the period.',
       z.object({ obligations: z.array(ObligationInstanceSchemaRef) }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/obligations/summary',
+  tags: ['Obligations'],
+  summary: 'Period totals: expected, paid and outstanding, per currency',
+  description:
+    'One set of totals per currency — a household can owe in more than one, ' +
+    'and adding them together would be arithmetic on incomparable units. ' +
+    'The outstanding total is the sum of each obligation own shortfall, not ' +
+    'the difference between the totals: those diverge whenever something is ' +
+    'overpaid, and the difference always understates what is still owed.',
+  security: sessionCookieAuth,
+  request: {
+    query: z.object({
+      period: z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .optional(),
+    }),
+  },
+  responses: {
+    200: dataResponse(
+      'Period totals.',
+      z.object({ summary: ObligationPeriodSummarySchemaRef }),
     ),
     ...errorResponses,
   },

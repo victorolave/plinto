@@ -17,6 +17,7 @@ const makePrisma = () => ({
   transaction: {
     groupBy: vi.fn(),
   },
+  $queryRaw: vi.fn(),
 })
 
 const makePrismaPayment = (overrides = {}) => ({
@@ -251,70 +252,122 @@ describe('PrismaObligationRepository', () => {
     )
   })
 
-  describe('period aggregates', () => {
-    // Summing across currencies would be arithmetic on incomparable units.
-    it('groups expected totals by currency in SQL', async () => {
+  describe('summarizeByCurrency', () => {
+    it('returns one set of totals per currency', async () => {
       const prisma = makePrisma()
-      prisma.obligationInstance.groupBy.mockResolvedValue([
-        { currency: 'COP', _sum: { expectedAmountMinor: 230000 } },
-        { currency: 'USD', _sum: { expectedAmountMinor: 50000 } },
-      ])
-      const repository = new PrismaObligationRepository(prisma as any)
-
-      const result = await repository.sumExpectedByCurrency('tenant-1', '2026-07')
-
-      expect(prisma.obligationInstance.groupBy).toHaveBeenCalledWith({
-        by: ['currency'],
-        where: { tenantId: 'tenant-1', period: '2026-07' },
-        _sum: { expectedAmountMinor: true },
-      })
-      expect(result).toEqual([
-        { currency: 'COP', expectedMinor: 230000 },
-        { currency: 'USD', expectedMinor: 50000 },
-      ])
-    })
-
-    it('walks the payment relation to sum settled amounts without loading rows', async () => {
-      const prisma = makePrisma()
-      prisma.transaction.groupBy.mockResolvedValue([
-        { currency: 'COP', _sum: { amountMinor: 100000 } },
-      ])
-      const repository = new PrismaObligationRepository(prisma as any)
-
-      const result = await repository.sumPaidByCurrency('tenant-1', '2026-07')
-
-      expect(prisma.transaction.groupBy).toHaveBeenCalledWith({
-        by: ['currency'],
-        where: {
-          tenantId: 'tenant-1',
-          obligationPayment: {
-            is: {
-              tenantId: 'tenant-1',
-              obligationInstance: { is: { tenantId: 'tenant-1', period: '2026-07' } },
-            },
-          },
+      prisma.$queryRaw.mockResolvedValue([
+        {
+          currency: 'COP',
+          expected_minor: 330000n,
+          paid_minor: 250000n,
+          outstanding_minor: 100000n,
         },
-        _sum: { amountMinor: true },
-      })
-      expect(result).toEqual([{ currency: 'COP', paidMinor: 100000 }])
-    })
-
-    it.each([
-      ['expected', 'sumExpectedByCurrency'],
-      ['paid', 'sumPaidByCurrency'],
-    ] as const)('reports a zero %s total rather than null', async (_label, method) => {
-      const prisma = makePrisma()
-      prisma.obligationInstance.groupBy.mockResolvedValue([
-        { currency: 'COP', _sum: { expectedAmountMinor: null } },
-      ])
-      prisma.transaction.groupBy.mockResolvedValue([
-        { currency: 'COP', _sum: { amountMinor: null } },
+        {
+          currency: 'USD',
+          expected_minor: 50000n,
+          paid_minor: 0n,
+          outstanding_minor: 50000n,
+        },
       ])
       const repository = new PrismaObligationRepository(prisma as any)
 
-      const [total] = await repository[method]('tenant-1', '2026-07')
+      const result = await repository.summarizeByCurrency('tenant-1', '2026-07')
 
-      expect(Object.values(total)).toContain(0)
+      expect(result).toEqual([
+        {
+          currency: 'COP',
+          expectedMinor: 330000,
+          paidMinor: 250000,
+          outstandingMinor: 100000,
+        },
+        { currency: 'USD', expectedMinor: 50000, paidMinor: 0, outstandingMinor: 50000 },
+      ])
+    })
+
+    // Postgres widens SUM(int) to bigint; the driver may hand it back as a
+    // BigInt or a numeric string depending on the type.
+    it.each([
+      ['bigint', 330000n, 250000n, 100000n],
+      ['string', '330000', '250000', '100000'],
+      ['number', 330000, 250000, 100000],
+    ])('narrows %s sums to plain numbers', async (_label, expected, paid, outstanding) => {
+      const prisma = makePrisma()
+      prisma.$queryRaw.mockResolvedValue([
+        {
+          currency: 'COP',
+          expected_minor: expected,
+          paid_minor: paid,
+          outstanding_minor: outstanding,
+        },
+      ])
+      const repository = new PrismaObligationRepository(prisma as any)
+
+      const [total] = await repository.summarizeByCurrency('tenant-1', '2026-07')
+
+      expect(total).toEqual({
+        currency: 'COP',
+        expectedMinor: 330000,
+        paidMinor: 250000,
+        outstandingMinor: 100000,
+      })
+    })
+
+    it('reports zero rather than null for an empty sum', async () => {
+      const prisma = makePrisma()
+      prisma.$queryRaw.mockResolvedValue([
+        {
+          currency: 'COP',
+          expected_minor: null,
+          paid_minor: null,
+          outstanding_minor: null,
+        },
+      ])
+      const repository = new PrismaObligationRepository(prisma as any)
+
+      const [total] = await repository.summarizeByCurrency('tenant-1', '2026-07')
+
+      expect(total).toEqual({
+        currency: 'COP',
+        expectedMinor: 0,
+        paidMinor: 0,
+        outstandingMinor: 0,
+      })
+    })
+
+    it('returns nothing for a period with no obligations', async () => {
+      const prisma = makePrisma()
+      prisma.$queryRaw.mockResolvedValue([])
+      const repository = new PrismaObligationRepository(prisma as any)
+
+      expect(await repository.summarizeByCurrency('tenant-1', '2026-07')).toEqual([])
+    })
+
+    // The tenant and period are parameterized, never interpolated into the SQL.
+    it('passes the tenant and period as query parameters', async () => {
+      const prisma = makePrisma()
+      prisma.$queryRaw.mockResolvedValue([])
+      const repository = new PrismaObligationRepository(prisma as any)
+
+      await repository.summarizeByCurrency('tenant-1', '2026-07')
+
+      const [strings, ...values] = prisma.$queryRaw.mock.calls[0]
+      expect(Array.isArray(strings)).toBe(true)
+      expect(values).toEqual(['tenant-1', '2026-07'])
+    })
+
+    // The whole reason this aggregate is raw SQL: outstanding must be the sum
+    // of each obligation's own shortfall, so an overpayment on one cannot
+    // absorb the shortfall of another.
+    it('sums per-obligation shortfalls rather than subtracting the totals', async () => {
+      const prisma = makePrisma()
+      prisma.$queryRaw.mockResolvedValue([])
+      const repository = new PrismaObligationRepository(prisma as any)
+
+      await repository.summarizeByCurrency('tenant-1', '2026-07')
+
+      const sql = prisma.$queryRaw.mock.calls[0][0].join('?').replace(/\s+/g, ' ')
+      expect(sql).toContain('SUM(GREATEST(')
+      expect(sql).toContain('GROUP BY op."obligation_instance_id"')
     })
   })
 })

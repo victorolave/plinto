@@ -44,6 +44,21 @@ export class ObligationsController {
     return { data: { obligations } }
   }
 
+  /**
+   * Declared before the parameterized routes so `summary` is never captured as
+   * an obligation id.
+   */
+  @Get('summary')
+  @RequirePermission('obligation:read')
+  async getSummary(@Req() req: RequestContext, @Query('period') period?: string) {
+    const summary = await this.obligationService.getPeriodSummary(
+      req.tenantId as string,
+      this.resolvePeriod(period),
+    )
+
+    return { data: { summary } }
+  }
+
   @Post()
   @RequirePermission('obligation:write')
   @UsePipes(new ZodValidationPipe(CreateObligationSchema))

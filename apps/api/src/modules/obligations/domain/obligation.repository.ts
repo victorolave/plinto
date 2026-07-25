@@ -15,16 +15,12 @@ export interface CreateObligationInstanceInput {
   currency: string
 }
 
-/** Expected totals for a period, already grouped by currency in SQL. */
-export interface ObligationExpectedTotal {
+/** Period totals for one currency, already aggregated in SQL. */
+export interface ObligationCurrencyTotalRow {
   currency: string
   expectedMinor: number
-}
-
-/** Settled totals for a period, already grouped by currency in SQL. */
-export interface ObligationPaidTotal {
-  currency: string
   paidMinor: number
+  outstandingMinor: number
 }
 
 /**
@@ -95,20 +91,21 @@ export abstract class ObligationRepository {
   ): Promise<boolean>
 
   /**
-   * Aggregates the period's expected and settled amounts per currency. Both
-   * run in SQL — never by loading instances into application memory — and both
-   * group by currency rather than returning a scalar, because summing across
-   * currencies is arithmetic on incomparable units.
+   * The period's expected, settled and outstanding totals, one row per
+   * currency — never a scalar, because summing across currencies is arithmetic
+   * on incomparable units.
+   *
+   * Outstanding is the SUM of each obligation's own shortfall, not the
+   * difference between the totals. Those diverge as soon as anything is
+   * overpaid: 230k expected / 250k paid alongside 100k expected / 0 paid still
+   * leaves 100k owed, while subtracting the totals reports 80k. Overpayment is
+   * ordinary — a rounded transfer, a late fee, rent paid together with the
+   * building fee — and the error always understates what the household owes.
    */
-  abstract sumExpectedByCurrency(
+  abstract summarizeByCurrency(
     tenantId: string,
     period: string,
-  ): Promise<ObligationExpectedTotal[]>
-
-  abstract sumPaidByCurrency(
-    tenantId: string,
-    period: string,
-  ): Promise<ObligationPaidTotal[]>
+  ): Promise<ObligationCurrencyTotalRow[]>
 }
 
 export type { ObligationCurrencyTotal }

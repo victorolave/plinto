@@ -62,6 +62,41 @@ describe('ObligationsController', () => {
     expect(obligationService.listPeriod).not.toHaveBeenCalled()
   })
 
+  it('requires read permission for the period summary', () => {
+    const reflector = new Reflector()
+
+    expect(
+      reflector.get(PERMISSION_KEY, ObligationsController.prototype.getSummary),
+    ).toBe('obligation:read')
+  })
+
+  it('returns the period summary for the active tenant', async () => {
+    const obligationService = {
+      getPeriodSummary: vi
+        .fn()
+        .mockResolvedValue({ period: '2026-07', totals: [] }),
+    }
+    const controller = new ObligationsController(obligationService as any)
+
+    const result = await controller.getSummary(request, '2026-07')
+
+    expect(obligationService.getPeriodSummary).toHaveBeenCalledWith(
+      'tenant-1',
+      '2026-07',
+    )
+    expect(result).toEqual({ data: { summary: { period: '2026-07', totals: [] } } })
+  })
+
+  it('rejects a malformed period on the summary too', async () => {
+    const obligationService = { getPeriodSummary: vi.fn() }
+    const controller = new ObligationsController(obligationService as any)
+
+    await expect(controller.getSummary(request, '2026-13')).rejects.toThrow(
+      BadRequestException,
+    )
+    expect(obligationService.getPeriodSummary).not.toHaveBeenCalled()
+  })
+
   it('creates a one-off obligation with the request context', async () => {
     const obligationService = {
       createManualObligation: vi.fn().mockResolvedValue({ id: 'o-1' }),
