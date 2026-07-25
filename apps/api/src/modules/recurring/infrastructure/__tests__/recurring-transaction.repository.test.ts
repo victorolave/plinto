@@ -273,7 +273,7 @@ describe('RecurringTransactionRepository', () => {
     expect(result).toBeNull()
   })
 
-  describe('listActiveMonthlyRulesForPeriod', () => {
+  describe('listActiveMonthlyExpenseRulesForPeriod', () => {
     // Obligations are materialized ahead of time, so unlike the executor this
     // must not require the occurrence to have passed.
     it('takes every active rule that existed by the end of the period', async () => {
@@ -282,18 +282,33 @@ describe('RecurringTransactionRepository', () => {
       prisma.recurringTransactionRule.findMany.mockResolvedValue([rule])
       const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
-      const result = await repository.listActiveMonthlyRulesForPeriod('2026-07')
+      const result = await repository.listActiveMonthlyExpenseRulesForPeriod('2026-07')
 
       expect(prisma.recurringTransactionRule.findMany).toHaveBeenCalledWith({
         where: {
           status: 'active',
           frequency: 'monthly',
+          type: 'expense',
           startDate: { lte: new Date('2026-07-31T23:59:59.999Z') },
           account: { archivedAt: null },
         },
         orderBy: { createdAt: 'asc' },
       })
       expect(result).toEqual([rule])
+    })
+
+    // An obligation is money owed. A salary rule owes nothing, could never be
+    // settled (reconciliation only accepts expenses) and would inflate the
+    // period's expected total forever.
+    it('never materializes income rules', async () => {
+      const prisma = makePrisma()
+      prisma.recurringTransactionRule.findMany.mockResolvedValue([])
+      const repository = new PrismaRecurringTransactionRepository(prisma as any)
+
+      await repository.listActiveMonthlyExpenseRulesForPeriod('2026-07')
+
+      const where = prisma.recurringTransactionRule.findMany.mock.calls[0][0].where
+      expect(where.type).toBe('expense')
     })
 
     it('includes a rule whose occurrence is still in the future', async () => {
@@ -305,7 +320,7 @@ describe('RecurringTransactionRepository', () => {
       prisma.recurringTransactionRule.findMany.mockResolvedValue([rule])
       const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
-      expect(await repository.listActiveMonthlyRulesForPeriod('2026-07')).toEqual([rule])
+      expect(await repository.listActiveMonthlyExpenseRulesForPeriod('2026-07')).toEqual([rule])
     })
 
     // A rule starting on the 20th owes nothing for a period whose occurrence
@@ -317,7 +332,7 @@ describe('RecurringTransactionRepository', () => {
       ])
       const repository = new PrismaRecurringTransactionRepository(prisma as any)
 
-      expect(await repository.listActiveMonthlyRulesForPeriod('2026-07')).toEqual([])
+      expect(await repository.listActiveMonthlyExpenseRulesForPeriod('2026-07')).toEqual([])
     })
   })
 

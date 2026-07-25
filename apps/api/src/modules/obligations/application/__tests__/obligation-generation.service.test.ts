@@ -24,7 +24,7 @@ describe('ObligationGenerationService', () => {
     createGeneratedInstance: ReturnType<typeof vi.fn>
   }
   let recurringRepository: {
-    listActiveMonthlyRulesForPeriod: ReturnType<typeof vi.fn>
+    listActiveMonthlyExpenseRulesForPeriod: ReturnType<typeof vi.fn>
   }
   let service: ObligationGenerationService
 
@@ -34,7 +34,7 @@ describe('ObligationGenerationService', () => {
       createGeneratedInstance: vi.fn().mockResolvedValue({ id: 'obligation-1' }),
     }
     recurringRepository = {
-      listActiveMonthlyRulesForPeriod: vi.fn().mockResolvedValue([]),
+      listActiveMonthlyExpenseRulesForPeriod: vi.fn().mockResolvedValue([]),
     }
     service = new ObligationGenerationService(
       obligationRepository as any,
@@ -43,7 +43,7 @@ describe('ObligationGenerationService', () => {
   })
 
   it('materializes an instance per active rule, snapshotting the rule amount', async () => {
-    recurringRepository.listActiveMonthlyRulesForPeriod.mockResolvedValue([makeRule()])
+    recurringRepository.listActiveMonthlyExpenseRulesForPeriod.mockResolvedValue([makeRule()])
 
     const result = await service.generate({ period: '2026-07' })
 
@@ -62,7 +62,7 @@ describe('ObligationGenerationService', () => {
 
   // Re-running a period must never duplicate an obligation.
   it('skips rules already materialized for the period', async () => {
-    recurringRepository.listActiveMonthlyRulesForPeriod.mockResolvedValue([makeRule()])
+    recurringRepository.listActiveMonthlyExpenseRulesForPeriod.mockResolvedValue([makeRule()])
     obligationRepository.listGeneratedRuleIdsForPeriod.mockResolvedValue(['rule-1'])
 
     const result = await service.generate({ period: '2026-07' })
@@ -74,7 +74,7 @@ describe('ObligationGenerationService', () => {
   // A concurrent run that won the unique index is the same outcome as finding
   // the instance in the pre-check: skipped, never an error.
   it('counts a duplicate-signal (null) result as skipped, not created', async () => {
-    recurringRepository.listActiveMonthlyRulesForPeriod.mockResolvedValue([makeRule()])
+    recurringRepository.listActiveMonthlyExpenseRulesForPeriod.mockResolvedValue([makeRule()])
     obligationRepository.createGeneratedInstance.mockResolvedValue(null)
 
     const result = await service.generate({ period: '2026-07' })
@@ -83,7 +83,7 @@ describe('ObligationGenerationService', () => {
   })
 
   it('generates a forward projection across the horizon', async () => {
-    recurringRepository.listActiveMonthlyRulesForPeriod.mockResolvedValue([makeRule()])
+    recurringRepository.listActiveMonthlyExpenseRulesForPeriod.mockResolvedValue([makeRule()])
 
     const result = await service.generate({ period: '2026-11', horizonMonths: 3 })
 
@@ -97,13 +97,13 @@ describe('ObligationGenerationService', () => {
   it('defaults to the current period when none is given', async () => {
     await service.generate({ now: new Date('2026-07-20T12:00:00.000Z') })
 
-    expect(recurringRepository.listActiveMonthlyRulesForPeriod).toHaveBeenCalledWith(
+    expect(recurringRepository.listActiveMonthlyExpenseRulesForPeriod).toHaveBeenCalledWith(
       '2026-07',
     )
   })
 
   it('due dates follow each rule day of month', async () => {
-    recurringRepository.listActiveMonthlyRulesForPeriod.mockResolvedValue([
+    recurringRepository.listActiveMonthlyExpenseRulesForPeriod.mockResolvedValue([
       makeRule({ id: 'rule-1', dayOfMonth: 5 }),
       makeRule({ id: 'rule-2', dayOfMonth: 28, name: 'Utilities' }),
     ])
@@ -121,7 +121,7 @@ describe('ObligationGenerationService', () => {
   // The job runs across tenants, so the already-generated lookup must be asked
   // per tenant — asking once would leak one household's state onto another's.
   it('checks existing instances per tenant', async () => {
-    recurringRepository.listActiveMonthlyRulesForPeriod.mockResolvedValue([
+    recurringRepository.listActiveMonthlyExpenseRulesForPeriod.mockResolvedValue([
       makeRule({ id: 'rule-1', tenantId: 'tenant-1' }),
       makeRule({ id: 'rule-2', tenantId: 'tenant-2' }),
     ])
@@ -140,7 +140,7 @@ describe('ObligationGenerationService', () => {
   })
 
   it('keeps each instance under the tenant of its own rule', async () => {
-    recurringRepository.listActiveMonthlyRulesForPeriod.mockResolvedValue([
+    recurringRepository.listActiveMonthlyExpenseRulesForPeriod.mockResolvedValue([
       makeRule({ id: 'rule-1', tenantId: 'tenant-1' }),
       makeRule({ id: 'rule-2', tenantId: 'tenant-2' }),
     ])

@@ -50,8 +50,10 @@ export class ObligationGenerationService {
     period: string,
   ): Promise<{ created: number; skipped: number }> {
     // Paused and archived rules are excluded by the repository's single
-    // `status: 'active'` predicate — the invariant the lifecycle enum bought.
-    const rules = await this.recurringRepository.listActiveMonthlyRulesForPeriod(period)
+    // `status: 'active'` predicate — the invariant the lifecycle enum bought —
+    // and income rules by its `type: 'expense'` one.
+    const rules =
+      await this.recurringRepository.listActiveMonthlyExpenseRulesForPeriod(period)
     let created = 0
     let skipped = 0
 

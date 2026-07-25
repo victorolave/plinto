@@ -141,13 +141,18 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
     })
   }
 
-  async listActiveMonthlyRulesForPeriod(
+  async listActiveMonthlyExpenseRulesForPeriod(
     period: string,
   ): Promise<RecurringTransactionRule[]> {
     const rules = await this.prisma.recurringTransactionRule.findMany({
       where: {
         status: 'active',
         frequency: 'monthly',
+        // An obligation is money owed. An income rule (a salary) describes
+        // money arriving, so it owes nothing and must not materialize one —
+        // it could never be settled either, since reconciliation only accepts
+        // expenses, and it would inflate the period's expected total.
+        type: 'expense',
         // The rule must already exist by the end of the period; its occurrence
         // inside that period may still be in the future.
         startDate: { lte: endOfPeriod(period) },

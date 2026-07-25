@@ -85,12 +85,16 @@ export abstract class RecurringTransactionRepository {
   abstract listActiveMonthlyRulesDueBy(dueDate: Date): Promise<RecurringTransactionRule[]>
 
   /**
-   * Active rules that already existed by the end of `period`, whatever their
-   * day of month. Unlike listActiveMonthlyRulesDueBy this does not require the
-   * occurrence to have passed, because obligations are materialized ahead of
-   * time — that forward projection is the point of the monthly board.
+   * Active EXPENSE rules that already existed by the end of `period`, whatever
+   * their day of month.
+   *
+   * Two differences from listActiveMonthlyRulesDueBy, both deliberate: the
+   * occurrence need not have passed, because obligations are materialized
+   * ahead of time and that forward projection is the point of the monthly
+   * board; and income rules are excluded, because an obligation is money owed
+   * and a salary owes nothing.
    */
-  abstract listActiveMonthlyRulesForPeriod(
+  abstract listActiveMonthlyExpenseRulesForPeriod(
     period: string,
   ): Promise<RecurringTransactionRule[]>
 
