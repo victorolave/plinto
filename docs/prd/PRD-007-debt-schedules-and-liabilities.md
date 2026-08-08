@@ -1,7 +1,7 @@
 # PRD 007: Debt schedules and liabilities
 
 ## Status
-Partially implemented (7.1 loans and 7.2 debt schedules delivered; 7.3 pending)
+Implemented
 
 ## Objective
 
@@ -144,8 +144,18 @@ installment reduces what the household owes without a second step to remember.
 
 ### 6. What the household owes
 
-The period summary gains a companion: total outstanding debt per currency,
+The period summary gains a companion: outstanding debt per currency,
 independent of the period.
+
+**Two figures per currency, never one.** Remaining installments come from the
+plans; what the liability accounts carry comes from their balances — loans
+received, card balances, anything recorded as a movement.
+
+Recording a financed purchase does not move its account's balance today, so the
+two do not overlap. But nothing in the model *guarantees* they never will, and a
+single headline would have quietly answered a question this PRD has not decided:
+whether a purchase should also post to the account it pays down. It is left
+open, and the report says both numbers rather than picking one.
 
 Balances must present assets and liabilities apart. Netting a debt account into
 the same total as a bank account changes the meaning of the figure on the
@@ -235,6 +245,8 @@ because installment counts and due dates are not account properties.
 - Refinancing or consolidating existing debts
 - Late fees and penalty interest
 - Debt held **by** the household (money lent to somebody else)
+- Whether a financed purchase should post to the liability account it pays
+  down. Left open deliberately — see §6.
 - Importing the `ADDI` sheet (PRD-010, the spreadsheet import)
 
 ---
@@ -267,8 +279,7 @@ because installment counts and due dates are not account properties.
 - [x] A cancelled schedule generates nothing further, and a plan stops at its
       last installment without being told to.
 - [x] Paying an installment reduces the debt's outstanding balance.
-- [ ] Outstanding debt is reported per currency (7.3). Assets and liabilities
-      are already presented apart, as of 7.1.
+- [x] Outstanding debt is reported per currency, apart from asset balances.
 - [x] A viewer can see debts and cannot record or settle one.
 - [x] Every debt write is audited with actor and correlation id.
 
@@ -322,7 +333,7 @@ Three vertical slices, in order:
 | --- | --- | --- |
 | 7.1 | Record a loan received: cash arrives, liability appears | delivered |
 | 7.2 | Record a financed purchase and see its installments as obligations | delivered |
-| 7.3 | See total household debt, apart from what it holds | pending |
+| 7.3 | See total household debt, apart from what it holds | delivered |
 
 7.2 was the largest and is where `debt_schedule` entered `ObligationSourceType`.
 
