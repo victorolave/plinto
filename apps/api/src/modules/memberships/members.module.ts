@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common'
 import { MembershipsModule } from './memberships.module'
 import { SessionsModule } from '../sessions/sessions.module'
+import { InvitationsModule } from '../invitations/invitations.module'
 import { AuthGuard } from '../../common/guards/auth.guard'
 import { TenantGuard } from '../../common/guards/tenant.guard'
 import { RoleGuard } from '../../common/guards/role.guard'
 import { MembershipService } from './application/membership.service'
 import { MembersController } from './interfaces/http/v1/members.controller'
+import { InvitationsController } from '../invitations/interfaces/http/v1/invitations.controller'
 
 /**
  * The HTTP surface over memberships, deliberately a second module rather than
@@ -19,8 +21,8 @@ import { MembersController } from './interfaces/http/v1/members.controller'
  * stays acyclic without a workaround.
  */
 @Module({
-  imports: [MembershipsModule, SessionsModule],
-  controllers: [MembersController],
+  imports: [MembershipsModule, SessionsModule, InvitationsModule],
+  controllers: [MembersController, InvitationsController],
   providers: [MembershipService, AuthGuard, TenantGuard, RoleGuard],
   exports: [MembershipService],
 })

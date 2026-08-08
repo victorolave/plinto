@@ -4,10 +4,11 @@ import { AuthService } from './application/auth.service'
 import { UsersModule } from '../users/users.module'
 import { SessionsModule } from '../sessions/sessions.module'
 import { MembershipsModule } from '../memberships/memberships.module'
+import { InvitationsModule } from '../invitations/invitations.module'
 import { AuthGuard } from '../../common/guards/auth.guard'
 
 @Module({
-  imports: [UsersModule, SessionsModule, MembershipsModule],
+  imports: [UsersModule, SessionsModule, MembershipsModule, InvitationsModule],
   controllers: [AuthController],
   providers: [AuthService, AuthGuard],
   exports: [AuthService],

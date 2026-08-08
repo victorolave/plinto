@@ -17,6 +17,7 @@ model User {
 
   memberships Membership[]
   sessions    Session[]
+  invitationsSent Invitation[] @relation("InvitationInviter")
 
   @@map("users")
 }
@@ -29,6 +30,7 @@ model Tenant {
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
   memberships  Membership[]
+  invitations  Invitation[]
   sessions     Session[]
   auditEvents  AuditEvent[]
   accounts     Account[]
@@ -77,6 +79,41 @@ model Membership {
 
   @@unique([tenantId, userId])
   @@map("memberships")
+}
+
+/// A standing offer to join a household, addressed to an email rather than to a
+/// user: a person does not exist in Plinto until the identity provider hands us
+/// their first login, so the household that wants them cannot reference a row
+/// that is not there yet.
+///
+/// Deliberately ephemeral. The row is deleted the moment it is accepted or
+/// revoked, and the history lives in `audit_events` instead. The alternative —
+/// keeping accepted rows and marking them — needs a UNIQUE that only applies to
+/// pending ones, and Postgres spells that as a partial index, which Prisma
+/// cannot express. A plain UNIQUE over kept rows would forbid ever re-inviting
+/// someone who once left.
+model Invitation {
+  id              String         @id @default(uuid())
+  tenantId        String         @map("tenant_id")
+  /// Always stored lower-cased by the repository, so the unique below is a
+  /// real "one pending invitation per person" and not one per spelling.
+  email           String
+  role            MembershipRole
+  invitedByUserId String         @map("invited_by_user_id")
+  expiresAt       DateTime       @map("expires_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  /// Restrict, not Cascade: an invitation records who extended it, and deleting
+  /// the inviter must not silently erase that. Users are not deleted today, so
+  /// this never fires — it is stated so the intent survives the day they are.
+  invitedBy User   @relation("InvitationInviter", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, email])
+  /// Claiming at login looks invitations up by email across every household.
+  @@index([email])
+  @@map("invitations")
 }
 
 model Session {

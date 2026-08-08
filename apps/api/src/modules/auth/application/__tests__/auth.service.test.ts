@@ -55,6 +55,10 @@ const makeMembershipRepo = () => ({
   findByUserAndTenant: vi.fn(),
 })
 
+const makeInvitationService = () => ({
+  claimFor: vi.fn().mockResolvedValue([]),
+})
+
 const makeSessionRepo = () => ({
   create: vi.fn(),
   findById: vi.fn(),
@@ -70,6 +74,7 @@ describe('AuthService', () => {
   let userRepo: ReturnType<typeof makeUserRepo>
   let membershipRepo: ReturnType<typeof makeMembershipRepo>
   let sessionRepo: ReturnType<typeof makeSessionRepo>
+  let invitationService: ReturnType<typeof makeInvitationService>
   let service: AuthService
 
   beforeEach(() => {
@@ -77,11 +82,13 @@ describe('AuthService', () => {
     userRepo = makeUserRepo()
     membershipRepo = makeMembershipRepo()
     sessionRepo = makeSessionRepo()
+    invitationService = makeInvitationService()
     service = new AuthService(
       userProvisioningService as any,
       userRepo as any,
       membershipRepo as any,
       sessionRepo as any,
+      invitationService as any,
     )
   })
 
@@ -345,6 +352,97 @@ describe('AuthService', () => {
           ipAddress: '127.0.0.1',
         }),
       )
+    })
+
+    /**
+     * The ordering these tests pin is load-bearing. An invitation claimed after
+     * memberships were listed would leave the session reporting zero households
+     * for somebody who was just given one — and send them to onboarding to
+     * create a household they already have.
+     */
+    describe('claiming invitations', () => {
+      it('claims invitations before listing memberships', async () => {
+        const user = makeUser({ name: 'Sandra' })
+        const order: string[] = []
+
+        userProvisioningService.provisionUser.mockResolvedValue(user)
+        invitationService.claimFor.mockImplementation(async () => {
+          order.push('claim')
+          return []
+        })
+        membershipRepo.listByUserId.mockImplementation(async () => {
+          order.push('list')
+          return []
+        })
+        sessionRepo.getActiveTenantByUserId.mockResolvedValue(null)
+        sessionRepo.create.mockResolvedValue(makeSession())
+
+        await service.createSession({ idpSub: 'sub-1', email: 'sandra@example.com' })
+
+        expect(order).toEqual(['claim', 'list'])
+      })
+
+      it('reports the household a claimed invitation just granted', async () => {
+        const user = makeUser({ name: 'Sandra' })
+        const membership = makeMembership({ tenantId: 'tenant-invited' })
+
+        userProvisioningService.provisionUser.mockResolvedValue(user)
+        invitationService.claimFor.mockResolvedValue([
+          { userId: user.id, email: user.email, name: 'Sandra', role: 'member', joinedAt: new Date() },
+        ])
+        // The membership the claim created is visible to the listing that
+        // follows it, which is the whole point of the ordering above.
+        membershipRepo.listByUserId.mockResolvedValue([membership])
+        sessionRepo.getActiveTenantByUserId.mockResolvedValue(null)
+        sessionRepo.create.mockResolvedValue(makeSession({ tenantId: 'tenant-invited' }))
+
+        const result = await service.createSession({
+          idpSub: 'sub-1',
+          email: 'sandra@example.com',
+        })
+
+        expect(result.memberships).toEqual([membership])
+        expect(result.activeTenantId).toBe('tenant-invited')
+        expect(result.needsOnboarding).toBe(false)
+      })
+
+      it('claims against the provisioned user, not the raw login email', async () => {
+        const user = makeUser({ name: 'Sandra' })
+        userProvisioningService.provisionUser.mockResolvedValue(user)
+        membershipRepo.listByUserId.mockResolvedValue([])
+        sessionRepo.getActiveTenantByUserId.mockResolvedValue(null)
+        sessionRepo.create.mockResolvedValue(makeSession())
+
+        await service.createSession({ idpSub: 'sub-1', email: 'SANDRA@example.com' })
+
+        expect(invitationService.claimFor).toHaveBeenCalledWith(
+          user,
+          expect.objectContaining({ correlationId: expect.any(String) }),
+        )
+      })
+
+      /**
+       * A household that cannot be entered is bad; a person who cannot sign in
+       * at all is worse. Claiming is therefore best-effort by design — and this
+       * test is what stops that swallow from also hiding a service that was
+       * never wired in, which is exactly what it did before it existed.
+       */
+      it('still opens the session when claiming throws', async () => {
+        const user = makeUser({ name: 'Sandra' })
+        userProvisioningService.provisionUser.mockResolvedValue(user)
+        invitationService.claimFor.mockRejectedValue(new Error('database is on fire'))
+        membershipRepo.listByUserId.mockResolvedValue([makeMembership()])
+        sessionRepo.getActiveTenantByUserId.mockResolvedValue('tenant-1')
+        sessionRepo.create.mockResolvedValue(makeSession({ tenantId: 'tenant-1' }))
+
+        const result = await service.createSession({
+          idpSub: 'sub-1',
+          email: 'sandra@example.com',
+        })
+
+        expect(result.session.id).toBe('session-1')
+        expect(result.activeTenantId).toBe('tenant-1')
+      })
     })
 
     it('propagates userProvisioningService errors', async () => {

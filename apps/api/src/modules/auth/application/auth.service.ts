@@ -4,6 +4,7 @@ import { MembershipRepository } from '../../memberships/domain/membership.reposi
 import { SessionRepository } from '../../sessions/domain/session.repository'
 import { UserRepository } from '../../users/domain/user.repository'
 import { UserProvisioningService } from '../../users/application/user-provisioning.service'
+import { InvitationService } from '../../invitations/application/invitation.service'
 
 @Injectable()
 export class AuthService {
@@ -14,6 +15,7 @@ export class AuthService {
     private readonly userRepository: UserRepository,
     private readonly membershipRepository: MembershipRepository,
     private readonly sessionRepository: SessionRepository,
+    private readonly invitationService: InvitationService,
   ) {}
 
   async createSession(params: {
@@ -40,6 +42,26 @@ export class AuthService {
 
     if (!user.name && params.name) {
       user = await this.userRepository.updateName(user.id, params.name)
+    }
+
+    // Claimed BEFORE memberships are listed, so a household somebody was
+    // invited to is already theirs by the time this session reports which
+    // households they belong to — and, when it is their only one, by the time
+    // the active tenant is chosen below. Listing first would show them nothing
+    // and send them to onboarding to create a household they were just given.
+    //
+    // Never allowed to break a login: an invitation that cannot be claimed is a
+    // household somebody cannot enter, but a throw here is a person who cannot
+    // sign in at all.
+    try {
+      const claimed = await this.invitationService.claimFor(user, {
+        correlationId: `session:${user.id}`,
+      })
+      if (claimed.length > 0) {
+        this.logger.log(`Claimed ${claimed.length} invitation(s) for ${user.id}`)
+      }
+    } catch (error) {
+      this.logger.error(`Failed to claim invitations for ${user.id}: ${error}`)
     }
 
     let memberships

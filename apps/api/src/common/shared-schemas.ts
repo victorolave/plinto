@@ -13,6 +13,7 @@ export {
   CreateObligationSchema,
   ReconcileObligationSchema,
   GenerateObligationsSchema,
+  CreateInvitationSchema,
   CreateCategorySchema,
   UpdateCategorySchema,
   PaginationQuerySchema,

@@ -22,6 +22,15 @@ export class PrismaUserRepository extends UserRepository {
     return this.prisma.user.findUnique({ where: { idpSub } })
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+    // `mode: 'insensitive'` rather than lower-casing the argument: users.email
+    // holds whatever casing the IdP supplied, so normalising only one side
+    // would miss the row this is meant to find.
+    return this.prisma.user.findFirst({
+      where: { email: { equals: email.trim(), mode: 'insensitive' } },
+    })
+  }
+
   async create(data: {
     idpSub: string
     email: string
