@@ -783,6 +783,23 @@
 .stat-card--accent .stat-value {
   color: var(--ink-text-strong);
 }
+/* The money primitives declare their own colour, so they never inherit the
+   accent card's ink palette — an explicit `color` beats inheritance. Without
+   these the obligations board renders near-black figures on the black card.
+   `--money-negative` is ink by design (red is reserved for the brand) and
+   `--money-positive` only clears AA against black one step lighter, so both
+   are restated here rather than left to the light-surface tokens. */
+.stat-card--accent .amount,
+.stat-card--accent .amount--negative {
+  color: var(--ink-text-strong);
+}
+.stat-card--accent .amount--positive {
+  color: var(--green-500);
+}
+.stat-card--accent .currency-tag {
+  background: var(--ink-hover);
+  color: var(--ink-text-muted);
+}
 .stat-delta {
   display: inline-flex;
   align-items: center;
