@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common'
-import { occurrenceDate, periodRange, toPeriod } from '../../../common/period'
+import { monthsBetween, occurrenceDate, periodRange, toPeriod } from '../../../common/period'
 import { RecurringTransactionRule } from '../../recurring/domain/recurring-transaction.entity'
 import { RecurringTransactionRepository } from '../../recurring/domain/recurring-transaction.repository'
 import { ObligationRepository } from '../domain/obligation.repository'
+import { DebtScheduleRepository } from '../../debts/domain/debt-schedule.repository'
+import {
+  installmentAmountMinor,
+  installmentDayOfMonth,
+  installmentIndexFor,
+  installmentLabel,
+} from '../../debts/domain/debt-schedule.entity'
 
 export interface GenerateObligationsResult {
   created: number
@@ -24,6 +31,7 @@ export class ObligationGenerationService {
   constructor(
     private readonly obligationRepository: ObligationRepository,
     private readonly recurringRepository: RecurringTransactionRepository,
+    private readonly debtScheduleRepository: DebtScheduleRepository,
   ) {}
 
   async generate(params: {
@@ -38,9 +46,14 @@ export class ObligationGenerationService {
     let skipped = 0
 
     for (const period of periods) {
-      const outcome = await this.generatePeriod(period)
-      created += outcome.created
-      skipped += outcome.skipped
+      const fromRules = await this.generatePeriod(period)
+      // One scheduler call materializes both kinds (PRD-007). A household does
+      // not think of rent and a fridge instalment as different machinery, and
+      // the board they both land on does not either.
+      const fromSchedules = await this.generateSchedulePeriod(period)
+
+      created += fromRules.created + fromSchedules.created
+      skipped += fromRules.skipped + fromSchedules.skipped
     }
 
     return { created, skipped, periods }
@@ -94,6 +107,83 @@ export class ObligationGenerationService {
 
         created += 1
       }
+    }
+
+    return { created, skipped }
+  }
+
+  /**
+   * Materializes the debt installments falling in `period`.
+   *
+   * The difference from a recurring rule is where it stops. A rule repeats
+   * forever; a plan has a length, so a period before a plan's first due date or
+   * past its last installment produces nothing — which is precisely why a
+   * financed purchase could never be modelled as a rule.
+   */
+  private async generateSchedulePeriod(
+    period: string,
+  ): Promise<{ created: number; skipped: number }> {
+    // Cancelled plans are excluded by the repository, so a cancelled purchase
+    // can never materialize another instalment no matter which job runs.
+    const schedules = await this.debtScheduleRepository.listActiveForGeneration()
+    let created = 0
+    let skipped = 0
+
+    const alreadyGeneratedByTenant = new Map<string, Set<string>>()
+
+    for (const schedule of schedules) {
+      const index = installmentIndexFor(
+        schedule,
+        monthsBetween(toPeriod(schedule.firstDueDate), period),
+      )
+
+      // Outside the plan's life. Not skipped — there was never an obligation
+      // here to skip, and counting it would report work that does not exist.
+      if (index === null) {
+        continue
+      }
+
+      if (!alreadyGeneratedByTenant.has(schedule.tenantId)) {
+        alreadyGeneratedByTenant.set(
+          schedule.tenantId,
+          new Set(
+            await this.obligationRepository.listGeneratedScheduleIdsForPeriod(
+              schedule.tenantId,
+              period,
+            ),
+          ),
+        )
+      }
+
+      if (alreadyGeneratedByTenant.get(schedule.tenantId)?.has(schedule.id)) {
+        skipped += 1
+        continue
+      }
+
+      const instance = await this.obligationRepository.createGeneratedInstanceForSchedule({
+        tenantId: schedule.tenantId,
+        sourceType: 'debt_schedule',
+        recurringRuleId: null,
+        debtScheduleId: schedule.id,
+        period,
+        dueDate: occurrenceDate(period, installmentDayOfMonth(schedule)),
+        // Says which instalment it is, so a board can tell "Nevera — 3 of 6"
+        // from a rent that repeats forever.
+        name: installmentLabel(schedule, index),
+        // The last instalment absorbs whatever the others did not cover, so the
+        // plan sums to exactly its principal.
+        expectedAmountMinor: installmentAmountMinor(schedule, index),
+        currency: schedule.currency,
+      })
+
+      // A concurrent run won the race against the (schedule, period) unique
+      // index. Already generated, not an error — same as the rule path.
+      if (instance === null) {
+        skipped += 1
+        continue
+      }
+
+      created += 1
     }
 
     return { created, skipped }

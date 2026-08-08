@@ -18,27 +18,57 @@ const makeRule = (overrides = {}) => ({
   ...overrides,
 })
 
+/** A fridge on six installments, first one due 2026-07-15. */
+const makeSchedule = (overrides = {}) => ({
+  id: 'schedule-1',
+  tenantId: 'tenant-1',
+  accountId: 'account-addi',
+  name: 'Nevera',
+  principalMinor: 600000,
+  installmentMinor: 100000,
+  installmentCount: 6,
+  firstDueDate: new Date('2026-07-15T00:00:00.000Z'),
+  currency: 'COP',
+  status: 'active' as const,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+})
+
 describe('ObligationGenerationService', () => {
   let obligationRepository: {
     listGeneratedRuleIdsForPeriod: ReturnType<typeof vi.fn>
+    listGeneratedScheduleIdsForPeriod: ReturnType<typeof vi.fn>
     createGeneratedInstance: ReturnType<typeof vi.fn>
+    createGeneratedInstanceForSchedule: ReturnType<typeof vi.fn>
   }
   let recurringRepository: {
     listActiveMonthlyExpenseRulesForPeriod: ReturnType<typeof vi.fn>
+  }
+  let debtScheduleRepository: {
+    listActiveForGeneration: ReturnType<typeof vi.fn>
   }
   let service: ObligationGenerationService
 
   beforeEach(() => {
     obligationRepository = {
       listGeneratedRuleIdsForPeriod: vi.fn().mockResolvedValue([]),
+      listGeneratedScheduleIdsForPeriod: vi.fn().mockResolvedValue([]),
       createGeneratedInstance: vi.fn().mockResolvedValue({ id: 'obligation-1' }),
+      createGeneratedInstanceForSchedule: vi
+        .fn()
+        .mockResolvedValue({ id: 'obligation-2' }),
     }
     recurringRepository = {
       listActiveMonthlyExpenseRulesForPeriod: vi.fn().mockResolvedValue([]),
     }
+    debtScheduleRepository = {
+      listActiveForGeneration: vi.fn().mockResolvedValue([]),
+    }
     service = new ObligationGenerationService(
       obligationRepository as any,
       recurringRepository as any,
+      debtScheduleRepository as any,
     )
   })
 
@@ -162,5 +192,139 @@ describe('ObligationGenerationService', () => {
     const result = await service.generate({ period: '2026-07' })
 
     expect(result).toEqual({ created: 0, skipped: 0, periods: ['2026-07'] })
+  })
+
+  /**
+   * The property a recurring rule cannot express, and the reason a financed
+   * purchase is not one: a plan has a length.
+   */
+  describe('debt schedules', () => {
+    it('materializes the installment that falls in the period', async () => {
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([makeSchedule()])
+
+      const result = await service.generate({ period: '2026-07' })
+
+      expect(obligationRepository.createGeneratedInstanceForSchedule).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        sourceType: 'debt_schedule',
+        recurringRuleId: null,
+        debtScheduleId: 'schedule-1',
+        period: '2026-07',
+        dueDate: new Date('2026-07-15T00:00:00.000Z'),
+        name: 'Nevera — 1 of 6',
+        expectedAmountMinor: 100000,
+        currency: 'COP',
+      })
+      expect(result.created).toBe(1)
+    })
+
+    it('names the installment by its position, so a board can tell it apart', async () => {
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([makeSchedule()])
+
+      await service.generate({ period: '2026-09' })
+
+      expect(obligationRepository.createGeneratedInstanceForSchedule).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Nevera — 3 of 6', period: '2026-09' }),
+      )
+    })
+
+    it('produces nothing before the plan starts', async () => {
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([makeSchedule()])
+
+      const result = await service.generate({ period: '2026-06' })
+
+      expect(obligationRepository.createGeneratedInstanceForSchedule).not.toHaveBeenCalled()
+      // Not "skipped" either — there was never an obligation here to skip, and
+      // counting one would report work that does not exist.
+      expect(result).toEqual({ created: 0, skipped: 0, periods: ['2026-06'] })
+    })
+
+    it('stops after the last installment', async () => {
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([makeSchedule()])
+
+      const result = await service.generate({ period: '2027-01' })
+
+      expect(obligationRepository.createGeneratedInstanceForSchedule).not.toHaveBeenCalled()
+      expect(result.created).toBe(0)
+    })
+
+    it('generates exactly installmentCount obligations across a long horizon', async () => {
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([makeSchedule()])
+
+      const result = await service.generate({ period: '2026-07', horizonMonths: 12 })
+
+      expect(obligationRepository.createGeneratedInstanceForSchedule).toHaveBeenCalledTimes(6)
+      expect(result.created).toBe(6)
+    })
+
+    /**
+     * Lenders quote figures that do not multiply out. One row of the source
+     * sheet charges 4 × 59,505 against a credit of 238,023 — three pesos short.
+     * The last installment absorbs the difference so the plan sums to exactly
+     * its principal, rather than quietly disagreeing with the lender.
+     */
+    it('lets the last installment absorb what the others did not cover', async () => {
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([
+        makeSchedule({ principalMinor: 238023, installmentMinor: 59505, installmentCount: 4 }),
+      ])
+
+      await service.generate({ period: '2026-07', horizonMonths: 6 })
+
+      const amounts = obligationRepository.createGeneratedInstanceForSchedule.mock.calls.map(
+        (call) => call[0].expectedAmountMinor,
+      )
+
+      expect(amounts).toEqual([59505, 59505, 59505, 59508])
+      expect(amounts.reduce((sum, value) => sum + value, 0)).toBe(238023)
+    })
+
+    it('skips a period it already materialized, rather than duplicating it', async () => {
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([makeSchedule()])
+      obligationRepository.listGeneratedScheduleIdsForPeriod.mockResolvedValue(['schedule-1'])
+
+      const result = await service.generate({ period: '2026-07' })
+
+      expect(obligationRepository.createGeneratedInstanceForSchedule).not.toHaveBeenCalled()
+      expect(result).toEqual({ created: 0, skipped: 1, periods: ['2026-07'] })
+    })
+
+    // A concurrent run won the race against the unique index. Already
+    // generated, not an error.
+    it('treats a lost race as already generated', async () => {
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([makeSchedule()])
+      obligationRepository.createGeneratedInstanceForSchedule.mockResolvedValue(null)
+
+      const result = await service.generate({ period: '2026-07' })
+
+      expect(result).toEqual({ created: 0, skipped: 1, periods: ['2026-07'] })
+    })
+
+    /**
+     * A first payment on the 31st must not skip February nor spill into March
+     * and land in the wrong period — the same cap recurring rules apply.
+     */
+    it('caps the due day at 28 so no installment lands outside its period', async () => {
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([
+        makeSchedule({ firstDueDate: new Date('2026-07-31T00:00:00.000Z') }),
+      ])
+
+      await service.generate({ period: '2026-07' })
+
+      expect(obligationRepository.createGeneratedInstanceForSchedule).toHaveBeenCalledWith(
+        expect.objectContaining({ dueDate: new Date('2026-07-28T00:00:00.000Z') }),
+      )
+    })
+
+    // One scheduler call materializes both kinds (PRD-007).
+    it('materializes rules and installments in the same run', async () => {
+      recurringRepository.listActiveMonthlyExpenseRulesForPeriod.mockResolvedValue([makeRule()])
+      debtScheduleRepository.listActiveForGeneration.mockResolvedValue([makeSchedule()])
+
+      const result = await service.generate({ period: '2026-07' })
+
+      expect(obligationRepository.createGeneratedInstance).toHaveBeenCalledTimes(1)
+      expect(obligationRepository.createGeneratedInstanceForSchedule).toHaveBeenCalledTimes(1)
+      expect(result.created).toBe(2)
+    })
   })
 })

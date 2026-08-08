@@ -38,6 +38,10 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   { path: '/api/members/invitations/{id}', method: 'delete' },
   // Debts (LoansController)
   { path: '/api/loans', method: 'post' },
+  { path: '/api/debts', method: 'get' },
+  { path: '/api/debts', method: 'post' },
+  { path: '/api/debts/{id}', method: 'patch' },
+  { path: '/api/debts/{id}/cancel', method: 'post' },
   // Categories (CategoriesController)
   { path: '/api/categories', method: 'get' },
   { path: '/api/categories', method: 'post' },

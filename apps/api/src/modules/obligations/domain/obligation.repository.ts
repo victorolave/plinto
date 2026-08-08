@@ -6,8 +6,9 @@ import {
 
 export interface CreateObligationInstanceInput {
   tenantId: string
-  sourceType: 'recurring_rule' | 'manual'
+  sourceType: 'recurring_rule' | 'manual' | 'debt_schedule'
   recurringRuleId: string | null
+  debtScheduleId?: string | null
   period: string
   dueDate: Date
   name: string
@@ -46,6 +47,17 @@ export abstract class ObligationRepository {
     input: CreateObligationInstanceInput & { recurringRuleId: string },
   ): Promise<ObligationInstance | null>
 
+  /**
+   * The same contract as `createGeneratedInstance`, for an installment of a
+   * debt schedule. A sibling rather than one method with two optional
+   * references, so a caller cannot construct an instance that claims one
+   * origin and carries the other — which the CHECK constraint would reject at
+   * the database anyway, far from where the mistake was made.
+   */
+  abstract createGeneratedInstanceForSchedule(
+    input: CreateObligationInstanceInput & { debtScheduleId: string },
+  ): Promise<ObligationInstance | null>
+
   abstract findInstanceByIdForTenant(
     id: string,
     tenantId: string,
@@ -58,6 +70,12 @@ export abstract class ObligationRepository {
 
   /** Rule ids already materialized for a period, used to skip regeneration. */
   abstract listGeneratedRuleIdsForPeriod(
+    tenantId: string,
+    period: string,
+  ): Promise<string[]>
+
+  /** The same, for debt schedules. */
+  abstract listGeneratedScheduleIdsForPeriod(
     tenantId: string,
     period: string,
   ): Promise<string[]>

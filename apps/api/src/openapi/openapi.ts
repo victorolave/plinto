@@ -37,6 +37,9 @@ import {
   InvitationResultSchema,
   UpdateMemberRoleSchema,
   CreateLoanSchema,
+  DebtScheduleSchema,
+  CreateDebtScheduleSchema,
+  UpdateDebtScheduleSchema,
   TenantSchema,
   CreateTenantSchema,
   SelectTenantSchema,
@@ -128,6 +131,15 @@ const CreateInvitationSchemaRef = registry.register('CreateInvitation', CreateIn
 const InvitationResultSchemaRef = registry.register('InvitationResult', InvitationResultSchema)
 const UpdateMemberRoleSchemaRef = registry.register('UpdateMemberRole', UpdateMemberRoleSchema)
 const CreateLoanSchemaRef = registry.register('CreateLoan', CreateLoanSchema)
+const DebtScheduleSchemaRef = registry.register('DebtSchedule', DebtScheduleSchema)
+const CreateDebtScheduleSchemaRef = registry.register(
+  'CreateDebtSchedule',
+  CreateDebtScheduleSchema,
+)
+const UpdateDebtScheduleSchemaRef = registry.register(
+  'UpdateDebtSchedule',
+  UpdateDebtScheduleSchema,
+)
 
 const TenantSchemaRef = registry.register('Tenant', TenantSchema)
 const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
@@ -583,6 +595,82 @@ registry.registerPath({
   },
   responses: {
     201: dataResponse('Loan recorded as a transfer.', TransferResultSchema),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/debts',
+  tags: ['Debts'],
+  summary: 'List the household\'s financed purchases',
+  description:
+    'Outstanding and settlement are derived from the payments settling each ' +
+    "plan's installments, never stored (PRD-007).",
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse(
+      'Debt schedules with their repayment progress.',
+      z.object({ debts: z.array(DebtScheduleSchemaRef) }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/debts',
+  tags: ['Debts'],
+  summary: 'Record a purchase financed in fixed installments',
+  description:
+    'The principal is the total that will be repaid, interest included — ' +
+    'interest is recorded, not calculated. The last installment absorbs ' +
+    'whatever the others do not cover, so the plan sums to exactly the ' +
+    'principal. The account must be a liability, and the currency is inherited ' +
+    'from it.',
+  security: sessionCookieAuth,
+  request: {
+    body: { content: { 'application/json': { schema: CreateDebtScheduleSchemaRef } } },
+  },
+  responses: {
+    201: dataResponse('Schedule created.', z.object({ debt: DebtScheduleSchemaRef })),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/debts/{id}',
+  tags: ['Debts'],
+  summary: 'Rename a financed purchase',
+  description:
+    'Only the name. Amounts and dates are snapshotted into the obligations the ' +
+    'plan already produced, so editing them would leave those periods ' +
+    'expecting one figure while the plan claims another.',
+  security: sessionCookieAuth,
+  request: {
+    params: idParam,
+    body: { content: { 'application/json': { schema: UpdateDebtScheduleSchemaRef } } },
+  },
+  responses: {
+    200: dataResponse('Schedule renamed.', z.object({ debt: DebtScheduleSchemaRef })),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/debts/{id}/cancel',
+  tags: ['Debts'],
+  summary: 'Stop a financed purchase from producing further installments',
+  description:
+    'Cancelled, not deleted. The obligations it already produced are real — ' +
+    'some of them paid — and removing what produced them would leave a ' +
+    'household looking at payments whose reason had vanished.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse('Schedule cancelled.', z.object({ debt: DebtScheduleSchemaRef })),
     ...errorResponses,
   },
 })

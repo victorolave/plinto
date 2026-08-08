@@ -1,4 +1,10 @@
-export type ObligationSourceType = 'recurring_rule' | 'manual'
+/**
+ * Kept in step with the `ObligationSourceType` enum in schema.prisma and with
+ * `ObligationSourceTypeSchema` in @plinto/shared. `debt_schedule` arrives with
+ * PRD-007; the database's CHECK constraint pins which reference each origin
+ * must carry.
+ */
+export type ObligationSourceType = 'recurring_rule' | 'manual' | 'debt_schedule'
 
 /**
  * Reported state of an obligation. Never persisted: it is a projection over

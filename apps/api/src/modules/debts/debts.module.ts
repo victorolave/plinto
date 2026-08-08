@@ -8,7 +8,11 @@ import { AuthGuard } from '../../common/guards/auth.guard'
 import { TenantGuard } from '../../common/guards/tenant.guard'
 import { RoleGuard } from '../../common/guards/role.guard'
 import { LoanService } from './application/loan.service'
+import { DebtScheduleService } from './application/debt-schedule.service'
+import { DebtScheduleRepository } from './domain/debt-schedule.repository'
+import { PrismaDebtScheduleRepository } from './infrastructure/prisma-debt-schedule.repository'
 import { LoansController } from './interfaces/http/v1/loans.controller'
+import { DebtsController } from './interfaces/http/v1/debts.controller'
 
 /**
  * What the household owes. Today that is loans received; PRD-007's later slices
@@ -26,8 +30,15 @@ import { LoansController } from './interfaces/http/v1/loans.controller'
     MembershipsModule,
     SessionsModule,
   ],
-  controllers: [LoansController],
-  providers: [LoanService, AuthGuard, TenantGuard, RoleGuard],
-  exports: [LoanService],
+  controllers: [LoansController, DebtsController],
+  providers: [
+    LoanService,
+    DebtScheduleService,
+    { provide: DebtScheduleRepository, useClass: PrismaDebtScheduleRepository },
+    AuthGuard,
+    TenantGuard,
+    RoleGuard,
+  ],
+  exports: [LoanService, DebtScheduleService, DebtScheduleRepository],
 })
 export class DebtsModule {}

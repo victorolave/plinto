@@ -30,6 +30,18 @@ export function addMonths(period: string, months: number): string {
   return toPeriod(shifted)
 }
 
+/**
+ * How many whole months separate two periods. Negative when `to` precedes
+ * `from`, which is how generation tells "this plan had not started yet" from
+ * "this is its third installment".
+ */
+export function monthsBetween(from: string, to: string): number {
+  const start = parsePeriod(from)
+  const end = parsePeriod(to)
+
+  return (end.year - start.year) * 12 + (end.month - start.month)
+}
+
 /** The horizon a generation run covers: `period` plus the next `months - 1`. */
 export function periodRange(period: string, months: number): string[] {
   return Array.from({ length: months }, (_, index) => addMonths(period, index))

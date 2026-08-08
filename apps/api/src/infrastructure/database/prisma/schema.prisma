@@ -41,6 +41,7 @@ model Tenant {
   categories   Category[]
   obligationInstances ObligationInstance[]
   obligationPayments  ObligationPayment[]
+  debtSchedules       DebtSchedule[]
 
   @@map("tenants")
 }
@@ -60,6 +61,7 @@ model Account {
   transfersOut Transfer[]    @relation("TransferSource")
   transfersIn  Transfer[]    @relation("TransferDestination")
   recurringRules RecurringTransactionRule[]
+  debtSchedules  DebtSchedule[]
 
   @@index([tenantId])
   @@index([tenantId, archivedAt])
@@ -242,6 +244,7 @@ model ObligationInstance {
   tenantId            String   @map("tenant_id")
   sourceType          ObligationSourceType @map("source_type")
   recurringRuleId     String?  @map("recurring_rule_id")
+  debtScheduleId      String?  @map("debt_schedule_id")
   period              String
   dueDate             DateTime @map("due_date")
   name                String
@@ -259,12 +262,19 @@ model ObligationInstance {
   /// never deleted, so this never fires — it is stated so the schema agrees with
   /// the migration and `migrate dev` reports no drift to "repair".
   recurringRule RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id], onDelete: Restrict)
+  /// Restrict for the same reason as the rule above: a cancelled schedule is
+  /// cancelled, never deleted, so the instances it produced keep pointing at
+  /// what produced them.
+  debtSchedule  DebtSchedule?             @relation(fields: [debtScheduleId], references: [id], onDelete: Restrict)
   payments      ObligationPayment[]
 
   /// Idempotency of generation. Postgres treats NULLs as distinct, so this
   /// blocks a second instance for the same (rule, period) while still allowing
   /// any number of one-off obligations inside the same period.
   @@unique([recurringRuleId, period])
+  /// The same idempotency the rules have: one obligation per (schedule,
+  /// period), so re-running generation never duplicates an installment.
+  @@unique([debtScheduleId, period])
   @@index([tenantId, period])
   @@map("obligation_instances")
 }
@@ -289,6 +299,41 @@ model ObligationPayment {
   @@index([tenantId])
   @@index([obligationInstanceId])
   @@map("obligation_payments")
+}
+
+/// A fixed plan of installments against a liability account: what the `ADDI`
+/// sheet holds per row. See PRD-007.
+///
+/// `principalMinor` is the total that will be repaid, interest included — not
+/// what the goods cost. Interest is recorded rather than calculated, because
+/// retail financing is quoted as a total, a count and an installment, and the
+/// rate is never one of the three.
+model DebtSchedule {
+  id               String             @id @default(uuid())
+  tenantId         String             @map("tenant_id")
+  accountId        String             @map("account_id")
+  name             String
+  /// Total to be repaid across every installment.
+  principalMinor   Int                @map("principal_minor")
+  /// What each installment charges. The last one absorbs the difference, so
+  /// the schedule always sums to exactly `principalMinor` — lenders quote
+  /// numbers that do not multiply out, and the sheet this replaces is full of
+  /// them.
+  installmentMinor Int                @map("installment_minor")
+  installmentCount Int                @map("installment_count")
+  firstDueDate     DateTime           @map("first_due_date")
+  currency         String
+  status           DebtScheduleStatus @default(active)
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+  obligationInstances ObligationInstance[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("debt_schedules")
 }
 
 model Transfer {
@@ -367,6 +412,17 @@ enum RecurringExecutionStatus {
 enum ObligationSourceType {
   recurring_rule
   manual
+  /// An installment of a debt schedule (PRD-007).
+  debt_schedule
+}
+
+/// Only the two states somebody decides. Settlement is derived from the
+/// schedule's own installments and their payments, the same way obligation
+/// status is derived from its payments — a stored "settled" could contradict
+/// them, and nothing in the system would be able to say which to believe.
+enum DebtScheduleStatus {
+  active
+  cancelled
 }
 
 enum MembershipRole {

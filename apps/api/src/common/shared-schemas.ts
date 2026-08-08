@@ -16,6 +16,8 @@ export {
   CreateInvitationSchema,
   UpdateMemberRoleSchema,
   CreateLoanSchema,
+  CreateDebtScheduleSchema,
+  UpdateDebtScheduleSchema,
   CreateCategorySchema,
   UpdateCategorySchema,
   PaginationQuerySchema,
