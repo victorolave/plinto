@@ -19,6 +19,7 @@ import { RecurringForm } from './recurring-form'
 import { TransactionForm } from './transaction-form'
 import { TransactionList } from './transaction-list'
 import { TransferForm } from './transfer-form'
+import { LoanForm } from '../../debts/components/loan-form'
 import { BalanceStripSkeleton } from './transactions-skeleton'
 import { listCategories } from '../../categories/services/categories'
 import { Card } from '../../../components/ui/card'
@@ -27,7 +28,7 @@ import { Input, Select } from '../../../components/ui/field'
 import { Amount } from '../../../components/ui/amount'
 import { Tabs } from '../../../components/ui/tabs'
 import { Drawer } from '../../../components/ui/drawer'
-import { ArrowSwap, Plus, Search } from '../../../components/ui/icons'
+import { TrendDown, ArrowSwap, Plus, Search } from '../../../components/ui/icons'
 import { useTransactionFilters, datePresetOptions } from '../hooks/use-transaction-filters'
 import type { DatePreset } from '../hooks/use-transaction-filters'
 import {
@@ -47,7 +48,7 @@ export type {
   TransactionUpdateInput,
 } from '../lib/transaction-input'
 
-type ActiveDrawer = 'transaction' | 'transfer' | 'recurring' | null
+type ActiveDrawer = 'transaction' | 'transfer' | 'loan' | 'recurring' | null
 
 export function TransactionsPanel() {
   const queryClient = useQueryClient()
@@ -247,6 +248,16 @@ export function TransactionsPanel() {
           >
             Transfer
           </Button>
+          {/* Needs somewhere for the money to land; the lender itself can be
+              created from inside the form. */}
+          <Button
+            variant="secondary"
+            leftIcon={<TrendDown size={16} />}
+            onClick={() => setDrawer('loan')}
+            disabled={accounts.length === 0}
+          >
+            Loan
+          </Button>
           <Button
             leftIcon={<Plus size={18} />}
             onClick={openAdd}
@@ -371,6 +382,15 @@ export function TransactionsPanel() {
         description="Move money with explicit FX when currencies differ"
       >
         <TransferForm accounts={accounts} onSaved={handleSaved} />
+      </Drawer>
+
+      <Drawer
+        open={drawer === 'loan'}
+        onClose={closeDrawer}
+        title="Record a loan"
+        description="Money you received and owe back"
+      >
+        <LoanForm accounts={accounts} onSaved={handleSaved} />
       </Drawer>
 
       {/* On-demand recurring rule creation / edit */}

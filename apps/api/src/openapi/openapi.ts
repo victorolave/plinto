@@ -36,6 +36,7 @@ import {
   CreateInvitationSchema,
   InvitationResultSchema,
   UpdateMemberRoleSchema,
+  CreateLoanSchema,
   TenantSchema,
   CreateTenantSchema,
   SelectTenantSchema,
@@ -126,6 +127,7 @@ const InvitationSchemaRef = registry.register('Invitation', InvitationSchema)
 const CreateInvitationSchemaRef = registry.register('CreateInvitation', CreateInvitationSchema)
 const InvitationResultSchemaRef = registry.register('InvitationResult', InvitationResultSchema)
 const UpdateMemberRoleSchemaRef = registry.register('UpdateMemberRole', UpdateMemberRoleSchema)
+const CreateLoanSchemaRef = registry.register('CreateLoan', CreateLoanSchema)
 
 const TenantSchemaRef = registry.register('Tenant', TenantSchema)
 const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
@@ -556,6 +558,31 @@ registry.registerPath({
   request: { params: idParam },
   responses: {
     200: dataResponse('Invitation revoked.', DeletedResultSchema),
+    ...errorResponses,
+  },
+})
+
+// ---------------------------------------------------------------------------
+// Debts
+// ---------------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/loans',
+  tags: ['Debts'],
+  summary: 'Record a loan the household received',
+  description:
+    'Moves money from the lender\'s liability account to the account that ' +
+    'received it, so the cash arrives and the amount owed appears — without ' +
+    'the household\'s income figure ever seeing it. The lender must be a debt ' +
+    'or credit account, the destination must not be, and both must share a ' +
+    'currency (PRD-007).',
+  security: sessionCookieAuth,
+  request: {
+    body: { content: { 'application/json': { schema: CreateLoanSchemaRef } } },
+  },
+  responses: {
+    201: dataResponse('Loan recorded as a transfer.', TransferResultSchema),
     ...errorResponses,
   },
 })

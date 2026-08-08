@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AccountTypeSchema } from './account.schema'
 
 export const TransactionTypeSchema = z.enum(['income', 'expense'])
 export const TransactionSourceSchema = z.enum(['manual', 'job'])
@@ -44,6 +45,12 @@ export const UpdateTransactionSchema = z.object({
 export const AccountBalanceSchema = z.object({
   accountId: z.string(),
   accountName: z.string(),
+  /**
+   * Carried so a client can tell an asset from a liability without fetching
+   * the accounts separately and joining them by hand. Without it every total
+   * built from balances nets debt against cash by default.
+   */
+  accountType: AccountTypeSchema,
   currency: z.string().regex(/^[A-Z]{3}$/),
   balanceMinor: z.number().int(),
 })

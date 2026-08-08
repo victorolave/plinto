@@ -11,6 +11,7 @@ const accountTypeOptions: Array<{ value: AccountType; label: string }> = [
   { value: 'bank', label: 'Bank' },
   { value: 'credit', label: 'Credit' },
   { value: 'savings', label: 'Savings' },
+  { value: 'debt', label: 'Debt' },
 ]
 
 export interface AccountFormProps {

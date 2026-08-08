@@ -665,10 +665,34 @@ describe('TransactionService', () => {
         {
           accountId: 'account-1',
           accountName: 'Main bank account',
+          accountType: 'bank',
           currency: 'COP',
           balanceMinor: 7000,
         },
       ])
+    })
+
+    /**
+     * The type travels with the balance so a client can tell an asset from a
+     * liability without fetching accounts separately and joining by hand.
+     * Without it every total built from balances nets debt against cash, which
+     * silently turns "what we hold" into "what we are worth".
+     */
+    it('carries the account type, so a liability can be told from an asset', async () => {
+      accountRepository.listByTenantId.mockResolvedValue([
+        makeAccount({ id: 'account-1', type: 'bank' }),
+        makeAccount({ id: 'account-2', name: 'Lineru', type: 'debt' }),
+      ])
+      transactionRepository.sumByAccount.mockResolvedValue([
+        { accountId: 'account-2', type: 'expense', totalMinor: 983000 },
+      ])
+
+      const result = await service.getBalances('tenant-1')
+
+      expect(result[0].accountType).toBe('bank')
+      expect(result[1].accountType).toBe('debt')
+      // A liability holds what is owed, as a negative figure.
+      expect(result[1].balanceMinor).toBe(-983000)
     })
 
     it('returns one balance entry per account in the same order as accounts', async () => {

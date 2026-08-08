@@ -1,6 +1,6 @@
 import { apiFetch } from '../../../lib/api/client'
 
-export type AccountType = 'cash' | 'bank' | 'credit' | 'savings'
+export type AccountType = 'cash' | 'bank' | 'credit' | 'savings' | 'debt'
 
 export interface Account {
   id: string
