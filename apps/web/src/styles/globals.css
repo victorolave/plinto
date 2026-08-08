@@ -990,6 +990,60 @@
   margin: 0;
   list-style: none;
 }
+/* Identity block of a member row: avatar plus a name/email stack. `min-width: 0`
+   on both is what lets the text truncate instead of pushing the row wider than
+   its card. */
+.member-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+.member-identity-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.member-identity-meta {
+  font-size: var(--text-2xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Right-hand side of a member row: role badge, an optional status word, and the
+   actions menu. `flex-shrink: 0` so it keeps its size and the identity beside it
+   is what gives way. */
+.member-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.member-row-status {
+  font-size: var(--text-2xs);
+  white-space: nowrap;
+}
+/* A moment's feedback after inviting somebody, dismissible. */
+.member-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-2) var(--space-4);
+}
+/* Below this the two halves of a member row stop fitting side by side, so the
+   actions drop under the identity rather than overflowing the card. */
+@media (max-width: 560px) {
+  .member-list .data-row {
+    flex-wrap: wrap;
+  }
+  .member-list .member-row-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
 /* role legend: a definition list, because that is what it is — a term and its
    meaning. Grid keeps the badges in one column so the descriptions align. */
 .role-legend {

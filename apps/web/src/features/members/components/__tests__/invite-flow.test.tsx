@@ -194,7 +194,12 @@ describe('MembersPanel — invitations', () => {
 
     renderWithProviders(<MembersPanel />)
 
-    await user.click(await screen.findByRole('button', { name: /revoke invitation for/i }))
+    // Row actions live behind a kebab menu, the way the rest of this app
+    // offers them.
+    await user.click(
+      await screen.findByRole('button', { name: /actions for sandra@example.com/i }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: /revoke invitation/i }))
     expect(mockedRevokeInvitation).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: /^revoke invitation$/i }))
