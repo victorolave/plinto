@@ -1,14 +1,25 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listMembers, type MemberRole, type TenantMember } from '../services/members'
+import {
+  listInvitations,
+  revokeInvitation,
+  type Invitation,
+  type InvitationResult,
+} from '../services/invitations'
 import { queryKeys } from '../../../lib/api/query-keys'
 import { MembersSkeleton } from './members-skeleton'
+import { InviteForm } from './invite-form'
 import { Card, CardHeader } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { Avatar } from '../../../components/ui/avatar'
+import { Button } from '../../../components/ui/button'
+import { Drawer } from '../../../components/ui/drawer'
+import { Modal } from '../../../components/ui/modal'
 import { EmptyState } from '../../../components/ui/empty-state'
-import { Users } from '../../../components/ui/icons'
+import { Plus, Trash, Users } from '../../../components/ui/icons'
 import { useDashboard } from '../../../components/layout/dashboard-context'
 
 /**
@@ -45,8 +56,19 @@ function displayNameOf(member: TenantMember): string {
   return member.email.split('@')[0]
 }
 
+function formatExpiry(expiresAt: string): string {
+  const date = new Date(expiresAt)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 export function MembersPanel() {
   const { user } = useDashboard()
+  const queryClient = useQueryClient()
+
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [pendingRevoke, setPendingRevoke] = useState<Invitation | null>(null)
+  const [lastResult, setLastResult] = useState<InvitationResult | null>(null)
 
   const {
     data: members = [],
@@ -57,7 +79,36 @@ export function MembersPanel() {
     queryFn: async () => (await listMembers()).data.members,
   })
 
-  const errorMessage = error instanceof Error ? error.message : null
+  // The signed-in person's own role decides whether any of this is theirs to
+  // do. The API enforces it regardless — this only avoids offering a button
+  // that would come back 403.
+  const isOwner = members.some(
+    (member) =>
+      user.email !== undefined &&
+      user.email.toLowerCase() === member.email.toLowerCase() &&
+      member.role === 'owner',
+  )
+
+  const { data: invitations = [] } = useQuery({
+    queryKey: queryKeys.invitations,
+    queryFn: async () => (await listInvitations()).data.invitations,
+    enabled: isOwner,
+  })
+
+  const revokeMutation = useMutation({
+    mutationFn: (id: string) => revokeInvitation(id),
+    onSuccess: () => {
+      setPendingRevoke(null)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.invitations })
+    },
+  })
+
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : revokeMutation.error instanceof Error
+        ? revokeMutation.error.message
+        : null
 
   return (
     <div className="page">
@@ -71,7 +122,28 @@ export function MembersPanel() {
               ? 'Loading…'
               : `${members.length} ${members.length === 1 ? 'person' : 'people'} in this household`
           }
+          action={
+            isOwner ? (
+              <Button
+                leftIcon={<Plus size={18} />}
+                onClick={() => {
+                  setLastResult(null)
+                  setInviteOpen(true)
+                }}
+              >
+                Invite
+              </Button>
+            ) : null
+          }
         />
+
+        {lastResult ? (
+          <p className="muted" style={{ padding: '0 var(--space-4) var(--space-2)' }}>
+            {lastResult.status === 'accepted'
+              ? `${lastResult.member?.email ?? 'They'} already had an account and joined right away.`
+              : `Invitation sent to ${lastResult.invitation?.email ?? 'them'}. It will be applied the first time they sign in.`}
+          </p>
+        ) : null}
 
         {isLoading ? <MembersSkeleton /> : null}
 
@@ -129,6 +201,39 @@ export function MembersPanel() {
         ) : null}
       </Card>
 
+      {isOwner && invitations.length > 0 ? (
+        <Card flush>
+          <CardHeader
+            title="Pending invitations"
+            subtitle="Applied the first time each person signs in"
+          />
+          <ul className="member-list" aria-label="Pending invitations">
+            {invitations.map((invitation) => (
+              <li key={invitation.id} className="data-row">
+                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <span className="account-name">{invitation.email}</span>
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    Invited as {invitation.role}
+                    {formatExpiry(invitation.expiresAt)
+                      ? ` · expires ${formatExpiry(invitation.expiresAt)}`
+                      : ''}
+                  </span>
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<Trash size={15} />}
+                  aria-label={`Revoke invitation for ${invitation.email}`}
+                  onClick={() => setPendingRevoke(invitation)}
+                >
+                  Revoke
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       {!isLoading && members.length > 0 ? (
         <Card>
           <CardHeader
@@ -147,6 +252,46 @@ export function MembersPanel() {
           </dl>
         </Card>
       ) : null}
+
+      <Drawer
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        title="Invite someone"
+        description="They join this household with the role you pick"
+      >
+        <InviteForm
+          onInvited={(result) => {
+            setLastResult(result)
+            setInviteOpen(false)
+          }}
+        />
+      </Drawer>
+
+      <Modal
+        open={pendingRevoke !== null}
+        onClose={() => setPendingRevoke(null)}
+        title="Revoke invitation?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPendingRevoke(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              disabled={revokeMutation.isPending}
+              onClick={() => pendingRevoke && revokeMutation.mutate(pendingRevoke.id)}
+            >
+              {revokeMutation.isPending ? 'Revoking…' : 'Revoke invitation'}
+            </Button>
+          </>
+        }
+      >
+        <p className="muted">
+          <strong style={{ color: 'var(--text-strong)' }}>{pendingRevoke?.email}</strong>{' '}
+          will no longer join this household when they sign in. You can invite
+          them again later.
+        </p>
+      </Modal>
     </div>
   )
 }

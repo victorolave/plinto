@@ -26,4 +26,7 @@ export const queryKeys = {
   // switching households reloads the page (see DashboardShell), so no stale
   // entry from a previous tenant can survive to serve this key.
   members: ['members'] as const,
+  // Separate from `members`: an invitation is not a membership yet, and only an
+  // owner can read the list, so the two are fetched under different conditions.
+  invitations: ['members', 'invitations'] as const,
 } as const
