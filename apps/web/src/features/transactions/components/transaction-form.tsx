@@ -2,7 +2,12 @@
 
 import { type FormEvent, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { CreateTransactionSchema, UpdateTransactionSchema } from '@plinto/shared'
+import {
+  CreateTransactionSchema,
+  UpdateTransactionSchema,
+  toMajorUnitsString,
+  toMinorUnits,
+} from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import type { Category } from '../../categories/services/categories'
 import {
@@ -14,6 +19,7 @@ import {
 import { CategorySelect } from '../../categories/components/category-select'
 import { Button } from '../../../components/ui/button'
 import { Field, Input, Select, SegmentedControl } from '../../../components/ui/field'
+import { amountInputStep } from '../../../components/ui/amount'
 import {
   buildTransactionCreateInput,
   buildTransactionUpdateInput,
@@ -43,9 +49,11 @@ export function TransactionForm({
   const [categoryId, setCategoryId] = useState<string | null>(
     editing?.categoryId ?? null,
   )
-  // Amount is collected in major units and converted to minor via ×100 (ADR 0004).
+  // Amount is collected in major units and converted at the scale the currency
+  // actually uses (ADR 0004's reference table, in @plinto/shared) — not the
+  // ×100 this form used to assume for every currency.
   const [amount, setAmount] = useState(
-    editing ? (editing.amountMinor / 100).toFixed(2) : '',
+    editing ? toMajorUnitsString(editing.amountMinor, editing.currency) : '',
   )
   const [description, setDescription] = useState(editing?.description ?? '')
   const [occurredAt, setOccurredAt] = useState(
@@ -79,11 +87,20 @@ export function TransactionForm({
   const error =
     validationError ?? (mutationError instanceof Error ? mutationError.message : null)
 
+  const selectedAccount = accounts.find((account) => account.id === selectedAccountId)
+  // The scale follows the account the transaction lands in: a transaction
+  // inherits its account's currency (ADR 0004 §6), so that is the only currency
+  // this amount can be expressed in.
+  //
+  // An unresolved account leaves this empty, which would scale by the ×100
+  // default — unreachable, because the empty accountId it implies is rejected
+  // by the schema before the amount is ever sent.
+  const currency = selectedAccount?.currency ?? editing?.currency ?? ''
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
 
-    const parsedAmount = parseFloat(amount)
-    const amountMinor = Math.round(parsedAmount * 100)
+    const amountMinor = toMinorUnits(amount, currency)
     const trimmedDescription = description.trim()
 
     if (editing) {
@@ -164,11 +181,11 @@ export function TransactionForm({
           <Input
             id="tx-amount"
             type="number"
-            min="0.01"
-            step="0.01"
+            min={amountInputStep(currency)}
+            step={amountInputStep(currency)}
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
-            placeholder="0.00"
+            placeholder={toMajorUnitsString(0, currency)}
             required
           />
         </Field>

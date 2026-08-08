@@ -77,6 +77,34 @@ Plinto uses an explicit and secure representation of monetary values:
 
 The number of decimals per currency is defined by configuration/reference table (minor units per currency).
 
+#### 5.1 Where the reference table lives (implementation note)
+
+The table is `packages/shared/money/currency.ts`, exported from `@plinto/shared`
+as `minorUnitExponent`, `toMinorUnits`, `toMajorUnits` and `toMajorUnitsString`.
+Every conversion between a major-unit amount a person types and the minor units
+this database stores goes through it.
+
+Two points that were decided while implementing it:
+
+**Values follow CLDR, not the ISO 4217 column.** The two disagree, and they
+disagree precisely where it matters: ISO still lists `COP` — the default
+currency of a household here — with two decimals, for a centavo that has not
+circulated in decades. `IQD` is the same story. CLDR records what actually
+circulates, and it is also what `Intl.NumberFormat` uses to render, so taking
+the scale from anywhere else would divide by one number and print with another.
+
+**The table is explicit, not derived from `Intl` at runtime.** Deriving it would
+be less code and always current, but the scale an amount is *stored* at must not
+depend on how the runtime was built: a Node image compiled with small-icu would
+answer differently, and the same amount would be persisted at two scales
+depending on which container wrote it. The table is therefore the source of
+truth, and a test asserts it agrees with `Intl` for every currency the runtime
+knows — so divergence from CLDR fails CI instead of corrupting data.
+
+Amounts written before this table existed were stored at a flat ×100 for every
+currency; migration `20260808000000_rescale_amounts_to_currency_minor_units`
+rescales them.
+
 ### 6. Currency per Account
 
 - Each **Account** has a defined currency (`currency`).

@@ -2,10 +2,11 @@
 
 import { type FormEvent, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { CreateObligationSchema } from '@plinto/shared'
+import { CreateObligationSchema, toMajorUnitsString, toMinorUnits } from '@plinto/shared'
 import { createObligation } from '../services/obligations'
 import { Button } from '../../../components/ui/button'
 import { Field, Input, Select } from '../../../components/ui/field'
+import { amountInputStep } from '../../../components/ui/amount'
 
 /** Converts a date-only input (YYYY-MM-DD) to a UTC-midnight ISO instant. */
 function toDueDateIso(value: string): string {
@@ -58,7 +59,7 @@ export function ObligationForm({ period, currencies, onSaved }: ObligationFormPr
       name: name.trim(),
       period,
       dueDate: toDueDateIso(dueDate),
-      expectedAmountMinor: Math.round(parseFloat(amount) * 100),
+      expectedAmountMinor: toMinorUnits(amount, currency),
       currency,
     }
 
@@ -93,11 +94,11 @@ export function ObligationForm({ period, currencies, onSaved }: ObligationFormPr
             <Input
               id="obligation-amount"
               type="number"
-              min="0.01"
-              step="0.01"
+              min={amountInputStep(currency)}
+              step={amountInputStep(currency)}
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
-              placeholder="0.00"
+              placeholder={toMajorUnitsString(0, currency)}
               required
             />
           </Field>

@@ -2,12 +2,13 @@
 
 import { type FormEvent, useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { CreateTransferSchema } from '@plinto/shared'
+import { CreateTransferSchema, toMajorUnitsString, toMinorUnits } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import { createTransfer } from '../services/transactions'
 import { Button } from '../../../components/ui/button'
 import { Field, Input, Select } from '../../../components/ui/field'
 import { ArrowSwap } from '../../../components/ui/icons'
+import { amountInputStep, formatMoneyMagnitude } from '../../../components/ui/amount'
 import { toOccurredAtIso } from '../lib/transaction-input'
 
 export interface TransferFormProps {
@@ -24,7 +25,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
   const [amount, setAmount] = useState('')
   const [destAmount, setDestAmount] = useState('')
   const [fxRate, setFxRate] = useState('')
-  const [feeMinor, setFeeMinor] = useState('')
+  const [fee, setFee] = useState('')
   const [description, setDescription] = useState('')
   const [occurredAt, setOccurredAt] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -43,14 +44,19 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
 
   const sourceAccount = accounts.find((a) => a.id === sourceAccountId)
   const destAccount = accounts.find((a) => a.id === destAccountId)
+  // Empty until an account is picked. `minorUnitExponent` falls back to two
+  // decimals for an empty code, which never reaches the API: the schema rejects
+  // the missing accountId that implies before anything is sent.
+  const sourceCurrency = sourceAccount?.currency ?? ''
+  const destinationCurrency = destAccount?.currency ?? ''
   const isCrossCurrency =
-    sourceAccount && destAccount && sourceAccount.currency !== destAccount.currency
+    sourceAccount && destAccount && sourceCurrency !== destinationCurrency
 
   useEffect(() => {
     if (!isCrossCurrency) {
       setDestAmount('')
       setFxRate('')
-      setFeeMinor('')
+      setFee('')
     }
   }, [isCrossCurrency])
 
@@ -62,16 +68,22 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
       return
     }
 
-    const sourceAmountMinor = Math.round(parseFloat(amount) * 100)
+    // Each side scales by its OWN account's currency. They can differ — a
+    // COP→USD transfer shifts the source by nothing and the destination by two
+    // places — which is exactly what a single shared ×100 could not express.
+    const sourceAmountMinor = toMinorUnits(amount, sourceCurrency)
     let destinationAmountMinor: number | undefined
     let fxRateValue: string | undefined
 
     if (isCrossCurrency) {
-      destinationAmountMinor = Math.round(parseFloat(destAmount) * 100)
+      destinationAmountMinor = toMinorUnits(destAmount, destinationCurrency)
       fxRateValue = fxRate.trim() || undefined
     }
 
-    const fee = feeMinor.trim() ? parseInt(feeMinor, 10) : undefined
+    // The fee is charged on the source side, so it scales by the source
+    // currency. It used to be typed in raw minor units by the person filling
+    // the form; it is now an ordinary amount like every other money field.
+    const feeValue = fee.trim() ? toMinorUnits(fee, sourceCurrency) : undefined
     const trimmedDescription = description.trim()
 
     const payload = {
@@ -80,7 +92,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
       sourceAmountMinor,
       destinationAmountMinor,
       fxRate: fxRateValue,
-      feeMinor: fee,
+      feeMinor: feeValue,
       description: trimmedDescription || undefined,
       occurredAt: toOccurredAtIso(occurredAt),
     }
@@ -146,11 +158,11 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
           <Input
             id="transfer-amount"
             type="number"
-            min="0.01"
-            step="0.01"
+            min={amountInputStep(sourceCurrency)}
+            step={amountInputStep(sourceCurrency)}
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
-            placeholder="0.00"
+            placeholder={toMajorUnitsString(0, sourceCurrency)}
             required
           />
         </Field>
@@ -164,11 +176,11 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
               <Input
                 id="transfer-dest-amount"
                 type="number"
-                min="0.01"
-                step="0.01"
+                min={amountInputStep(destinationCurrency)}
+                step={amountInputStep(destinationCurrency)}
                 value={destAmount}
                 onChange={(event) => setDestAmount(event.target.value)}
-                placeholder="0.00"
+                placeholder={toMajorUnitsString(0, destinationCurrency)}
                 required
               />
             </Field>
@@ -184,19 +196,26 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
             </Field>
             {amount && destAmount && fxRate ? (
               <p className="muted">
-                {parseFloat(amount).toFixed(2)} {sourceAccount?.currency} →{' '}
-                {parseFloat(destAmount).toFixed(2)} {destAccount?.currency} at rate{' '}
-                {fxRate}
+                {formatMoneyMagnitude(toMinorUnits(amount, sourceCurrency), sourceCurrency)}{' '}
+                → {formatMoneyMagnitude(
+                  toMinorUnits(destAmount, destinationCurrency),
+                  destinationCurrency,
+                )}{' '}
+                at rate {fxRate}
               </p>
             ) : null}
-            <Field label="Fee" hint="Optional, in minor units" htmlFor="transfer-fee">
+            <Field
+              label="Fee"
+              hint={`Optional, in ${sourceCurrency || 'the source currency'}`}
+              htmlFor="transfer-fee"
+            >
               <Input
                 id="transfer-fee"
                 type="number"
                 min="0"
-                step="1"
-                value={feeMinor}
-                onChange={(event) => setFeeMinor(event.target.value)}
+                step={amountInputStep(sourceCurrency)}
+                value={fee}
+                onChange={(event) => setFee(event.target.value)}
                 placeholder="0"
               />
             </Field>
