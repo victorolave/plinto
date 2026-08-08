@@ -3,6 +3,7 @@
 import { type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import { isLiabilityAccountType } from '@plinto/shared'
 import { listAccounts } from '../../accounts/services/accounts'
 import {
   listBalances,
@@ -13,7 +14,7 @@ import {
 import { queryKeys } from '../../../lib/api/query-keys'
 import { Card, CardHeader } from '../../../components/ui/card'
 import { StatCard } from '../../../components/ui/stat-card'
-import { Amount } from '../../../components/ui/amount'
+import { Amount, formatMoneyMagnitude } from '../../../components/ui/amount'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import {
@@ -28,16 +29,43 @@ import { useDashboard } from '../../../components/layout/dashboard-context'
 
 interface CurrencyTotal {
   currency: string
+  /** What the household holds: assets only. */
   totalMinor: number
+  /** What it owes, as a positive figure. Zero when it owes nothing. */
+  owedMinor: number
 }
 
+/**
+ * Assets and liabilities are summed apart, deliberately.
+ *
+ * Adding a debt account into the same figure as a bank account changes what
+ * that figure means — from "what we hold" to "what we are worth" — for a
+ * household that never asked for the second one. The number on this dashboard
+ * answers "do we make it to the end of the month", and net worth does not
+ * answer it.
+ *
+ * Liabilities carry a negative balance, so what is owed is its magnitude.
+ */
 function sumByCurrency(balances: AccountBalance[]): CurrencyTotal[] {
-  const map = new Map<string, number>()
+  const held = new Map<string, number>()
+  const owed = new Map<string, number>()
+
   for (const balance of balances) {
-    map.set(balance.currency, (map.get(balance.currency) ?? 0) + balance.balanceMinor)
+    const bucket = isLiabilityAccountType(balance.accountType) ? owed : held
+    const signed = isLiabilityAccountType(balance.accountType)
+      ? -balance.balanceMinor
+      : balance.balanceMinor
+    bucket.set(balance.currency, (bucket.get(balance.currency) ?? 0) + signed)
   }
-  return [...map.entries()]
-    .map(([currency, totalMinor]) => ({ currency, totalMinor }))
+
+  const currencies = new Set([...held.keys(), ...owed.keys()])
+
+  return [...currencies]
+    .map((currency) => ({
+      currency,
+      totalMinor: held.get(currency) ?? 0,
+      owedMinor: owed.get(currency) ?? 0,
+    }))
     .sort((a, b) => a.currency.localeCompare(b.currency))
 }
 
@@ -109,12 +137,16 @@ export function DashboardOverview() {
               {totals.map((total, index) => (
                 <StatCard
                   key={total.currency}
-                  label={`Net balance (${total.currency})`}
+                  label={`Available (${total.currency})`}
                   valueMinor={total.totalMinor}
                   currency={total.currency}
                   accent={index === 0}
                   deltaLabel={
-                    index === 0 ? 'across all accounts' : `${total.currency} accounts`
+                    total.owedMinor > 0
+                      ? `${formatMoneyMagnitude(total.owedMinor, total.currency)} owed`
+                      : index === 0
+                        ? 'across all accounts'
+                        : `${total.currency} accounts`
                   }
                   icon={<Wallet size={16} />}
                 />

@@ -1,5 +1,6 @@
 'use client'
 
+import { isLiabilityAccountType } from '@plinto/shared'
 import type { Account } from '../services/accounts'
 import type { AccountBalance } from '../../transactions/services/transactions'
 import { AccountCard } from './account-card'
@@ -24,8 +25,22 @@ export function AccountGroup({
   onArchive,
   onAddAccount,
 }: AccountGroupProps) {
+  // Assets only, for the same reason the dashboard splits them: a section
+  // total that quietly nets a debt account against a bank account stops being
+  // the number somebody came here to read.
   const total = accounts.reduce(
-    (sum, account) => sum + (balanceByAccount.get(account.id)?.balanceMinor ?? 0),
+    (sum, account) =>
+      isLiabilityAccountType(account.type)
+        ? sum
+        : sum + (balanceByAccount.get(account.id)?.balanceMinor ?? 0),
+    0,
+  )
+
+  const owed = accounts.reduce(
+    (sum, account) =>
+      isLiabilityAccountType(account.type)
+        ? sum - (balanceByAccount.get(account.id)?.balanceMinor ?? 0)
+        : sum,
     0,
   )
 
@@ -37,8 +52,15 @@ export function AccountGroup({
           {accounts.length} account{accounts.length > 1 ? 's' : ''}
         </h2>
         <div className="section-total">
-          <span className="plinto-eyebrow">Total in {currency}</span>
+          <span className="plinto-eyebrow">
+            {owed > 0 ? `Held in ${currency}` : `Total in ${currency}`}
+          </span>
           <Amount minor={total} currency={currency} size="lg" />
+          {owed > 0 ? (
+            <span className="muted" style={{ fontSize: 12 }}>
+              <Amount minor={owed} currency={currency} size="sm" /> owed
+            </span>
+          ) : null}
         </div>
       </div>
 

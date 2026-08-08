@@ -239,4 +239,5 @@ export const accountTypeIcon = {
   bank: Bank,
   credit: Card,
   savings: Piggy,
+  debt: TrendDown,
 } as const

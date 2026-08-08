@@ -1,4 +1,5 @@
 import { apiFetch } from '../../../lib/api/client'
+import type { AccountType } from '../../accounts/services/accounts'
 
 export type TransactionType = 'income' | 'expense'
 
@@ -23,6 +24,8 @@ export interface Transaction {
 export interface AccountBalance {
   accountId: string
   accountName: string
+  /** Lets a client separate what the household holds from what it owes. */
+  accountType: AccountType
   currency: string
   balanceMinor: number
 }
