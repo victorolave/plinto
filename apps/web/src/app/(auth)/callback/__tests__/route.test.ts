@@ -220,18 +220,84 @@ describe('GET /callback', () => {
 
   // ---------- API errors ----------
 
-  it('throws when NEXT_PUBLIC_API_BASE_URL is not set', async () => {
+  it('redirects to /login instead of throwing when NEXT_PUBLIC_API_BASE_URL is not set', async () => {
     vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
     vi.stubEnv('INTERNAL_API_KEY', 'key')
 
-    await expect(GET(makeRequest())).rejects.toThrow('Missing API configuration')
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
   })
 
-  it('throws when INTERNAL_API_KEY is not set', async () => {
+  it('redirects to /login instead of throwing when INTERNAL_API_KEY is not set', async () => {
     vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://localhost:3001')
     vi.stubEnv('INTERNAL_API_KEY', '')
 
-    await expect(GET(makeRequest())).rejects.toThrow('Missing API configuration')
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  // ---------- unhandled exceptions (fix under test) ----------
+  //
+  // Every one of these used to escape as a raw Next.js 500. They must now
+  // be caught and redirect to /login, exactly like the pre-existing
+  // non-throwing failure branches above.
+
+  it('redirects to /login when client.callback throws (replayed authorization code)', async () => {
+    const mockCallback = vi.fn().mockRejectedValue(new Error('checks.state argument is missing'))
+    mockGetOidcClient.mockResolvedValue(makeOidcClient({ callback: mockCallback }) as any)
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('clears the OIDC state/verifier cookies when client.callback throws', async () => {
+    const mockCallback = vi.fn().mockRejectedValue(new Error('invalid_grant'))
+    mockGetOidcClient.mockResolvedValue(makeOidcClient({ callback: mockCallback }) as any)
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response.cookies._deleted).toContain('plinto_oidc_state')
+    expect(response.cookies._deleted).toContain('plinto_oidc_verifier')
+  })
+
+  it('redirects to /login when getOidcClient throws (IdP discovery/network failure)', async () => {
+    mockGetOidcClient.mockRejectedValue(new Error('discovery failed'))
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when fetch rejects (network failure calling the session API)', async () => {
+    globalFetch.mockRejectedValue(new TypeError('fetch failed'))
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when sessionResponse.json() throws (malformed body)', async () => {
+    globalFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+    })
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('does not leak the thrown error and still redirects for an unexpected non-Error throw', async () => {
+    mockGetOidcClient.mockImplementation(() => {
+      throw 'unexpected string throw'
+    })
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
   })
 
   it('redirects to /login when session API returns non-ok', async () => {
