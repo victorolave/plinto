@@ -6,11 +6,15 @@ export const ObligationPeriodSchema = z
   .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Period must be formatted as YYYY-MM')
 
 /**
- * Where the instance came from. PRD-007 will add `debt_schedule` here; the
+ * Where the instance came from. `debt_schedule` arrived with PRD-007; the
  * matching foreign key is validated by a CHECK constraint in the database, so
  * an instance can never claim an origin it does not actually reference.
  */
-export const ObligationSourceTypeSchema = z.enum(['recurring_rule', 'manual'])
+export const ObligationSourceTypeSchema = z.enum([
+  'recurring_rule',
+  'manual',
+  'debt_schedule',
+])
 
 /**
  * Derived, never stored. `pending`/`partial`/`paid` come from the sum of the
@@ -33,6 +37,8 @@ export const ObligationInstanceSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
   sourceType: ObligationSourceTypeSchema,
+  /** Set if and only if `sourceType` is `debt_schedule`. */
+  debtScheduleId: z.string().nullable().optional(),
   recurringRuleId: z.string().nullable(),
   period: ObligationPeriodSchema,
   dueDate: z.string(),

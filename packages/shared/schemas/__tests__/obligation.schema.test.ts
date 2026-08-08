@@ -32,10 +32,20 @@ describe('obligation schemas', () => {
     )
   })
 
+  /**
+   * `debt_schedule` was deliberately rejected here until PRD-007 existed — a
+   * barrier so nobody could declare that origin before the model behind it did.
+   * PRD-007 arrived, so the barrier inverts: the origin is now real, and the
+   * database's CHECK constraint pins which reference it must carry.
+   */
   it('recognises the origins an instance may declare', () => {
     expect(ObligationSourceTypeSchema.parse('recurring_rule')).toBe('recurring_rule')
     expect(ObligationSourceTypeSchema.parse('manual')).toBe('manual')
-    expect(ObligationSourceTypeSchema.safeParse('debt_schedule').success).toBe(false)
+    expect(ObligationSourceTypeSchema.parse('debt_schedule')).toBe('debt_schedule')
+  })
+
+  it('still refuses an origin nothing produces', () => {
+    expect(ObligationSourceTypeSchema.safeParse('imported').success).toBe(false)
   })
 
   it.each(['pending', 'partial', 'paid', 'overdue'])(
