@@ -90,3 +90,33 @@ export type DebtScheduleStatusDto = z.infer<typeof DebtScheduleStatusSchema>
 export type DebtScheduleDto = z.infer<typeof DebtScheduleSchema>
 export type CreateDebtScheduleDto = z.infer<typeof CreateDebtScheduleSchema>
 export type UpdateDebtScheduleDto = z.infer<typeof UpdateDebtScheduleSchema>
+
+/**
+ * What a household owes, in one currency.
+ *
+ * Two figures, never one. They measure different things and the model keeps
+ * them apart on purpose:
+ *
+ * - `scheduledOutstandingMinor` is what remains on financed purchases —
+ *   principal minus what their installments have actually been paid.
+ * - `lenderOwedMinor` is what the liability accounts themselves carry: loans
+ *   received, card balances, anything recorded as a movement.
+ *
+ * Recording a financed purchase does not move its account's balance today, so
+ * the two do not overlap — but nothing in the model *guarantees* they never
+ * will, and adding them into a single headline would present a number nobody
+ * could defend. Whether a purchase should also post to its account is a real
+ * open question, and one figure would have quietly answered it.
+ */
+export const DebtCurrencyTotalSchema = z.object({
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  scheduledOutstandingMinor: z.number().int(),
+  lenderOwedMinor: z.number().int(),
+})
+
+export const DebtSummarySchema = z.object({
+  totals: z.array(DebtCurrencyTotalSchema),
+})
+
+export type DebtCurrencyTotalDto = z.infer<typeof DebtCurrencyTotalSchema>
+export type DebtSummaryDto = z.infer<typeof DebtSummarySchema>

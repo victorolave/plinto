@@ -1,3 +1,4 @@
+import type { AccountType } from '../../accounts/domain/account.entity'
 export type TransactionType = 'income' | 'expense'
 export type TransactionSource = 'manual' | 'job'
 
@@ -23,6 +24,11 @@ export interface Transaction {
 export interface AccountBalance {
   accountId: string
   accountName: string
+  /**
+   * Travels with the balance so a caller can tell an asset from a liability
+   * without fetching accounts separately and joining them by hand.
+   */
+  accountType: AccountType
   currency: string
   balanceMinor: number
 }

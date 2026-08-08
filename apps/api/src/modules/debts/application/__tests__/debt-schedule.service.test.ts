@@ -39,6 +39,7 @@ describe('DebtScheduleService', () => {
   }
   let accounts: { findByIdForTenant: ReturnType<typeof vi.fn> }
   let audit: { record: ReturnType<typeof vi.fn> }
+  let transactions: { getBalances: ReturnType<typeof vi.fn> }
   let service: DebtScheduleService
 
   const create = (overrides = {}) =>
@@ -65,7 +66,14 @@ describe('DebtScheduleService', () => {
     accounts = { findByIdForTenant: vi.fn().mockResolvedValue(account()) }
     audit = { record: vi.fn().mockResolvedValue(undefined) }
 
-    service = new DebtScheduleService(repo as never, accounts as never, audit as never)
+    transactions = { getBalances: vi.fn().mockResolvedValue([]) }
+
+    service = new DebtScheduleService(
+      repo as never,
+      accounts as never,
+      audit as never,
+      transactions as never,
+    )
   })
 
   describe('createSchedule', () => {
@@ -229,6 +237,110 @@ describe('DebtScheduleService', () => {
           name: 'Otra',
         }),
       ).rejects.toBeInstanceOf(NotFoundException)
+    })
+  })
+
+  /**
+   * Two figures per currency, never one. Remaining installments and what the
+   * liability accounts carry measure different things, and adding them would
+   * present a number nobody could defend.
+   */
+  describe('summarize', () => {
+    const balance = (overrides = {}) => ({
+      accountId: 'acc-1',
+      accountName: 'ADDI',
+      accountType: 'debt' as const,
+      currency: 'COP',
+      balanceMinor: -983000,
+      ...overrides,
+    })
+
+    it('reports remaining installments apart from what the accounts carry', async () => {
+      repo.listWithProgress.mockResolvedValue([
+        { schedule: schedule(), paidMinor: 200000, generatedCount: 2 },
+      ])
+      transactions.getBalances.mockResolvedValue([balance()])
+
+      const [total] = await service.summarize('tenant-1')
+
+      expect(total).toEqual({
+        currency: 'COP',
+        scheduledOutstandingMinor: 400000,
+        lenderOwedMinor: 983000,
+      })
+    })
+
+    // Liabilities carry a negative balance, so what is owed is its magnitude.
+    it('reports what is owed as a positive figure', async () => {
+      transactions.getBalances.mockResolvedValue([balance({ balanceMinor: -500000 })])
+
+      const [total] = await service.summarize('tenant-1')
+
+      expect(total.lenderOwedMinor).toBe(500000)
+    })
+
+    /**
+     * A positive balance on a liability means the account is ahead, not owed.
+     * Counting it would report a debt the household does not have.
+     */
+    it('ignores a liability account that is ahead', async () => {
+      transactions.getBalances.mockResolvedValue([balance({ balanceMinor: 120000 })])
+
+      const [total] = await service.summarize('tenant-1')
+
+      expect(total.lenderOwedMinor).toBe(0)
+    })
+
+    /**
+     * An overdrawn bank account is not a debt this report is about — and a
+     * currency in which the household owes nothing produces no row at all,
+     * rather than a row of zeroes that reads like a debt of nothing.
+     */
+    it('leaves asset accounts out entirely', async () => {
+      transactions.getBalances.mockResolvedValue([
+        balance({ accountType: 'bank', balanceMinor: -50000 }),
+      ])
+
+      await expect(service.summarize('tenant-1')).resolves.toEqual([])
+    })
+
+    // A cancelled plan stops producing installments, so what it had left is no
+    // longer owed under it.
+    it('excludes a cancelled plan from what remains', async () => {
+      repo.listWithProgress.mockResolvedValue([
+        { schedule: schedule({ status: 'cancelled' }), paidMinor: 0, generatedCount: 0 },
+      ])
+
+      const totals = await service.summarize('tenant-1')
+
+      expect(totals).toEqual([])
+    })
+
+    it('keeps currencies apart rather than summing incomparable units', async () => {
+      repo.listWithProgress.mockResolvedValue([
+        { schedule: schedule(), paidMinor: 0, generatedCount: 0 },
+        {
+          schedule: schedule({ id: 's2', currency: 'USD', principalMinor: 120000 }),
+          paidMinor: 20000,
+          generatedCount: 1,
+        },
+      ])
+      transactions.getBalances.mockResolvedValue([
+        balance({ currency: 'USD', balanceMinor: -30000 }),
+      ])
+
+      const totals = await service.summarize('tenant-1')
+
+      expect(totals.map((total) => total.currency)).toEqual(['COP', 'USD'])
+      expect(totals[0]).toMatchObject({ scheduledOutstandingMinor: 600000, lenderOwedMinor: 0 })
+      expect(totals[1]).toMatchObject({
+        scheduledOutstandingMinor: 100000,
+        lenderOwedMinor: 30000,
+      })
+    })
+
+    it('reports nothing for a household with no debt at all', async () => {
+      await expect(service.summarize('tenant-1')).resolves.toEqual([])
     })
   })
 })
