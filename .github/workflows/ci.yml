@@ -1,0 +1,129 @@
+name: CI
+
+# Runs on every pull request, and on pushes to the long-lived branches so a
+# direct push to develop is covered too — this repository does push straight to
+# develop for small fixes.
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+# A second push to the same branch cancels the first: the older run's verdict is
+# already stale.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Test, lint and build
+    runs-on: ubuntu-latest
+
+    # Every value here is a throwaway placeholder. Nothing in this job reaches a
+    # real service: the API tests mock Prisma, and no test opens a socket. They
+    # exist because the apps read these at import time and would otherwise fail
+    # for a missing variable rather than a real defect.
+    #
+    # NEXT_PUBLIC_API_BASE_URL is inlined into the client bundle by `next build`,
+    # so the artifact this job produces is deliberately NOT deployable. The job
+    # proves the code compiles; it does not publish anything.
+    env:
+      DATABASE_URL: postgresql://plinto:plinto@localhost:5432/plinto
+      JWT_SECRET: ci-placeholder-not-a-real-secret
+      INTERNAL_API_KEY: ci-placeholder-not-a-real-key
+      WEB_ORIGIN: http://localhost:3000
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
+      OIDC_ISSUER_URL: https://example.invalid
+      OIDC_CLIENT_ID: ci-placeholder
+      OIDC_CLIENT_SECRET: ci-placeholder
+      OIDC_REDIRECT_URI: http://localhost:3000/callback
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the pnpm version from `packageManager` in package.json, so the
+      # workflow never drifts from what the repository declares.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --frozen-lockfile fails when pnpm-lock.yaml disagrees with the
+      # manifests, which is a real defect worth catching here rather than in a
+      # teammate's checkout. This also runs apps/api's postinstall
+      # (`prisma generate`), which reads the schema and needs no database.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Three separate steps rather than one chained command: when this goes
+      # red, the failing step names the stage without anyone reading the log.
+      - name: Test
+        run: pnpm test
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+  schema-drift:
+    name: Prisma schema matches migrations
+    runs-on: ubuntu-latest
+
+    # This job exists because the drift it catches actually happened. The
+    # obligations migration created a foreign key as ON DELETE RESTRICT while
+    # schema.prisma implied SetNull, and `prisma migrate status` did not notice:
+    # it only reads the migrations ledger, never the resulting structure. Left
+    # alone, the next `prisma migrate dev` would have offered to reset a
+    # database holding real tenant data.
+    #
+    # Replaying the migrations into a throwaway Postgres and diffing the result
+    # against schema.prisma is the check that would have caught it.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: plinto
+          POSTGRES_PASSWORD: plinto
+          POSTGRES_DB: shadow
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          DATABASE_URL: postgresql://plinto:plinto@localhost:5432/shadow
+
+      # --exit-code returns 2 when the committed migrations do not reproduce
+      # schema.prisma exactly, which fails the job. The shadow database is the
+      # disposable Postgres above; no real environment is touched.
+      - name: Diff migrations against schema.prisma
+        working-directory: apps/api
+        run: |
+          pnpm exec prisma migrate diff \
+            --from-migrations ./src/infrastructure/database/prisma/migrations \
+            --to-schema-datamodel ./src/infrastructure/database/prisma/schema.prisma \
+            --shadow-database-url postgresql://plinto:plinto@localhost:5432/shadow \
+            --exit-code
+        env:
+          DATABASE_URL: postgresql://plinto:plinto@localhost:5432/shadow
