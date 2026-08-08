@@ -983,6 +983,36 @@
 .category-list {
   padding: var(--space-2) var(--space-4);
 }
+/* member list (settings) — same inset as .category-list so both read as one
+   family of flush-card lists */
+.member-list {
+  padding: var(--space-2) var(--space-4);
+  margin: 0;
+  list-style: none;
+}
+/* role legend: a definition list, because that is what it is — a term and its
+   meaning. Grid keeps the badges in one column so the descriptions align. */
+.role-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+}
+.role-legend-row {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.role-legend-row dd {
+  margin: 0;
+}
+@media (max-width: 480px) {
+  .role-legend-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+}
 .category-main {
   display: flex;
   align-items: center;
