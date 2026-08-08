@@ -1,7 +1,7 @@
 # PRD 007: Debt schedules and liabilities
 
 ## Status
-Draft
+Partially implemented (7.1 loans and 7.2 debt schedules delivered; 7.3 pending)
 
 ## Objective
 
@@ -102,7 +102,7 @@ It is what the `ADDI` sheet holds per row.
 | `installmentCount` | `NO. CUOTAS` |
 | `firstDueDate` | when the first installment falls |
 | `currency` | inherited from the account |
-| `status` | `active` \| `settled` \| `cancelled` |
+| `status` | `active` \| `cancelled` — see *Decisions* |
 
 `principalMinor` is what will be repaid in total, not what the goods cost. The
 difference between the two is interest, and it is **recorded, not calculated**
@@ -187,6 +187,34 @@ worse by waiting.
 > **Alternative rejected.** Covering both here. Roughly doubles the work and
 > couples two models that share a word and little else.
 
+### Settlement is derived, not stored
+
+*Recorded after implementation. This PRD originally specified
+`active | settled | cancelled`.*
+
+Building it showed that nothing can set `settled`. Reconciliation lives in the
+obligations module and knows nothing about schedules; coupling the two so one
+could flip a flag on the other would be worse than the gap it closes. And
+generation already stops on its own at `installmentCount`, so nothing needs the
+flag to know when a plan is finished.
+
+The stored enum is therefore `active | cancelled` — two states, each one an
+actual decision somebody made — and settlement is derived from the plan's own
+installments and their payments.
+
+This follows PRD-006's precedent rather than departing from it: *status is
+derived, never stored*, because a stored state can contradict the payments
+behind it and nothing is then able to say which of the two to believe.
+
+Settlement requires every installment to **exist** and be covered. Paying the
+principal early does not close a plan whose remaining installments have not been
+materialized — those periods still expect a payment, and reporting the plan
+closed would hide them.
+
+> **Alternative rejected.** Keeping a stored `settled` and having reconciliation
+> maintain it. It buys nothing generation does not already do, and it buys it
+> with a dependency pointing the wrong way.
+
 ### A debt is an account plus a schedule, not one new entity
 
 The liability lives as an account so that balances, transactions, transfers and
@@ -228,19 +256,21 @@ because installment counts and due dates are not account properties.
 
 ## Acceptance Criteria
 
-- [ ] A liability account can be created and holds a negative balance.
-- [ ] A loan received increases the receiving account and the amount owed, and
+- [x] A liability account can be created and holds a negative balance.
+- [x] A loan received increases the receiving account and the amount owed, and
       never appears as income.
-- [ ] A debt schedule can be recorded with principal, installment and count.
-- [ ] Installments sum exactly to the principal, rounding included.
-- [ ] Generation materializes one obligation per installment period.
-- [ ] Re-running generation for a period creates no duplicates.
-- [ ] Generation never produces more obligations than `installmentCount`.
-- [ ] A settled schedule generates nothing further.
-- [ ] Paying an installment reduces the debt's outstanding balance.
-- [ ] Outstanding debt is reported per currency, apart from asset balances.
-- [ ] A viewer can see debts and cannot record or settle one.
-- [ ] Every debt write is audited with actor and correlation id.
+- [x] A debt schedule can be recorded with principal, installment and count.
+- [x] Installments sum exactly to the principal, rounding included.
+- [x] Generation materializes one obligation per installment period.
+- [x] Re-running generation for a period creates no duplicates.
+- [x] Generation never produces more obligations than `installmentCount`.
+- [x] A cancelled schedule generates nothing further, and a plan stops at its
+      last installment without being told to.
+- [x] Paying an installment reduces the debt's outstanding balance.
+- [ ] Outstanding debt is reported per currency (7.3). Assets and liabilities
+      are already presented apart, as of 7.1.
+- [x] A viewer can see debts and cannot record or settle one.
+- [x] Every debt write is audited with actor and correlation id.
 
 ---
 
@@ -263,6 +293,11 @@ because installment counts and due dates are not account properties.
   lines as `obligation:*` — a viewer reads, an owner and a member write.
 - The `CHECK` constraint on `obligation_instances` is extended, not replaced.
   Prisma does not model CHECK constraints, so it lives in the migration only.
+- **That extension needs its own migration.** Postgres will not let a value added
+  by `ALTER TYPE ... ADD VALUE` be *used* until the transaction that added it
+  commits, and Prisma runs each migration inside one. Comparing `source_type`
+  against `'debt_schedule'` in the constraint is exactly that use, so adding the
+  enum value and extending the constraint cannot share a migration.
 
 ### Endpoints
 
@@ -283,13 +318,19 @@ should not ask them to know otherwise.
 
 Three vertical slices, in order:
 
-| Slice | Outcome |
-| --- | --- |
-| 7.1 | Record a loan received: cash arrives, liability appears |
-| 7.2 | Record a financed purchase and see its installments as obligations |
-| 7.3 | See total household debt, apart from what it holds |
+| Slice | Outcome | |
+| --- | --- | --- |
+| 7.1 | Record a loan received: cash arrives, liability appears | delivered |
+| 7.2 | Record a financed purchase and see its installments as obligations | delivered |
+| 7.3 | See total household debt, apart from what it holds | pending |
 
-7.2 is the largest and is where `debt_schedule` enters `ObligationSourceType`.
+7.2 was the largest and is where `debt_schedule` entered `ObligationSourceType`.
+
+7.1 also had to split assets from liabilities everywhere a total is shown. That
+was not foreseen here: the dashboard summed every balance blindly, so the first
+liability account would have turned its headline figure from *what we hold* into
+*what we are worth* without a word. The requirement was already written into §6;
+it simply came due a slice earlier than the plan expected.
 
 ### Forward compatibility
 
