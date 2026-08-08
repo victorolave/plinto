@@ -214,7 +214,14 @@ model ObligationInstance {
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   tenant        Tenant                    @relation(fields: [tenantId], references: [id])
-  recurringRule RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id])
+
+  /// Restrict is explicit because Prisma would otherwise infer SetNull for an
+  /// optional relation, and nulling `recurringRuleId` violates the
+  /// `obligation_instances_source_matches_reference` CHECK, which demands a rule
+  /// reference whenever `sourceType` is `recurring_rule`. Rules are archived and
+  /// never deleted, so this never fires — it is stated so the schema agrees with
+  /// the migration and `migrate dev` reports no drift to "repair".
+  recurringRule RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id], onDelete: Restrict)
   payments      ObligationPayment[]
 
   /// Idempotency of generation. Postgres treats NULLs as distinct, so this
