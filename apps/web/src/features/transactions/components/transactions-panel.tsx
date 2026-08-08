@@ -20,6 +20,7 @@ import { TransactionForm } from './transaction-form'
 import { TransactionList } from './transaction-list'
 import { TransferForm } from './transfer-form'
 import { LoanForm } from '../../debts/components/loan-form'
+import { DebtForm } from '../../debts/components/debt-form'
 import { BalanceStripSkeleton } from './transactions-skeleton'
 import { listCategories } from '../../categories/services/categories'
 import { Card } from '../../../components/ui/card'
@@ -28,7 +29,7 @@ import { Input, Select } from '../../../components/ui/field'
 import { Amount } from '../../../components/ui/amount'
 import { Tabs } from '../../../components/ui/tabs'
 import { Drawer } from '../../../components/ui/drawer'
-import { TrendDown, ArrowSwap, Plus, Search } from '../../../components/ui/icons'
+import { TrendDown, ArrowSwap, Plus, Repeat, Search } from '../../../components/ui/icons'
 import { useTransactionFilters, datePresetOptions } from '../hooks/use-transaction-filters'
 import type { DatePreset } from '../hooks/use-transaction-filters'
 import {
@@ -48,7 +49,7 @@ export type {
   TransactionUpdateInput,
 } from '../lib/transaction-input'
 
-type ActiveDrawer = 'transaction' | 'transfer' | 'loan' | 'recurring' | null
+type ActiveDrawer = 'transaction' | 'transfer' | 'loan' | 'debt' | 'recurring' | null
 
 export function TransactionsPanel() {
   const queryClient = useQueryClient()
@@ -259,6 +260,14 @@ export function TransactionsPanel() {
             Loan
           </Button>
           <Button
+            variant="secondary"
+            leftIcon={<Repeat size={16} />}
+            onClick={() => setDrawer('debt')}
+            disabled={accounts.length === 0}
+          >
+            Financed
+          </Button>
+          <Button
             leftIcon={<Plus size={18} />}
             onClick={openAdd}
             disabled={accounts.length === 0}
@@ -391,6 +400,15 @@ export function TransactionsPanel() {
         description="Money you received and owe back"
       >
         <LoanForm accounts={accounts} onSaved={handleSaved} />
+      </Drawer>
+
+      <Drawer
+        open={drawer === 'debt'}
+        onClose={closeDrawer}
+        title="Record a financed purchase"
+        description="Fixed installments that end on their own"
+      >
+        <DebtForm accounts={accounts} onSaved={handleSaved} />
       </Drawer>
 
       {/* On-demand recurring rule creation / edit */}

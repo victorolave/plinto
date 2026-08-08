@@ -29,4 +29,7 @@ export const queryKeys = {
   // Separate from `members`: an invitation is not a membership yet, and only an
   // owner can read the list, so the two are fetched under different conditions.
   invitations: ['members', 'invitations'] as const,
+  // Financed purchases. Their outstanding figure is derived from obligation
+  // payments, so reconciling one invalidates this too.
+  debts: ['debts'] as const,
 } as const
