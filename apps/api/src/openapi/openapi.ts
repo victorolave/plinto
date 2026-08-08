@@ -32,6 +32,9 @@ import {
   UserSchema,
   MembershipSchema,
   TenantMemberSchema,
+  InvitationSchema,
+  CreateInvitationSchema,
+  InvitationResultSchema,
   TenantSchema,
   CreateTenantSchema,
   SelectTenantSchema,
@@ -118,6 +121,9 @@ const CreateSessionSchemaRef = registry.register('CreateSession', CreateSessionS
 const UserSchemaRef = registry.register('User', UserSchema)
 const MembershipSchemaRef = registry.register('Membership', MembershipSchema)
 const TenantMemberSchemaRef = registry.register('TenantMember', TenantMemberSchema)
+const InvitationSchemaRef = registry.register('Invitation', InvitationSchema)
+const CreateInvitationSchemaRef = registry.register('CreateInvitation', CreateInvitationSchema)
+const InvitationResultSchemaRef = registry.register('InvitationResult', InvitationResultSchema)
 
 const TenantSchemaRef = registry.register('Tenant', TenantSchema)
 const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
@@ -461,6 +467,56 @@ registry.registerPath({
       'Members of the active tenant, oldest membership first.',
       z.object({ members: z.array(TenantMemberSchemaRef) }),
     ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/members/invitations',
+  tags: ['Members'],
+  summary: 'List invitations still awaiting their first login',
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse(
+      'Pending invitations for the active tenant.',
+      z.object({ invitations: z.array(InvitationSchemaRef) }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/members/invitations',
+  tags: ['Members'],
+  summary: 'Invite somebody to the household by email',
+  description:
+    'Addressed to an email because a person has no account here until their ' +
+    'first login. Returns status "accepted" when the address already belongs ' +
+    'to a user — they are admitted immediately — and "pending" otherwise, in ' +
+    'which case their first login claims it. Owner only.',
+  security: sessionCookieAuth,
+  request: {
+    body: {
+      content: { 'application/json': { schema: CreateInvitationSchemaRef } },
+    },
+  },
+  responses: {
+    201: dataResponse('Invitation created or claimed.', InvitationResultSchemaRef),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/members/invitations/{id}',
+  tags: ['Members'],
+  summary: 'Revoke a pending invitation',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse('Invitation revoked.', DeletedResultSchema),
     ...errorResponses,
   },
 })

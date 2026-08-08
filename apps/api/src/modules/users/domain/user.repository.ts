@@ -12,6 +12,13 @@ export abstract class UserRepository {
 
   abstract findByIdpSub(idpSub: string): Promise<User | null>
 
+  /**
+   * Looks a user up by the address an invitation was sent to. Matching is
+   * case-insensitive: the identity provider decides the casing of the email it
+   * hands us, and the person who typed the invitation does not know it.
+   */
+  abstract findByEmail(email: string): Promise<User | null>
+
   abstract create(data: {
     idpSub: string
     email: string

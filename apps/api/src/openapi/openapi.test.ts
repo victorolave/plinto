@@ -30,6 +30,10 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   { path: '/api/auth/logout', method: 'post' },
   // Members (MembersController)
   { path: '/api/members', method: 'get' },
+  // Invitations (InvitationsController)
+  { path: '/api/members/invitations', method: 'get' },
+  { path: '/api/members/invitations', method: 'post' },
+  { path: '/api/members/invitations/{id}', method: 'delete' },
   // Categories (CategoriesController)
   { path: '/api/categories', method: 'get' },
   { path: '/api/categories', method: 'post' },

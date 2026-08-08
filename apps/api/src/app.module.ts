@@ -10,6 +10,7 @@ import { UsersModule } from './modules/users/users.module'
 import { TenantsModule } from './modules/tenants/tenants.module'
 import { MembershipsModule } from './modules/memberships/memberships.module'
 import { MembersModule } from './modules/memberships/members.module'
+import { InvitationsModule } from './modules/invitations/invitations.module'
 import { SessionsModule } from './modules/sessions/sessions.module'
 import { AuditModule } from './modules/audit/audit.module'
 import { AccountsModule } from './modules/accounts/accounts.module'
@@ -37,6 +38,7 @@ import { ReportsModule } from './modules/reports/reports.module'
     TenantsModule,
     MembershipsModule,
     MembersModule,
+    InvitationsModule,
     SessionsModule,
     AuditModule,
     AccountsModule,
