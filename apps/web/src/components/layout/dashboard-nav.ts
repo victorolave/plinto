@@ -9,6 +9,7 @@ export type DashboardSection =
   | 'accounts'
   | 'transactions'
   | 'obligations'
+  | 'debts'
   | 'categories'
   | 'settings'
 
@@ -17,6 +18,7 @@ export const SECTION_HREF: Record<DashboardSection, string> = {
   accounts: '/dashboard/accounts',
   transactions: '/dashboard/transactions',
   obligations: '/dashboard/obligations',
+  debts: '/dashboard/debts',
   categories: '/dashboard/categories',
   settings: '/dashboard/settings',
 }
@@ -27,6 +29,7 @@ export function sectionFromPath(pathname: string): DashboardSection {
     'accounts',
     'transactions',
     'obligations',
+    'debts',
     'categories',
     'settings',
   ]

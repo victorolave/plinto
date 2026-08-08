@@ -28,6 +28,7 @@ const TITLES: Record<
   accounts: ['Accounts', () => 'Balances by currency'],
   transactions: ['Transactions', ({ tenant }) => (tenant ? `${tenant} ledger` : 'Income, expenses and transfers')],
   obligations: ['Obligations', () => 'What the household owes this month'],
+  debts: ['Debts', () => 'What the household owes in total'],
   categories: ['Categories', () => 'Organize your spending'],
   settings: ['Settings', () => 'Household & members'],
 }

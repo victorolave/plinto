@@ -32,4 +32,5 @@ export const queryKeys = {
   // Financed purchases. Their outstanding figure is derived from obligation
   // payments, so reconciling one invalidates this too.
   debts: ['debts'] as const,
+  debtSummary: ['debts', 'summary'] as const,
 } as const
