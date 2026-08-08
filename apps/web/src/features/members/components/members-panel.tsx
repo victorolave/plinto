@@ -2,7 +2,13 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { listMembers, type MemberRole, type TenantMember } from '../services/members'
+import {
+  changeMemberRole,
+  listMembers,
+  removeMember,
+  type MemberRole,
+  type TenantMember,
+} from '../services/members'
 import {
   listInvitations,
   revokeInvitation,
@@ -20,6 +26,7 @@ import { Drawer } from '../../../components/ui/drawer'
 import { Modal } from '../../../components/ui/modal'
 import { EmptyState } from '../../../components/ui/empty-state'
 import { Plus, Trash, Users } from '../../../components/ui/icons'
+import { Select } from '../../../components/ui/field'
 import { useDashboard } from '../../../components/layout/dashboard-context'
 
 /**
@@ -95,6 +102,32 @@ export function MembersPanel() {
     enabled: isOwner,
   })
 
+  const [pendingRemove, setPendingRemove] = useState<TenantMember | null>(null)
+
+  // A household with no owner cannot be administered by anybody, so the last
+  // one can be neither demoted nor removed. The API refuses it with 409
+  // regardless; showing it as disabled with a reason is better than letting
+  // somebody click and read an error.
+  const ownerCount = members.filter((member) => member.role === 'owner').length
+
+  const isLastOwner = (member: TenantMember) => member.role === 'owner' && ownerCount <= 1
+
+  const roleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: MemberRole }) =>
+      changeMemberRole(userId, role),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.members })
+    },
+  })
+
+  const removeMutation = useMutation({
+    mutationFn: (userId: string) => removeMember(userId),
+    onSuccess: () => {
+      setPendingRemove(null)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.members })
+    },
+  })
+
   const revokeMutation = useMutation({
     mutationFn: (id: string) => revokeInvitation(id),
     onSuccess: () => {
@@ -108,7 +141,11 @@ export function MembersPanel() {
       ? error.message
       : revokeMutation.error instanceof Error
         ? revokeMutation.error.message
-        : null
+        : roleMutation.error instanceof Error
+          ? roleMutation.error.message
+          : removeMutation.error instanceof Error
+            ? removeMutation.error.message
+            : null
 
   return (
     <div className="page">
@@ -193,7 +230,53 @@ export function MembersPanel() {
                       </span>
                     </span>
                   </div>
-                  <Badge tone={ROLE_TONE[member.role]}>{member.role}</Badge>
+                  {isOwner ? (
+                    <span
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-2)',
+                      }}
+                    >
+                      <Select
+                        aria-label={`Role for ${name}`}
+                        value={member.role}
+                        disabled={isLastOwner(member) || roleMutation.isPending}
+                        title={
+                          isLastOwner(member)
+                            ? 'A household must keep at least one owner'
+                            : undefined
+                        }
+                        onChange={(event) =>
+                          roleMutation.mutate({
+                            userId: member.userId,
+                            role: event.target.value as MemberRole,
+                          })
+                        }
+                      >
+                        <option value="owner">owner</option>
+                        <option value="member">member</option>
+                        <option value="viewer">viewer</option>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Remove ${name}`}
+                        disabled={isLastOwner(member)}
+                        title={
+                          isLastOwner(member)
+                            ? 'A household must keep at least one owner'
+                            : undefined
+                        }
+                        leftIcon={<Trash size={15} />}
+                        onClick={() => setPendingRemove(member)}
+                      >
+                        Remove
+                      </Button>
+                    </span>
+                  ) : (
+                    <Badge tone={ROLE_TONE[member.role]}>{member.role}</Badge>
+                  )}
                 </li>
               )
             })}
@@ -266,6 +349,35 @@ export function MembersPanel() {
           }}
         />
       </Drawer>
+
+      <Modal
+        open={pendingRemove !== null}
+        onClose={() => setPendingRemove(null)}
+        title="Remove from household?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPendingRemove(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              disabled={removeMutation.isPending}
+              onClick={() => pendingRemove && removeMutation.mutate(pendingRemove.userId)}
+            >
+              {removeMutation.isPending ? 'Removing…' : 'Remove member'}
+            </Button>
+          </>
+        }
+      >
+        <p className="muted">
+          <strong style={{ color: 'var(--text-strong)' }}>
+            {pendingRemove ? displayNameOf(pendingRemove) : ''}
+          </strong>{' '}
+          loses access to this household. Everything they recorded stays — money
+          movements belong to the household, not to the person who typed them.
+          You can invite them back later.
+        </p>
+      </Modal>
 
       <Modal
         open={pendingRevoke !== null}
