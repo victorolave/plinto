@@ -76,6 +76,31 @@ export class PrismaObligationRepository extends ObligationRepository {
     }
   }
 
+  async createGeneratedInstanceForSchedule(
+    input: CreateObligationInstanceInput & { debtScheduleId: string },
+  ): Promise<ObligationInstance | null> {
+    try {
+      const instance = await this.prisma.obligationInstance.create({
+        data: input,
+        include: paymentsWithTransaction,
+      })
+
+      return toInstance(instance)
+    } catch (error) {
+      // Same convention as the rule path: a concurrent run that won the race
+      // against the (schedule, period) unique index means "already generated",
+      // not an error.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return null
+      }
+
+      throw error
+    }
+  }
+
   async findInstanceByIdForTenant(
     id: string,
     tenantId: string,
@@ -113,6 +138,20 @@ export class PrismaObligationRepository extends ObligationRepository {
     return rows
       .map((row) => row.recurringRuleId)
       .filter((ruleId): ruleId is string => ruleId !== null)
+  }
+
+  async listGeneratedScheduleIdsForPeriod(
+    tenantId: string,
+    period: string,
+  ): Promise<string[]> {
+    const rows = await this.prisma.obligationInstance.findMany({
+      where: { tenantId, period, debtScheduleId: { not: null } },
+      select: { debtScheduleId: true },
+    })
+
+    return rows
+      .map((row) => row.debtScheduleId)
+      .filter((id): id is string => id !== null)
   }
 
   async createPayment(input: {

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { RecurringModule } from '../recurring/recurring.module'
+import { DebtsModule } from '../debts/debts.module'
 import { TransactionsModule } from '../transactions/transactions.module'
 import { AuditModule } from '../audit/audit.module'
 import { MembershipsModule } from '../memberships/memberships.module'
@@ -21,6 +22,7 @@ import { ObligationsController } from './interfaces/http/v1/obligations.controll
   // transaction port that reconciliation validates against.
   imports: [
     RecurringModule,
+    DebtsModule,
     TransactionsModule,
     AuditModule,
     MembershipsModule,
