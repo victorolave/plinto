@@ -2,12 +2,16 @@ import { Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import {
+  CreateRecurringRuleStatus,
+  RecurringRuleStatus,
   RecurringTransactionExecution,
   RecurringTransactionRule,
 } from '../domain/recurring-transaction.entity'
 import { TransactionType } from '../../transactions/domain/transaction.entity'
+import { endOfPeriod, occurrenceDate } from '../../../common/period'
 import {
   RecurringExecutionResult,
+  RecurringRuleUpdate,
   RecurringTransactionRepository,
 } from '../domain/recurring-transaction.repository'
 
@@ -32,7 +36,7 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
     currency: string
     dayOfMonth: number
     startDate: Date
-    active: boolean
+    status: CreateRecurringRuleStatus
   }): Promise<RecurringTransactionRule> {
     return this.prisma.recurringTransactionRule.create({
       data: {
@@ -42,13 +46,66 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
     })
   }
 
-  async listRulesByTenantId(tenantId: string): Promise<RecurringTransactionRule[]> {
+  async listRulesByTenantId(
+    tenantId: string,
+    options: { includeArchived?: boolean } = {},
+  ): Promise<RecurringTransactionRule[]> {
     return this.prisma.recurringTransactionRule.findMany({
-      // Hide rules whose account has been archived — consistent with archived
-      // accounts disappearing from every active surface.
-      where: { tenantId, account: { archivedAt: null } },
+      where: {
+        tenantId,
+        // Hide rules whose account has been archived — consistent with archived
+        // accounts disappearing from every active surface.
+        account: { archivedAt: null },
+        ...(options.includeArchived ? {} : { status: { not: 'archived' } }),
+      },
       orderBy: { createdAt: 'desc' },
     })
+  }
+
+  async findRuleByIdForTenant(
+    id: string,
+    tenantId: string,
+  ): Promise<RecurringTransactionRule | null> {
+    return this.prisma.recurringTransactionRule.findFirst({
+      where: { id, tenantId },
+    })
+  }
+
+  async updateRuleForTenant(
+    id: string,
+    tenantId: string,
+    data: RecurringRuleUpdate,
+  ): Promise<RecurringTransactionRule | null> {
+    // updateMany (not update) so the tenant scope is part of the WHERE clause:
+    // a cross-tenant id matches zero rows instead of updating someone else's
+    // rule. Same convention as PrismaAccountRepository.
+    const result = await this.prisma.recurringTransactionRule.updateMany({
+      where: { id, tenantId },
+      data,
+    })
+
+    if (result.count === 0) {
+      return null
+    }
+
+    return this.findRuleByIdForTenant(id, tenantId)
+  }
+
+  async setRuleStatusForTenant(
+    id: string,
+    tenantId: string,
+    status: RecurringRuleStatus,
+  ): Promise<RecurringTransactionRule | null> {
+    const result = await this.prisma.recurringTransactionRule.updateMany({
+      where: { id, tenantId },
+      data: { status },
+    })
+
+    if (result.count === 0) {
+      return null
+    }
+
+    return this.findRuleByIdForTenant(id, tenantId)
   }
 
   async findExecutionByKey(
@@ -65,7 +122,9 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
   async listActiveMonthlyRulesDueBy(dueDate: Date): Promise<RecurringTransactionRule[]> {
     const rules = await this.prisma.recurringTransactionRule.findMany({
       where: {
-        active: true,
+        // Only `active` rules materialize money: `paused` and `archived` are
+        // both excluded by this single predicate.
+        status: 'active',
         frequency: 'monthly',
         startDate: { lte: dueDate },
         // Never auto-post into an archived account: its rules stay dormant until
@@ -80,6 +139,31 @@ export class PrismaRecurringTransactionRepository extends RecurringTransactionRe
 
       return scheduledAt <= dueDate && scheduledAt >= rule.startDate
     })
+  }
+
+  async listActiveMonthlyExpenseRulesForPeriod(
+    period: string,
+  ): Promise<RecurringTransactionRule[]> {
+    const rules = await this.prisma.recurringTransactionRule.findMany({
+      where: {
+        status: 'active',
+        frequency: 'monthly',
+        // An obligation is money owed. An income rule (a salary) describes
+        // money arriving, so it owes nothing and must not materialize one —
+        // it could never be settled either, since reconciliation only accepts
+        // expenses, and it would inflate the period's expected total.
+        type: 'expense',
+        // The rule must already exist by the end of the period; its occurrence
+        // inside that period may still be in the future.
+        startDate: { lte: endOfPeriod(period) },
+        account: { archivedAt: null },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    // A rule starting on the 20th does not owe an obligation for a period
+    // whose occurrence lands on the 5th.
+    return rules.filter((rule) => occurrenceDate(period, rule.dayOfMonth) >= rule.startDate)
   }
 
   async createExecutionTransaction(input: {

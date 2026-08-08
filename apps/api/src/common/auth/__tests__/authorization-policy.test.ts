@@ -17,4 +17,26 @@ describe('AuthorizationPolicy', () => {
       },
     )
   })
+
+  describe('obligations', () => {
+    it.each(['owner', 'member'] as const)(
+      'allows %s to record and reconcile obligations',
+      (role) => {
+        expect(AuthorizationPolicy.hasPermission(role, 'obligation:write')).toBe(true)
+      },
+    )
+
+    // A viewer sees what the household owes but cannot declare a bill settled.
+    it('lets a viewer read obligations without writing them', () => {
+      expect(AuthorizationPolicy.hasPermission('viewer', 'obligation:read')).toBe(true)
+      expect(AuthorizationPolicy.hasPermission('viewer', 'obligation:write')).toBe(false)
+    })
+
+    it.each(['owner', 'member', 'viewer'] as const)(
+      'allows %s to read obligations',
+      (role) => {
+        expect(AuthorizationPolicy.hasPermission(role, 'obligation:read')).toBe(true)
+      },
+    )
+  })
 })

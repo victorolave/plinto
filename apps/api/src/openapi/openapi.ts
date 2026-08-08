@@ -21,6 +21,13 @@ import {
   ExpenseByCategoryReportSchema,
   RecurringTransactionRuleSchema,
   CreateRecurringTransactionRuleSchema,
+  UpdateRecurringTransactionRuleSchema,
+  GenerateObligationsSchema,
+  GenerateObligationsResultSchema,
+  ObligationInstanceSchema,
+  ObligationPeriodSummarySchema,
+  CreateObligationSchema,
+  ReconcileObligationSchema,
   CreateSessionSchema,
   UserSchema,
   MembershipSchema,
@@ -101,6 +108,10 @@ const CreateRecurringTransactionRuleSchemaRef = registry.register(
   'CreateRecurringTransactionRule',
   CreateRecurringTransactionRuleSchema,
 )
+const UpdateRecurringTransactionRuleSchemaRef = registry.register(
+  'UpdateRecurringTransactionRule',
+  UpdateRecurringTransactionRuleSchema,
+)
 
 const CreateSessionSchemaRef = registry.register('CreateSession', CreateSessionSchema)
 const UserSchemaRef = registry.register('User', UserSchema)
@@ -138,6 +149,31 @@ const ExecuteRecurringResultSchema = z
     skipped: z.number().int(),
   })
   .openapi('ExecuteRecurringResult')
+
+const ObligationInstanceSchemaRef = registry.register(
+  'ObligationInstance',
+  ObligationInstanceSchema,
+)
+const ObligationPeriodSummarySchemaRef = registry.register(
+  'ObligationPeriodSummary',
+  ObligationPeriodSummarySchema,
+)
+const CreateObligationSchemaRef = registry.register(
+  'CreateObligation',
+  CreateObligationSchema,
+)
+const ReconcileObligationSchemaRef = registry.register(
+  'ReconcileObligation',
+  ReconcileObligationSchema,
+)
+const GenerateObligationsRequestSchemaRef = registry.register(
+  'GenerateObligationsRequest',
+  GenerateObligationsSchema,
+)
+const GenerateObligationsResultSchemaRef = registry.register(
+  'GenerateObligationsResult',
+  GenerateObligationsResultSchema,
+)
 
 const CreateSessionResultSchema = z
   .object({
@@ -520,9 +556,14 @@ registry.registerPath({
   tags: ['Recurring'],
   summary: 'List recurring transaction rules for the active tenant',
   security: sessionCookieAuth,
+  request: {
+    query: z.object({
+      includeArchived: z.enum(['true', 'false']).optional(),
+    }),
+  },
   responses: {
     200: dataResponse(
-      'Recurring transaction rules.',
+      'Recurring transaction rules. Archived rules are omitted unless includeArchived=true.',
       z.object({ rules: z.array(RecurringTransactionRuleSchemaRef) }),
     ),
     ...errorResponses,
@@ -552,6 +593,113 @@ registry.registerPath({
 })
 
 registry.registerPath({
+  method: 'patch',
+  path: '/api/recurring-transactions/{id}',
+  tags: ['Recurring'],
+  summary: 'Update a recurring transaction rule',
+  description:
+    'Only name, amountMinor, dayOfMonth and startDate may change. The account, ' +
+    'type, currency and frequency are frozen because past periods are already ' +
+    'materialized as transactions carrying those values. Editing an archived ' +
+    'rule is rejected — restore it first.',
+  security: sessionCookieAuth,
+  request: {
+    params: idParam,
+    body: {
+      content: {
+        'application/json': { schema: UpdateRecurringTransactionRuleSchemaRef },
+      },
+    },
+  },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule updated.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/recurring-transactions/{id}/pause',
+  tags: ['Recurring'],
+  summary: 'Pause a recurring transaction rule',
+  description:
+    'The rule stops being posted by the execution job but stays editable. ' +
+    'Idempotent: pausing an already-paused rule succeeds and changes nothing.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule paused.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/recurring-transactions/{id}/resume',
+  tags: ['Recurring'],
+  summary: 'Resume a paused recurring transaction rule',
+  description:
+    'Returns the rule to the execution job. Archived rules are rejected — ' +
+    'restore first, so leaving the archive always passes through an explicit ' +
+    'act of restoring.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule resumed.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/recurring-transactions/{id}/restore',
+  tags: ['Recurring'],
+  summary: 'Restore an archived recurring transaction rule',
+  description:
+    'The rule comes back as paused, never active, so it cannot post money on ' +
+    'the next job run without someone deciding that it should. Resume it ' +
+    'separately to reactivate.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule restored as paused.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/recurring-transactions/{id}',
+  tags: ['Recurring'],
+  summary: 'Archive a recurring transaction rule',
+  description:
+    'Soft-delete. The rule is retired but never removed: executions reference ' +
+    'it with ON DELETE RESTRICT and its audit history must survive (ADR 0008). ' +
+    'Already-created transactions are untouched.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse(
+      'Recurring transaction rule archived.',
+      z.object({ rule: RecurringTransactionRuleSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
   method: 'post',
   path: '/api/internal/recurring/execute',
   tags: ['Recurring'],
@@ -562,6 +710,165 @@ registry.registerPath({
   },
   responses: {
     200: dataResponse('Execution summary.', ExecuteRecurringResultSchema),
+    ...errorResponses,
+  },
+})
+
+// ---------------------------------------------------------------------------
+// Obligations
+// ---------------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/obligations',
+  tags: ['Obligations'],
+  summary: 'List the obligations of a period for the active tenant',
+  description:
+    'Defaults to the current period. Each obligation carries its derived ' +
+    'status (pending / partial / paid / overdue), the amount settled so far ' +
+    'and the transactions that settled it.',
+  security: sessionCookieAuth,
+  request: {
+    query: z.object({
+      period: z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .optional(),
+    }),
+  },
+  responses: {
+    200: dataResponse(
+      'Obligations for the period.',
+      z.object({ obligations: z.array(ObligationInstanceSchemaRef) }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/obligations/summary',
+  tags: ['Obligations'],
+  summary: 'Period totals: expected, paid and outstanding, per currency',
+  description:
+    'One set of totals per currency — a household can owe in more than one, ' +
+    'and adding them together would be arithmetic on incomparable units. ' +
+    'The outstanding total is the sum of each obligation own shortfall, not ' +
+    'the difference between the totals: those diverge whenever something is ' +
+    'overpaid, and the difference always understates what is still owed.',
+  security: sessionCookieAuth,
+  request: {
+    query: z.object({
+      period: z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .optional(),
+    }),
+  },
+  responses: {
+    200: dataResponse(
+      'Period totals.',
+      z.object({ summary: ObligationPeriodSummarySchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/obligations',
+  tags: ['Obligations'],
+  summary: 'Record a one-off obligation',
+  description:
+    'For obligations with no recurring template behind them — a tax filing, ' +
+    'a school enrolment. The instance is always recorded as `manual`; the ' +
+    'source type is not caller-controlled.',
+  security: sessionCookieAuth,
+  request: {
+    body: { content: { 'application/json': { schema: CreateObligationSchemaRef } } },
+  },
+  responses: {
+    201: dataResponse(
+      'Obligation recorded.',
+      z.object({ obligation: ObligationInstanceSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/obligations/{id}/payments',
+  tags: ['Obligations'],
+  summary: 'Reconcile an obligation with an existing transaction',
+  description:
+    'Declares that a transaction settles (part of) the obligation. The ' +
+    'transaction must belong to the same tenant, be an expense, and carry the ' +
+    'obligation currency. A transaction that already settles another ' +
+    'obligation is rejected with 409 — enforced by a unique index, so a ' +
+    'concurrent caller cannot slip past the check. Several payments may ' +
+    'settle one obligation.',
+  security: sessionCookieAuth,
+  request: {
+    params: idParam,
+    body: { content: { 'application/json': { schema: ReconcileObligationSchemaRef } } },
+  },
+  responses: {
+    200: dataResponse(
+      'Obligation reconciled, with its recalculated status.',
+      z.object({ obligation: ObligationInstanceSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/obligations/{id}/payments/{transactionId}',
+  tags: ['Obligations'],
+  summary: 'Undo a reconciliation',
+  description:
+    'Unlinks the transaction, freeing it to settle another obligation. The ' +
+    'transaction itself is untouched.',
+  security: sessionCookieAuth,
+  request: {
+    params: z.object({
+      id: z.string(),
+      transactionId: z.string(),
+    }),
+  },
+  responses: {
+    200: dataResponse(
+      'Payment removed, with the obligation recalculated status.',
+      z.object({ obligation: ObligationInstanceSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/internal/obligations/generate',
+  tags: ['Obligations'],
+  summary:
+    'Materialize the obligations of one or more periods across tenants (internal/system endpoint)',
+  description:
+    'Creates one obligation instance per active recurring rule for each period ' +
+    'in the horizon. Idempotent by (rule, period): re-running a period never ' +
+    'duplicates an obligation, and instances already present are reported as ' +
+    'skipped. Safe to run ahead of time — generating future periods is what ' +
+    'produces the forward projection. Paused and archived rules are never ' +
+    'materialized.',
+  security: internalKeyAuth,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: GenerateObligationsRequestSchemaRef },
+      },
+    },
+  },
+  responses: {
+    200: dataResponse('Generation summary.', GenerateObligationsResultSchemaRef),
     ...errorResponses,
   },
 })

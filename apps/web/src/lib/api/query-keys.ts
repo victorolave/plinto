@@ -16,5 +16,10 @@ export const queryKeys = {
   // result set.
   recentTransactions: ['transactions', 'recent'] as const,
   recurringRules: ['recurring-rules'] as const,
+  // Keyed by period: the board switches months, and each month is a distinct
+  // result set that must not serve another month's cache entry.
+  obligations: (period: string) => ['obligations', { period }] as const,
+  obligationSummary: (period: string) =>
+    ['obligations', 'summary', { period }] as const,
   tenants: ['tenants'] as const,
 } as const

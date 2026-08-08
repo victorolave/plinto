@@ -14,6 +14,8 @@ export type Permission =
   | 'report:read'
   | 'category:read'
   | 'category:write'
+  | 'obligation:read'
+  | 'obligation:write'
 
 // Map roles to allowed permissions
 const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
@@ -31,6 +33,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'report:read',
     'category:read',
     'category:write',
+    'obligation:read',
+    'obligation:write',
   ],
   member: [
     'tenant:select',
@@ -42,6 +46,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'report:read',
     'category:read',
     'category:write',
+    'obligation:read',
+    'obligation:write',
   ],
   viewer: [
     'tenant:select',
@@ -49,6 +55,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'transaction:read',
     'report:read',
     'category:read',
+    'obligation:read',
   ],
 }
 

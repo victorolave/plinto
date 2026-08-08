@@ -14,6 +14,7 @@ import { AuditModule } from './modules/audit/audit.module'
 import { AccountsModule } from './modules/accounts/accounts.module'
 import { TransactionsModule } from './modules/transactions/transactions.module'
 import { RecurringModule } from './modules/recurring/recurring.module'
+import { ObligationsModule } from './modules/obligations/obligations.module'
 import { CategoriesModule } from './modules/categories/categories.module'
 import { ReportsModule } from './modules/reports/reports.module'
 
@@ -39,6 +40,7 @@ import { ReportsModule } from './modules/reports/reports.module'
     AccountsModule,
     TransactionsModule,
     RecurringModule,
+    ObligationsModule,
     CategoriesModule,
     ReportsModule,
   ],

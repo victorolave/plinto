@@ -39,7 +39,19 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   // Recurring transactions (RecurringTransactionsController, RecurringExecutionController)
   { path: '/api/recurring-transactions', method: 'get' },
   { path: '/api/recurring-transactions', method: 'post' },
+  { path: '/api/recurring-transactions/{id}', method: 'patch' },
+  { path: '/api/recurring-transactions/{id}/pause', method: 'post' },
+  { path: '/api/recurring-transactions/{id}/resume', method: 'post' },
+  { path: '/api/recurring-transactions/{id}/restore', method: 'post' },
+  { path: '/api/recurring-transactions/{id}', method: 'delete' },
   { path: '/api/internal/recurring/execute', method: 'post' },
+  // Obligations (ObligationsController, ObligationGenerationController)
+  { path: '/api/obligations', method: 'get' },
+  { path: '/api/obligations/summary', method: 'get' },
+  { path: '/api/obligations', method: 'post' },
+  { path: '/api/obligations/{id}/payments', method: 'post' },
+  { path: '/api/obligations/{id}/payments/{transactionId}', method: 'delete' },
+  { path: '/api/internal/obligations/generate', method: 'post' },
 ]
 
 describe('buildOpenApiDocument', () => {
