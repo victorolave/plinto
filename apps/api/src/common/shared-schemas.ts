@@ -14,6 +14,7 @@ export {
   ReconcileObligationSchema,
   GenerateObligationsSchema,
   CreateInvitationSchema,
+  UpdateMemberRoleSchema,
   CreateCategorySchema,
   UpdateCategorySchema,
   PaginationQuerySchema,

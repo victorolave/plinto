@@ -57,11 +57,16 @@ describe('MembersPanel', () => {
     expect(screen.getByText('sandra@example.com', { exact: false })).toBeInTheDocument()
 
     // Scoped to the list: the role legend below repeats every role name, so an
-    // unscoped query would pass even if the badges never rendered.
+    // unscoped query would pass even if the roles never rendered.
     const list = within(screen.getByRole('list', { name: /household members/i }))
     expect(list.getAllByRole('listitem')).toHaveLength(2)
-    expect(list.getByText('owner')).toBeInTheDocument()
-    expect(list.getByText('member')).toBeInTheDocument()
+
+    // The signed-in user here is an owner, so each row shows its role as the
+    // selected option of a role control rather than as a static badge. Asserted
+    // by value rather than by text because the control also *contains* the two
+    // roles it is not set to.
+    expect(list.getByLabelText(/role for victor olave/i)).toHaveValue('owner')
+    expect(list.getByLabelText(/role for sandra olave/i)).toHaveValue('member')
   })
 
   it('marks the signed-in user, and only them', async () => {

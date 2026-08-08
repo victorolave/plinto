@@ -35,6 +35,7 @@ import {
   InvitationSchema,
   CreateInvitationSchema,
   InvitationResultSchema,
+  UpdateMemberRoleSchema,
   TenantSchema,
   CreateTenantSchema,
   SelectTenantSchema,
@@ -124,6 +125,7 @@ const TenantMemberSchemaRef = registry.register('TenantMember', TenantMemberSche
 const InvitationSchemaRef = registry.register('Invitation', InvitationSchema)
 const CreateInvitationSchemaRef = registry.register('CreateInvitation', CreateInvitationSchema)
 const InvitationResultSchemaRef = registry.register('InvitationResult', InvitationResultSchema)
+const UpdateMemberRoleSchemaRef = registry.register('UpdateMemberRole', UpdateMemberRoleSchema)
 
 const TenantSchemaRef = registry.register('Tenant', TenantSchema)
 const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
@@ -467,6 +469,43 @@ registry.registerPath({
       'Members of the active tenant, oldest membership first.',
       z.object({ members: z.array(TenantMemberSchemaRef) }),
     ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/members/{userId}',
+  tags: ['Members'],
+  summary: "Change a member's role",
+  description:
+    'Refused with 409 LAST_OWNER when the change would leave the household ' +
+    'without an owner. Members are addressed by userId, never by the internal ' +
+    'membership row id. Owner only.',
+  security: sessionCookieAuth,
+  request: {
+    params: z.object({ userId: z.string().min(1) }),
+    body: { content: { 'application/json': { schema: UpdateMemberRoleSchemaRef } } },
+  },
+  responses: {
+    200: dataResponse('Role changed.', z.object({ updated: z.boolean() })),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/members/{userId}',
+  tags: ['Members'],
+  summary: 'Remove a member from the household',
+  description:
+    'Refused with 409 LAST_OWNER when it would leave the household without an ' +
+    'owner. Clears the removed person\'s active tenant so their live sessions ' +
+    'land on the household picker rather than on rejected requests. Owner only.',
+  security: sessionCookieAuth,
+  request: { params: z.object({ userId: z.string().min(1) }) },
+  responses: {
+    200: dataResponse('Member removed.', DeletedResultSchema),
     ...errorResponses,
   },
 })

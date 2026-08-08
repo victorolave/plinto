@@ -30,6 +30,19 @@ export abstract class SessionRepository {
     tenantId: string | null,
   ): Promise<{ count: number }>
 
+  /**
+   * Unsets the active tenant on this user's live sessions, but only where it
+   * points at the household given.
+   *
+   * Narrower than `updateActiveTenantForUser` on purpose: somebody removed from
+   * one household may still belong to others, and clearing the tenant they were
+   * actually looking at would eject them from a household they never left.
+   */
+  abstract clearActiveTenantForUser(
+    userId: string,
+    tenantId: string,
+  ): Promise<{ count: number }>
+
   abstract revoke(sessionId: string): Promise<Session>
 
   abstract getActiveTenantByUserId(userId: string): Promise<string | null>

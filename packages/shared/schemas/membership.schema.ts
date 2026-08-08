@@ -33,6 +33,15 @@ export const TenantMemberSchema = z.object({
   joinedAt: z.string(),
 })
 
+/**
+ * Changing what somebody may do in a household. Only the role is mutable: who
+ * they are comes from the identity provider, and when they joined is history.
+ */
+export const UpdateMemberRoleSchema = z.object({
+  role: MembershipRoleSchema,
+})
+
+export type UpdateMemberRoleDto = z.infer<typeof UpdateMemberRoleSchema>
 export type MembershipRoleDto = z.infer<typeof MembershipRoleSchema>
 export type MembershipDto = z.infer<typeof MembershipSchema>
 export type TenantMemberDto = z.infer<typeof TenantMemberSchema>

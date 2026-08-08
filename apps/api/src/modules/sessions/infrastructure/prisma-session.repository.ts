@@ -57,6 +57,13 @@ export class PrismaSessionRepository extends SessionRepository {
     })
   }
 
+  async clearActiveTenantForUser(userId: string, tenantId: string) {
+    return this.prisma.session.updateMany({
+      where: { userId, tenantId, revokedAt: null },
+      data: { tenantId: null },
+    })
+  }
+
   async revoke(sessionId: string) {
     return this.prisma.session.update({
       where: { id: sessionId },

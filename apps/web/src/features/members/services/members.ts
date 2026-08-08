@@ -18,3 +18,22 @@ export interface TenantMember {
 export async function listMembers(): Promise<{ data: { members: TenantMember[] } }> {
   return apiFetch<{ data: { members: TenantMember[] } }>('/members')
 }
+
+export async function changeMemberRole(
+  userId: string,
+  role: MemberRole,
+): Promise<{ data: { updated: boolean } }> {
+  return apiFetch<{ data: { updated: boolean } }>(
+    `/members/${encodeURIComponent(userId)}`,
+    { method: 'PATCH', body: JSON.stringify({ role }) },
+  )
+}
+
+export async function removeMember(
+  userId: string,
+): Promise<{ data: { deleted: boolean } }> {
+  return apiFetch<{ data: { deleted: boolean } }>(
+    `/members/${encodeURIComponent(userId)}`,
+    { method: 'DELETE' },
+  )
+}
