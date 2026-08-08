@@ -21,6 +21,10 @@ export type Permission =
   | 'category:write'
   | 'obligation:read'
   | 'obligation:write'
+  // What the household owes. Granted on the same lines as obligations: a
+  // viewer sees the debt, an owner and a member record and settle it.
+  | 'debt:read'
+  | 'debt:write'
 
 // Map roles to allowed permissions
 const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
@@ -41,6 +45,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'category:write',
     'obligation:read',
     'obligation:write',
+    'debt:read',
+    'debt:write',
   ],
   member: [
     'tenant:select',
@@ -55,6 +61,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'category:write',
     'obligation:read',
     'obligation:write',
+    'debt:read',
+    'debt:write',
   ],
   viewer: [
     'tenant:select',
@@ -64,6 +72,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'report:read',
     'category:read',
     'obligation:read',
+    'debt:read',
   ],
 }
 

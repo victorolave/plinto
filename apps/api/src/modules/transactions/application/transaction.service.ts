@@ -413,6 +413,7 @@ export class TransactionService {
       accountId: account.id,
       accountName: account.name,
       currency: account.currency,
+      accountType: account.type,
       balanceMinor: balanceByAccount.get(account.id) ?? 0,
     }))
   }

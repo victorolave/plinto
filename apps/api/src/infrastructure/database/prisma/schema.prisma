@@ -380,6 +380,10 @@ enum AccountType {
   bank
   credit
   savings
+  /// Money owed to a lender: a loan taken, or a purchase financed in
+  /// installments. Its balance is normally negative — what is still owed.
+  /// See PRD-007.
+  debt
 }
 
 enum AuditSource {
