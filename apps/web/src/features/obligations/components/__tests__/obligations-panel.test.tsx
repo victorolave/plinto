@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { money } from '../../../../test/money'
 import { renderWithProviders } from '../../../../test/render-with-providers'
 import { ObligationsPanel } from '../obligations-panel'
 import type { ObligationInstance } from '../../services/obligations'
@@ -140,8 +141,17 @@ describe('ObligationsPanel', () => {
     renderWithProviders(<ObligationsPanel />)
 
     // 100000 minor units, not the 80000 a subtraction would produce.
-    expect(await screen.findByText(/1,000\.00/)).toBeInTheDocument()
-    expect(screen.queryByText(/800\.00/)).not.toBeInTheDocument()
+    //
+    // Rendered through the same formatter as the component rather than a
+    // literal: this assertion used to hardcode "1,000.00", which quietly
+    // encoded the assumption that COP scales by 100. It does not — a peso has
+    // no centavo — so the literal was asserting the bug.
+    expect(
+      await screen.findByText(money(100000, 'COP')),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(money(80000, 'COP')),
+    ).not.toBeInTheDocument()
   })
 
   it('shows an empty state for a month with nothing due', async () => {

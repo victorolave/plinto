@@ -1,3 +1,5 @@
+import { minorUnitExponent, toMajorUnits } from '@plinto/shared'
+
 /**
  * Money rendering for Plinto.
  *
@@ -7,27 +9,50 @@
  *    brand/error so it never competes).
  *  - Use a true minus `−` (not a hyphen) and tabular figures so columns align.
  *
- * Amounts are stored in minor units. The MVP assumes a ×100 minor-unit scale
- * for every currency (ADR 0004), so we force two fraction digits to match.
+ * Amounts are stored in minor units, at the scale the currency actually uses —
+ * the reference table ADR 0004 asks for, in `@plinto/shared`. This file used to
+ * assume ×100 for every currency and force two fraction digits, which rendered
+ * `$ 2.300.000,00` for a peso that has no centavo.
+ *
+ * The divisor and the fraction digits are read from the same function on
+ * purpose. Taking them from two places is how they drift apart, and a figure
+ * divided by one scale and printed at another is wrong in a way that still
+ * looks like money.
  */
 
 export function formatMoneyMagnitude(minor: number, currency: string): string {
-  const magnitudeMajor = Math.abs(minor) / 100
+  const magnitudeMajor = toMajorUnits(Math.abs(minor), currency)
+  const fractionDigits = minorUnitExponent(currency)
+
   try {
     return new Intl.NumberFormat(undefined, {
       style: 'currency',
       currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
     }).format(magnitudeMajor)
   } catch {
     // Unknown/invalid ISO code — fall back to "CODE 1,234.56".
     const number = new Intl.NumberFormat(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
     }).format(magnitudeMajor)
     return `${currency} ${number}`
   }
+}
+
+/**
+ * The `step` an amount `<input type="number">` should use for `currency`:
+ * `"1"` where there is no minor unit, `"0.01"` for hundredths, `"0.001"` for
+ * thousandths.
+ *
+ * Every money field used to hardcode `step="0.01"` — the same ×100 assumption
+ * wearing an HTML attribute. It let someone type `2300000.55` pesos, which the
+ * conversion then rounded away without saying so.
+ */
+export function amountInputStep(currency: string): string {
+  const exponent = minorUnitExponent(currency)
+  return exponent === 0 ? '1' : `0.${'0'.repeat(exponent - 1)}1`
 }
 
 export interface AmountProps {

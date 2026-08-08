@@ -5,6 +5,8 @@ import { useMutation } from '@tanstack/react-query'
 import {
   CreateRecurringTransactionRuleSchema,
   UpdateRecurringTransactionRuleSchema,
+  toMajorUnitsString,
+  toMinorUnits,
 } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import type { TransactionType } from '../services/transactions'
@@ -16,6 +18,7 @@ import {
 import { Button } from '../../../components/ui/button'
 import { Field, Input, Select } from '../../../components/ui/field'
 import { Repeat } from '../../../components/ui/icons'
+import { amountInputStep } from '../../../components/ui/amount'
 
 const recurringTypeOptions: Array<{ value: TransactionType; label: string }> = [
   { value: 'income', label: 'Income' },
@@ -50,12 +53,19 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
   const [accountId, setAccountId] = useState(editing?.accountId ?? accounts[0]?.id ?? '')
   const [type, setType] = useState<TransactionType>(editing?.type ?? 'expense')
   const [amount, setAmount] = useState(
-    editing ? (editing.amountMinor / 100).toString() : '',
+    editing ? toMajorUnitsString(editing.amountMinor, editing.currency) : '',
   )
   const [dayOfMonth, setDayOfMonth] = useState(editing?.dayOfMonth.toString() ?? '1')
   const [startDate, setStartDate] = useState(
     editing ? toDateInputValue(editing.startDate) : '',
   )
+  // A rule's currency is its account's, and it is frozen once the rule exists
+  // (see the submit handler), so an existing rule scales by the currency it was
+  // created with rather than by whichever account happens to be selected now.
+  const currency =
+    editing?.currency ??
+    accounts.find((account) => account.id === accountId)?.currency ??
+    ''
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const createMutation = useMutation({
@@ -84,15 +94,16 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
 
-    const parsedAmount = parseFloat(amount)
     const parsedDay = parseInt(dayOfMonth, 10)
+
+    const amountMinor = toMinorUnits(amount, currency)
 
     // The account, type and currency are frozen once a rule exists: its past
     // periods are already posted as transactions carrying those values.
     if (editing) {
       const payload = {
         name: name.trim(),
-        amountMinor: Math.round(parsedAmount * 100),
+        amountMinor,
         dayOfMonth: parsedDay,
         startDate: toStartDateIso(startDate),
       }
@@ -112,7 +123,7 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
       name: name.trim(),
       accountId,
       type,
-      amountMinor: Math.round(parsedAmount * 100),
+      amountMinor,
       dayOfMonth: parsedDay,
       startDate: toStartDateIso(startDate),
     }
@@ -179,11 +190,11 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
             <Input
               id="recurring-amount"
               type="number"
-              min="0.01"
-              step="0.01"
+              min={amountInputStep(currency)}
+              step={amountInputStep(currency)}
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
-              placeholder="0.00"
+              placeholder={toMajorUnitsString(0, currency)}
               required
             />
           </Field>
