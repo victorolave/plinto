@@ -1,0 +1,127 @@
+name: Scheduled jobs
+
+# The obligations engine has no in-process scheduler, and that is deliberate:
+# ADR 0006 places these operations behind system endpoints guarded by
+# INTERNAL_API_KEY so they can be driven from outside the API. This workflow is
+# that driver. Without it the engine never runs — rules never post their
+# transactions and no period is ever materialized.
+#
+# Timing is best-effort by design. GitHub delays scheduled runs under load, and
+# disables them entirely after 60 days without repository activity. Neither is a
+# correctness problem here: both endpoints are idempotent (see the uniqueness
+# guarantees below), so a late run, a double run, or a manual catch-up all
+# converge to the same state. It IS an availability problem — if the repository
+# goes quiet, check that this workflow is still enabled.
+on:
+  schedule:
+    # 11:00 UTC = 06:00 in Bogotá (UTC-5, no DST). Early enough that a period is
+    # materialized before anyone looks at the dashboard that day.
+    - cron: '0 11 * * *'
+
+  # Manual runs cover the two cases the daily trigger does not: verifying the
+  # wiring right after a deploy, and backfilling a period that was missed while
+  # the schedule was disabled.
+  workflow_dispatch:
+    inputs:
+      period:
+        description: 'Period to generate (YYYY-MM). Defaults to the current month.'
+        required: false
+        type: string
+      horizon_months:
+        description: 'How many months to materialize ahead (1-12).'
+        required: false
+        default: '3'
+        type: string
+
+permissions:
+  contents: read
+
+# Two runs hitting the same endpoints concurrently is safe but pointless. Unlike
+# CI this does NOT cancel in progress: a half-finished generation run should be
+# allowed to finish rather than be killed partway through the tenant loop.
+concurrency:
+  group: scheduled-jobs
+  cancel-in-progress: false
+
+jobs:
+  run-due-work:
+    name: Generate obligations and execute recurring rules
+    runs-on: ubuntu-latest
+
+    # Forks inherit workflows but not secrets, so without this guard every fork
+    # would run a daily job that fails on a missing key.
+    if: github.repository == 'victorolave/plinto'
+
+    env:
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+      HORIZON_MONTHS: ${{ inputs.horizon_months || '3' }}
+      PERIOD: ${{ inputs.period || '' }}
+
+    steps:
+      # Fail on the missing secret rather than on the 401 it would cause, so the
+      # run log names the actual problem.
+      - name: Check required secrets are present
+        run: |
+          missing=0
+          for name in API_BASE_URL INTERNAL_API_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required secret: $name"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+
+      # Generation runs BEFORE execution, and the order is load-bearing: it
+      # materializes what a period is expected to owe from the active rules, so
+      # the obligation exists before any transaction can be reconciled against
+      # it. Running it with a horizon is what reproduces the forward projection
+      # the household previously kept as future columns in the spreadsheet.
+      #
+      # Idempotent by (rule, period) via the unique index on
+      # obligation_instances — a re-run reports `skipped`, never a duplicate.
+      - name: Generate obligations
+        run: |
+          body='{"horizonMonths": '"$HORIZON_MONTHS"', "jobId": "gha-'"$GITHUB_RUN_ID"'"}'
+          if [ -n "$PERIOD" ]; then
+            body='{"period": "'"$PERIOD"'", "horizonMonths": '"$HORIZON_MONTHS"', "jobId": "gha-'"$GITHUB_RUN_ID"'"}'
+          fi
+
+          echo "POST $API_BASE_URL/api/internal/obligations/generate"
+          curl --fail-with-body -sS -X POST \
+            "$API_BASE_URL/api/internal/obligations/generate" \
+            -H 'content-type: application/json' \
+            -H "x-internal-key: $INTERNAL_API_KEY" \
+            -d "$body" | tee generate.json
+          echo
+
+      # Posts the transactions for every rule due today, across all tenants.
+      # Idempotent by (rule, period) via the unique index on
+      # recurring_transaction_executions.
+      #
+      # `jobId` ties the rows this run created back to this run. It is the only
+      # trace connecting a transaction in the database to the workflow that
+      # produced it, which is what makes a bad run auditable after the fact.
+      - name: Execute due recurring rules
+        run: |
+          echo "POST $API_BASE_URL/api/internal/recurring/execute"
+          curl --fail-with-body -sS -X POST \
+            "$API_BASE_URL/api/internal/recurring/execute" \
+            -H 'content-type: application/json' \
+            -H "x-internal-key: $INTERNAL_API_KEY" \
+            -d '{"jobId": "gha-'"$GITHUB_RUN_ID"'"}' | tee execute.json
+          echo
+
+      # The run log is the audit trail. Surfacing the counts in the summary means
+      # "did anything actually happen today?" is answerable without opening logs.
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo '## Scheduled jobs'
+            echo
+            echo '| Step | Result |'
+            echo '| --- | --- |'
+            echo "| Generate obligations | \`$(cat generate.json 2>/dev/null || echo 'did not run')\` |"
+            echo "| Execute recurring | \`$(cat execute.json 2>/dev/null || echo 'did not run')\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
