@@ -5,6 +5,23 @@ import { getOidcClient } from '../../../../lib/auth/oidc-client'
 const STATE_COOKIE = 'plinto_oidc_state'
 const VERIFIER_COOKIE = 'plinto_oidc_verifier'
 
+/**
+ * MUST stay dynamic. This handler mints a fresh PKCE `code_verifier` and an
+ * OAuth `state` per request, and both are only worth anything if they are
+ * unpredictable and used once.
+ *
+ * Nothing in the body below reads a dynamic API — setting cookies on the
+ * response does not opt a route out of static generation — so Next classified
+ * this route as `○ (Static)` and executed it at build time, baking one
+ * build-time state and verifier into the output for every user to share. Login
+ * still worked, because the callback compares the cookie against the returned
+ * state and they matched, which is exactly why it went unnoticed.
+ *
+ * `next dev` never prerenders, so this is invisible in development and only
+ * appears in a production build.
+ */
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const client = await getOidcClient()
   const codeVerifier = generators.codeVerifier()
