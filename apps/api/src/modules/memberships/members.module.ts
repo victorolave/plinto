@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { MembershipsModule } from './memberships.module'
 import { SessionsModule } from '../sessions/sessions.module'
 import { InvitationsModule } from '../invitations/invitations.module'
+import { AuditModule } from '../audit/audit.module'
 import { AuthGuard } from '../../common/guards/auth.guard'
 import { TenantGuard } from '../../common/guards/tenant.guard'
 import { RoleGuard } from '../../common/guards/role.guard'
@@ -21,7 +22,7 @@ import { InvitationsController } from '../invitations/interfaces/http/v1/invitat
  * stays acyclic without a workaround.
  */
 @Module({
-  imports: [MembershipsModule, SessionsModule, InvitationsModule],
+  imports: [MembershipsModule, SessionsModule, InvitationsModule, AuditModule],
   controllers: [MembersController, InvitationsController],
   providers: [MembershipService, AuthGuard, TenantGuard, RoleGuard],
   exports: [MembershipService],

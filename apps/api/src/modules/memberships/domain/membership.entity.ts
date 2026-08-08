@@ -22,3 +22,14 @@ export type TenantMember = {
   role: MembershipRole
   joinedAt: Date
 }
+
+/**
+ * What a guarded membership write did, as data rather than as an exception.
+ *
+ * `would_orphan` is the one that matters: a household with no owner cannot be
+ * administered by anybody, including the person who emptied it. The check and
+ * the write have to happen together to be worth anything, so the outcome is
+ * decided where that atomicity exists — in the adapter — and the meaning is
+ * carried back here for the service to translate.
+ */
+export type MembershipWriteOutcome = 'ok' | 'not_found' | 'would_orphan'

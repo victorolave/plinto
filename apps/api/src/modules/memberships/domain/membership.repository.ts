@@ -1,4 +1,9 @@
-import { Membership, MembershipRole, TenantMember } from './membership.entity'
+import {
+  Membership,
+  MembershipRole,
+  MembershipWriteOutcome,
+  TenantMember,
+} from './membership.entity'
 
 /**
  * Port: the membership persistence contract the application layer depends
@@ -26,4 +31,25 @@ export abstract class MembershipRepository {
   abstract isMember(userId: string, tenantId: string): Promise<boolean>
 
   abstract findByUserAndTenant(userId: string, tenantId: string): Promise<Membership | null>
+
+  /**
+   * Changes a member's role, refusing the change that would leave the household
+   * without an owner.
+   *
+   * The guard lives here rather than in the service because a check followed by
+   * a separate write is not a guard at all: two concurrent demotions would each
+   * see two owners and both proceed, leaving none. Only the adapter can hold
+   * the read and the write in one transaction.
+   */
+  abstract updateRole(params: {
+    tenantId: string
+    userId: string
+    role: MembershipRole
+  }): Promise<MembershipWriteOutcome>
+
+  /** Removes a member, under the same last-owner guard and for the same reason. */
+  abstract remove(params: {
+    tenantId: string
+    userId: string
+  }): Promise<MembershipWriteOutcome>
 }
