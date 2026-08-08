@@ -31,6 +31,7 @@ import {
   CreateSessionSchema,
   UserSchema,
   MembershipSchema,
+  TenantMemberSchema,
   TenantSchema,
   CreateTenantSchema,
   SelectTenantSchema,
@@ -116,6 +117,7 @@ const UpdateRecurringTransactionRuleSchemaRef = registry.register(
 const CreateSessionSchemaRef = registry.register('CreateSession', CreateSessionSchema)
 const UserSchemaRef = registry.register('User', UserSchema)
 const MembershipSchemaRef = registry.register('Membership', MembershipSchema)
+const TenantMemberSchemaRef = registry.register('TenantMember', TenantMemberSchema)
 
 const TenantSchemaRef = registry.register('Tenant', TenantSchema)
 const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
@@ -436,6 +438,28 @@ registry.registerPath({
     200: dataResponse(
       'Transaction updated.',
       z.object({ transaction: TransactionSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+// ---------------------------------------------------------------------------
+// Members
+// ---------------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/members',
+  tags: ['Members'],
+  summary: 'List the members of the active household',
+  description:
+    'Readable by every role, including viewer. The tenant is resolved from the ' +
+    'session or the x-tenant-id header, never from the path.',
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse(
+      'Members of the active tenant, oldest membership first.',
+      z.object({ members: z.array(TenantMemberSchemaRef) }),
     ),
     ...errorResponses,
   },

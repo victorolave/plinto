@@ -18,6 +18,29 @@ describe('AuthorizationPolicy', () => {
     )
   })
 
+  describe('members', () => {
+    // A household is a shared context: everyone in it may see who else is in
+    // it, including a viewer who cannot change a single number.
+    it.each(['owner', 'member', 'viewer'] as const)(
+      'allows %s to read the member list',
+      (role) => {
+        expect(AuthorizationPolicy.hasPermission(role, 'member:read')).toBe(true)
+      },
+    )
+
+    // Reading the roster and changing it are different powers. Only the owner
+    // administers membership; this is the boundary the members endpoints rely
+    // on, so it is asserted rather than assumed.
+    it.each(['member:invite', 'member:remove', 'member:change-role'] as const)(
+      'restricts %s to the owner',
+      (permission) => {
+        expect(AuthorizationPolicy.hasPermission('owner', permission)).toBe(true)
+        expect(AuthorizationPolicy.hasPermission('member', permission)).toBe(false)
+        expect(AuthorizationPolicy.hasPermission('viewer', permission)).toBe(false)
+      },
+    )
+  })
+
   describe('obligations', () => {
     it.each(['owner', 'member'] as const)(
       'allows %s to record and reconcile obligations',

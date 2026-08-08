@@ -66,6 +66,66 @@ describe('PrismaMembershipRepository', () => {
     })
   })
 
+  describe('listMembersByTenantId', () => {
+    const makeMembershipWithUser = (overrides = {}) => ({
+      ...makeMembership(),
+      user: { id: 'user-1', email: 'victor@example.com', name: 'Victor' },
+      ...overrides,
+    })
+
+    it('scopes the listing to the tenant and joins the identity behind each membership', async () => {
+      prisma.membership.findMany.mockResolvedValue([])
+
+      await repository.listMembersByTenantId('tenant-1')
+
+      expect(prisma.membership.findMany).toHaveBeenCalledWith({
+        where: { tenantId: 'tenant-1' },
+        include: { user: { select: { id: true, email: true, name: true } } },
+        orderBy: [{ createdAt: 'asc' }, { user: { email: 'asc' } }],
+      })
+    })
+
+    it('maps rows onto the member shape, dropping the membership id', async () => {
+      const joinedAt = new Date('2026-01-01T00:00:00.000Z')
+      prisma.membership.findMany.mockResolvedValue([
+        makeMembershipWithUser({ role: 'owner', createdAt: joinedAt }),
+      ])
+
+      const result = await repository.listMembersByTenantId('tenant-1')
+
+      expect(result).toEqual([
+        {
+          userId: 'user-1',
+          email: 'victor@example.com',
+          name: 'Victor',
+          role: 'owner',
+          joinedAt,
+        },
+      ])
+      expect(result[0]).not.toHaveProperty('id')
+      expect(result[0]).not.toHaveProperty('tenantId')
+    })
+
+    it('preserves a null name, which the IdP may not have supplied', async () => {
+      prisma.membership.findMany.mockResolvedValue([
+        makeMembershipWithUser({
+          user: { id: 'user-2', email: 'sandra@example.com', name: null },
+        }),
+      ])
+
+      const result = await repository.listMembersByTenantId('tenant-1')
+
+      expect(result[0].name).toBeNull()
+      expect(result[0].email).toBe('sandra@example.com')
+    })
+
+    it('returns an empty list rather than throwing for a tenant with no rows', async () => {
+      prisma.membership.findMany.mockResolvedValue([])
+
+      await expect(repository.listMembersByTenantId('tenant-1')).resolves.toEqual([])
+    })
+  })
+
   describe('isMember', () => {
     it('looks up the membership by the composite tenantId_userId key', async () => {
       prisma.membership.findUnique.mockResolvedValue(makeMembership())

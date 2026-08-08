@@ -22,4 +22,8 @@ export const queryKeys = {
   obligationSummary: (period: string) =>
     ['obligations', 'summary', { period }] as const,
   tenants: ['tenants'] as const,
+  // Not keyed by tenant: the API resolves the household from the session, and
+  // switching households reloads the page (see DashboardShell), so no stale
+  // entry from a previous tenant can survive to serve this key.
+  members: ['members'] as const,
 } as const
