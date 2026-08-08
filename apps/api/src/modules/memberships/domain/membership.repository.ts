@@ -1,4 +1,4 @@
-import { Membership, MembershipRole } from './membership.entity'
+import { Membership, MembershipRole, TenantMember } from './membership.entity'
 
 /**
  * Port: the membership persistence contract the application layer depends
@@ -15,6 +15,13 @@ export abstract class MembershipRepository {
   }): Promise<Membership>
 
   abstract listByUserId(userId: string): Promise<Membership[]>
+
+  /**
+   * Every member of one household, with the identity behind each membership.
+   * Ordering is the adapter's responsibility so the list is stable across
+   * requests — an unordered member list reshuffles on every render.
+   */
+  abstract listMembersByTenantId(tenantId: string): Promise<TenantMember[]>
 
   abstract isMember(userId: string, tenantId: string): Promise<boolean>
 

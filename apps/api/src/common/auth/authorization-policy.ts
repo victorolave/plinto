@@ -3,6 +3,11 @@ import { MembershipRole } from '../../modules/memberships/domain/membership.enti
 export type Permission =
   | 'tenant:select'
   | 'tenant:manage'
+  // Reading the member list is granted to every role, including viewer: a
+  // household is a shared context, and "who else is in here" is part of
+  // understanding whose money the numbers describe. Only mutating membership
+  // is restricted to the owner.
+  | 'member:read'
   | 'member:invite'
   | 'member:remove'
   | 'member:change-role'
@@ -22,6 +27,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
   owner: [
     'tenant:select',
     'tenant:manage',
+    'member:read',
     'member:invite',
     'member:remove',
     'member:change-role',
@@ -38,6 +44,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
   ],
   member: [
     'tenant:select',
+    'member:read',
     'account:write',
     'account:read',
     'account:delete',
@@ -51,6 +58,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
   ],
   viewer: [
     'tenant:select',
+    'member:read',
     'account:read',
     'transaction:read',
     'report:read',
