@@ -6,6 +6,16 @@ import { createPlintoJwt, JWT_TTL_SECONDS } from '../../../lib/auth/jwt'
 const STATE_COOKIE = 'plinto_oidc_state'
 const VERIFIER_COOKIE = 'plinto_oidc_verifier'
 
+/**
+ * MUST stay dynamic: this handler exchanges a single-use authorization code and
+ * mints a session, so a prerendered response would be both meaningless and
+ * dangerous. Today the route is dynamic only because it reads `cookies()` —
+ * an accident of the body rather than a stated requirement. `/api/auth/login`
+ * had no such accident and was prerendered into a shared PKCE verifier, so the
+ * requirement is written down here instead of left to chance.
+ */
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   const cookieStore = cookies()
   const redirectTo = (path: string) => NextResponse.redirect(new URL(path, request.url))
