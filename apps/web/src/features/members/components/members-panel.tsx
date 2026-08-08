@@ -40,12 +40,6 @@ const ROLE_TONE: Record<MemberRole, 'brand' | 'info' | 'neutral'> = {
   viewer: 'neutral',
 }
 
-const ROLE_HINT: Record<MemberRole, string> = {
-  owner: 'Manages the household and its members',
-  member: 'Can record and edit money movements',
-  viewer: 'Can see everything, change nothing',
-}
-
 const ROLES: MemberRole[] = ['owner', 'member', 'viewer']
 
 function formatJoinedAt(joinedAt: string): string {
@@ -176,7 +170,7 @@ export function MembersPanel() {
   const removingSelf = pendingRemove !== null && isSelf(pendingRemove)
 
   return (
-    <div className="page">
+    <div className="page page--narrow">
       {failure ? <p className="error-text">{failure.message}</p> : null}
 
       <Card flush>
@@ -256,6 +250,16 @@ export function MembersPanel() {
                           ? ` · joined ${formatJoinedAt(member.joinedAt)}`
                           : ''}
                       </span>
+                      {/* Only worth saying when there is somebody else to
+                          administer. Alone in a household, the absence of a
+                          menu needs no explaining — there is nothing it could
+                          have offered. And it goes under the name rather than
+                          beside the badge, which already says "owner". */}
+                      {canAdminister && isSoleOwner(member) && members.length > 1 ? (
+                        <span className="muted member-identity-meta">
+                          A household must keep one owner, so this cannot change
+                        </span>
+                      ) : null}
                     </span>
                   </div>
 
@@ -267,10 +271,6 @@ export function MembersPanel() {
 
                     {saving ? (
                       <span className="muted member-row-status">Saving…</span>
-                    ) : null}
-
-                    {canAdminister && isSoleOwner(member) ? (
-                      <span className="muted member-row-status">Sole owner</span>
                     ) : null}
 
                     {canAdminister && !saving && actions.length > 0 ? (
@@ -316,25 +316,6 @@ export function MembersPanel() {
               </li>
             ))}
           </ul>
-        </Card>
-      ) : null}
-
-      {!isLoading && members.length > 0 ? (
-        <Card>
-          <CardHeader
-            title="What each role can do"
-            subtitle="Roles are enforced by the API, not just hidden in the interface"
-          />
-          <dl className="role-legend">
-            {ROLES.map((role) => (
-              <div key={role} className="role-legend-row">
-                <dt>
-                  <Badge tone={ROLE_TONE[role]}>{role}</Badge>
-                </dt>
-                <dd className="muted">{ROLE_HINT[role]}</dd>
-              </div>
-            ))}
-          </dl>
         </Card>
       ) : null}
 

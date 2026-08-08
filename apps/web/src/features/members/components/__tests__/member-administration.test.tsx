@@ -102,7 +102,21 @@ describe('MembersPanel — administration', () => {
 
     renderWithProviders(<MembersPanel />)
 
-    expect(await screen.findByText(/sole owner/i)).toBeInTheDocument()
+    expect(await screen.findByText(/must keep one owner/i)).toBeInTheDocument()
+  })
+
+  /**
+   * Alone in a household there is nothing to administer, so the absence of a
+   * menu needs no explaining — and a note about keeping an owner beside a badge
+   * that already reads OWNER is just the word twice.
+   */
+  it('says nothing about it when there is nobody else', async () => {
+    mockedListMembers.mockResolvedValue({ data: { members: [owner()] } })
+
+    renderWithProviders(<MembersPanel />)
+
+    await screen.findByText('Victor')
+    expect(screen.queryByText(/must keep one owner/i)).not.toBeInTheDocument()
   })
 
   // With a second owner the household survives either change, so both open up.

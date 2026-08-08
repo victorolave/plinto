@@ -88,6 +88,18 @@
   flex-direction: column;
   gap: var(--space-6);
 }
+/**
+ * A page that reads rather than dashboards.
+ *
+ * The grid pages fill whatever width they are given because their content
+ * does — cards, tables, charts. A page that is a short list of rows does not:
+ * stretched to a wide monitor it becomes a bar with a name pinned to one edge
+ * and its badge pinned to the other, a gap of a thousand pixels between them,
+ * and it reads as breakage rather than as space.
+ */
+.page--narrow {
+  max-width: 880px;
+}
 
 /* ---- Sidebar (black) ---- */
 .sidebar {
