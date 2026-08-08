@@ -40,6 +40,7 @@ import {
   DebtScheduleSchema,
   CreateDebtScheduleSchema,
   UpdateDebtScheduleSchema,
+  DebtSummarySchema,
   TenantSchema,
   CreateTenantSchema,
   SelectTenantSchema,
@@ -140,6 +141,7 @@ const UpdateDebtScheduleSchemaRef = registry.register(
   'UpdateDebtSchedule',
   UpdateDebtScheduleSchema,
 )
+const DebtSummarySchemaRef = registry.register('DebtSummary', DebtSummarySchema)
 
 const TenantSchemaRef = registry.register('Tenant', TenantSchema)
 const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
@@ -612,6 +614,26 @@ registry.registerPath({
     200: dataResponse(
       'Debt schedules with their repayment progress.',
       z.object({ debts: z.array(DebtScheduleSchemaRef) }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/debts/summary',
+  tags: ['Debts'],
+  summary: 'What the household owes, per currency',
+  description:
+    'Two figures per currency, never one. Remaining installments come from the ' +
+    'financed purchases; what the liability accounts carry comes from their ' +
+    'balances. They measure different things, and adding them would present a ' +
+    'number nobody could defend.',
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse(
+      'Outstanding debt per currency.',
+      z.object({ summary: DebtSummarySchemaRef }),
     ),
     ...errorResponses,
   },

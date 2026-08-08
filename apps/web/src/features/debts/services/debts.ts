@@ -43,3 +43,17 @@ export async function cancelDebt(id: string): Promise<{ data: { debt: DebtSchedu
     { method: 'POST' },
   )
 }
+
+export interface DebtCurrencyTotal {
+  currency: string
+  /** Remaining on financed purchases. */
+  scheduledOutstandingMinor: number
+  /** What the liability accounts themselves carry: loans, cards. */
+  lenderOwedMinor: number
+}
+
+export async function getDebtSummary(): Promise<{
+  data: { summary: { totals: DebtCurrencyTotal[] } }
+}> {
+  return apiFetch<{ data: { summary: { totals: DebtCurrencyTotal[] } } }>('/debts/summary')
+}

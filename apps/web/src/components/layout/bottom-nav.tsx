@@ -5,6 +5,7 @@ import type { ComponentType } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
+  TrendDown,
   Home,
   Wallet,
   List,
@@ -40,6 +41,7 @@ const SECONDARY: BarEntry[] = [
 /** Sections that live inside the "More" sheet (everything not in the bar). */
 const MORE_SECTIONS: BarEntry[] = [
   { id: 'obligations', label: 'Obligations', icon: Target },
+  { id: 'debts', label: 'Debts', icon: TrendDown },
   { id: 'categories', label: 'Categories', icon: Tag },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]

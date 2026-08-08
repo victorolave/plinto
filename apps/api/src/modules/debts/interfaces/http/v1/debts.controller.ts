@@ -53,6 +53,18 @@ export class DebtsController {
     return { data: { debts: views.map(toDto) } }
   }
 
+  /**
+   * Declared before `:id` routes would matter — Nest matches in declaration
+   * order, and a later `GET /debts/:id` would otherwise swallow `summary`.
+   */
+  @Get('summary')
+  @RequirePermission('debt:read')
+  async summary(@Req() req: RequestContext) {
+    const totals = await this.debtScheduleService.summarize(req.tenantId as string)
+
+    return { data: { summary: { totals } } }
+  }
+
   @Post()
   @RequirePermission('debt:write')
   @UsePipes(new ZodValidationPipe(CreateDebtScheduleSchema))

@@ -6,8 +6,15 @@ import {
 import { isLiabilityAccountType } from '@plinto/shared'
 import { AccountRepository } from '../../accounts/domain/account.repository'
 import { AuditService } from '../../audit/application/audit.service'
+import { TransactionService } from '../../transactions/application/transaction.service'
 import { DebtSchedule } from '../domain/debt-schedule.entity'
 import { DebtScheduleRepository } from '../domain/debt-schedule.repository'
+
+export interface DebtCurrencyTotal {
+  currency: string
+  scheduledOutstandingMinor: number
+  lenderOwedMinor: number
+}
 
 export interface DebtScheduleView {
   schedule: DebtSchedule
@@ -31,6 +38,7 @@ export class DebtScheduleService {
     private readonly debtScheduleRepository: DebtScheduleRepository,
     private readonly accountRepository: AccountRepository,
     private readonly auditService: AuditService,
+    private readonly transactionService: TransactionService,
   ) {}
 
   async createSchedule(params: {
@@ -112,6 +120,52 @@ export class DebtScheduleService {
       settled:
         generatedCount >= schedule.installmentCount && paidMinor >= schedule.principalMinor,
     }))
+  }
+
+  /**
+   * What the household owes, per currency.
+   *
+   * Two figures rather than one, because they measure different things.
+   * Remaining installments come from the plans; what the liability accounts
+   * carry comes from their balances — loans received, card balances, anything
+   * recorded as a movement. Recording a financed purchase does not move its
+   * account's balance today, so they do not overlap, but nothing guarantees
+   * they never will. Adding them would present a number nobody could defend.
+   */
+  async summarize(tenantId: string): Promise<DebtCurrencyTotal[]> {
+    const [views, balances] = await Promise.all([
+      this.listSchedules(tenantId),
+      this.transactionService.getBalances(tenantId),
+    ])
+
+    const byCurrency = new Map<string, DebtCurrencyTotal>()
+    const bucketFor = (currency: string): DebtCurrencyTotal => {
+      const existing = byCurrency.get(currency)
+      if (existing) return existing
+
+      const created = { currency, scheduledOutstandingMinor: 0, lenderOwedMinor: 0 }
+      byCurrency.set(currency, created)
+      return created
+    }
+
+    for (const view of views) {
+      // A cancelled plan stops producing installments, so what it had left is
+      // no longer owed under it.
+      if (view.schedule.status !== 'active') continue
+
+      bucketFor(view.schedule.currency).scheduledOutstandingMinor += view.outstandingMinor
+    }
+
+    for (const balance of balances) {
+      if (!isLiabilityAccountType(balance.accountType)) continue
+
+      // Liabilities carry a negative balance, so what is owed is its magnitude.
+      // A positive one means the account is ahead rather than owed, and adding
+      // it would report a debt the household does not have.
+      bucketFor(balance.currency).lenderOwedMinor += Math.max(-balance.balanceMinor, 0)
+    }
+
+    return [...byCurrency.values()].sort((a, b) => a.currency.localeCompare(b.currency))
   }
 
   async rename(params: {

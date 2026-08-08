@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ComponentType } from 'react'
 import {
+  TrendDown,
   Home,
   Wallet,
   List,
@@ -33,6 +34,7 @@ const NAV: NavEntry[] = [
   { id: 'accounts', label: 'Accounts', icon: Wallet },
   { id: 'transactions', label: 'Transactions', icon: List },
   { id: 'obligations', label: 'Obligations', icon: Target },
+  { id: 'debts', label: 'Debts', icon: TrendDown },
   { id: 'categories', label: 'Categories', icon: Tag },
 ]
 
