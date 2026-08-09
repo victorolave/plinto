@@ -61,12 +61,10 @@ describe('MembersPanel', () => {
     const list = within(screen.getByRole('list', { name: /household members/i }))
     expect(list.getAllByRole('listitem')).toHaveLength(2)
 
-    // The signed-in user here is an owner, so each row shows its role as the
-    // selected option of a role control rather than as a static badge. Asserted
-    // by value rather than by text because the control also *contains* the two
-    // roles it is not set to.
-    expect(list.getByLabelText(/role for victor olave/i)).toHaveValue('owner')
-    expect(list.getByLabelText(/role for sandra olave/i)).toHaveValue('member')
+    // The role reads as a badge for everybody — owner and viewer see the same
+    // roster, and only the actions menu beside it appears or does not.
+    expect(list.getByText('owner')).toBeInTheDocument()
+    expect(list.getByText('member')).toBeInTheDocument()
   })
 
   it('marks the signed-in user, and only them', async () => {

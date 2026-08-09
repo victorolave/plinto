@@ -37,6 +37,11 @@ const sandra = (overrides: Partial<TenantMember> = {}): TenantMember => ({
   ...overrides,
 })
 
+/** Opens a member's kebab menu, the way the rest of this app offers row actions. */
+async function openMenu(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(await screen.findByRole('button', { name: new RegExp(`actions for ${name}`, 'i') }))
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockedListInvitations.mockResolvedValue({ data: { invitations: [] } })
@@ -45,55 +50,107 @@ beforeEach(() => {
 })
 
 describe('MembersPanel — administration', () => {
-  it('changes a role from the row', async () => {
+  it('changes a role from the row menu', async () => {
     const user = userEvent.setup()
     mockedListMembers.mockResolvedValue({ data: { members: [owner(), sandra()] } })
 
     renderWithProviders(<MembersPanel />)
 
-    await user.selectOptions(await screen.findByLabelText(/role for sandra/i), 'viewer')
+    await openMenu(user, 'Sandra')
+    await user.click(screen.getByRole('menuitem', { name: /make viewer/i }))
 
-    await waitFor(() =>
-      expect(mockedChangeRole).toHaveBeenCalledWith('user-2', 'viewer'),
-    )
+    await waitFor(() => expect(mockedChangeRole).toHaveBeenCalledWith('user-2', 'viewer'))
+  })
+
+  /** The role somebody already holds is not offered as a change. */
+  it('offers only the roles they are not already', async () => {
+    const user = userEvent.setup()
+    mockedListMembers.mockResolvedValue({ data: { members: [owner(), sandra()] } })
+
+    renderWithProviders(<MembersPanel />)
+
+    await openMenu(user, 'Sandra')
+    const menu = within(screen.getByRole('menu'))
+    expect(menu.getByRole('menuitem', { name: /make owner/i })).toBeInTheDocument()
+    expect(menu.getByRole('menuitem', { name: /make viewer/i })).toBeInTheDocument()
+    expect(menu.queryByRole('menuitem', { name: /make member/i })).not.toBeInTheDocument()
   })
 
   /**
-   * The invariant this slice exists to protect. A household with no owner
-   * cannot be administered by anybody — including the person who emptied it —
-   * and there is no way back short of database access.
+   * The invariant this slice protects. A household with no owner cannot be
+   * administered by anybody — including the person who emptied it — and there
+   * is no way back short of database access.
    *
-   * The API refuses it with 409 regardless. Disabling the control with a reason
-   * is better than letting somebody click and read an error.
+   * Not offered at all, rather than offered-and-disabled: the API refuses it
+   * with 409 regardless, and a disabled control whose only explanation is a
+   * hover tooltip says nothing on a phone.
    */
-  it('will not let the only owner demote themselves', async () => {
+  it('offers the sole owner no way to demote or remove themselves', async () => {
+    const user = userEvent.setup()
     mockedListMembers.mockResolvedValue({ data: { members: [owner(), sandra()] } })
 
     renderWithProviders(<MembersPanel />)
 
-    const select = await screen.findByLabelText(/role for victor/i)
-    expect(select).toBeDisabled()
-    expect(select).toHaveAttribute('title', expect.stringMatching(/at least one owner/i))
+    await screen.findByText('Victor')
+    expect(
+      screen.queryByRole('button', { name: /actions for victor/i }),
+    ).not.toBeInTheDocument()
   })
 
-  it('will not let the only owner remove themselves', async () => {
+  it('says why, in text rather than in a tooltip', async () => {
     mockedListMembers.mockResolvedValue({ data: { members: [owner(), sandra()] } })
 
     renderWithProviders(<MembersPanel />)
 
-    expect(await screen.findByRole('button', { name: /remove victor/i })).toBeDisabled()
+    expect(await screen.findByText(/must keep one owner/i)).toBeInTheDocument()
+  })
+
+  /**
+   * Alone in a household there is nothing to administer, so the absence of a
+   * menu needs no explaining — and a note about keeping an owner beside a badge
+   * that already reads OWNER is just the word twice.
+   */
+  it('says nothing about it when there is nobody else', async () => {
+    mockedListMembers.mockResolvedValue({ data: { members: [owner()] } })
+
+    renderWithProviders(<MembersPanel />)
+
+    await screen.findByText('Victor')
+    expect(screen.queryByText(/must keep one owner/i)).not.toBeInTheDocument()
   })
 
   // With a second owner the household survives either change, so both open up.
-  it('allows demoting an owner once a second one exists', async () => {
+  it('opens both up once a second owner exists', async () => {
+    const user = userEvent.setup()
     mockedListMembers.mockResolvedValue({
       data: { members: [owner(), sandra({ role: 'owner' })] },
     })
 
     renderWithProviders(<MembersPanel />)
 
-    expect(await screen.findByLabelText(/role for victor/i)).not.toBeDisabled()
-    expect(screen.getByRole('button', { name: /remove victor/i })).not.toBeDisabled()
+    await openMenu(user, 'Victor')
+    const menu = within(screen.getByRole('menu'))
+    expect(menu.getByRole('menuitem', { name: /make member/i })).toBeInTheDocument()
+    expect(menu.getByRole('menuitem', { name: /leave household/i })).toBeInTheDocument()
+  })
+
+  /**
+   * Leaving takes effect on the person reading the dialog, so it does not
+   * borrow the words used for removing somebody else.
+   */
+  it('calls it leaving when it is yourself', async () => {
+    const user = userEvent.setup()
+    mockedListMembers.mockResolvedValue({
+      data: { members: [owner(), sandra({ role: 'owner' })] },
+    })
+
+    renderWithProviders(<MembersPanel />)
+
+    await openMenu(user, 'Victor')
+    await user.click(screen.getByRole('menuitem', { name: /leave household/i }))
+
+    expect(screen.getByText(/leave this household\?/i)).toBeInTheDocument()
+    expect(screen.getByText(/you lose access to this household/i)).toBeInTheDocument()
   })
 
   it('confirms before removing, and only removes on confirmation', async () => {
@@ -102,7 +159,8 @@ describe('MembersPanel — administration', () => {
 
     renderWithProviders(<MembersPanel />)
 
-    await user.click(await screen.findByRole('button', { name: /remove sandra/i }))
+    await openMenu(user, 'Sandra')
+    await user.click(screen.getByRole('menuitem', { name: /remove from household/i }))
     expect(mockedRemove).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: /^remove member$/i }))
@@ -111,9 +169,8 @@ describe('MembersPanel — administration', () => {
   })
 
   /**
-   * Removing somebody is not removing their work. Saying so in the dialog is
-   * what stops an owner hesitating over whether it deletes the household's
-   * history.
+   * Removing somebody is not removing their work. Saying so is what stops an
+   * owner hesitating over whether it deletes the household's history.
    */
   it('says that what they recorded stays', async () => {
     const user = userEvent.setup()
@@ -121,7 +178,8 @@ describe('MembersPanel — administration', () => {
 
     renderWithProviders(<MembersPanel />)
 
-    await user.click(await screen.findByRole('button', { name: /remove sandra/i }))
+    await openMenu(user, 'Sandra')
+    await user.click(screen.getByRole('menuitem', { name: /remove from household/i }))
 
     expect(screen.getByText(/everything they recorded stays/i)).toBeInTheDocument()
   })
@@ -135,7 +193,8 @@ describe('MembersPanel — administration', () => {
 
     renderWithProviders(<MembersPanel />)
 
-    await user.selectOptions(await screen.findByLabelText(/role for sandra/i), 'viewer')
+    await openMenu(user, 'Sandra')
+    await user.click(screen.getByRole('menuitem', { name: /make viewer/i }))
 
     expect(await screen.findByText(/without an owner/i)).toBeInTheDocument()
   })
@@ -144,17 +203,22 @@ describe('MembersPanel — administration', () => {
    * A non-owner sees the roster and nothing else. The API enforces this; the
    * panel only avoids offering controls that would come back 403.
    */
-  it.each(['member', 'viewer'] as const)('shows a %s the roles as plain text', async (role) => {
+  it.each(['member', 'viewer'] as const)('shows a %s no row actions at all', async (role) => {
     mockedListMembers.mockResolvedValue({
-      data: { members: [owner({ userId: 'user-9', email: 'other@example.com', name: 'Other' }), sandra({ email: 'victor@example.com', role })] },
+      data: {
+        members: [
+          owner({ userId: 'user-9', email: 'other@example.com', name: 'Other' }),
+          sandra({ email: 'victor@example.com', role }),
+        ],
+      },
     })
 
     renderWithProviders(<MembersPanel />)
 
     await screen.findByText('Other')
-    expect(screen.queryByLabelText(/role for/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^remove /i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /actions for/i })).not.toBeInTheDocument()
 
+    // The roles are still visible — as badges, the same way an owner sees them.
     const roster = within(screen.getByRole('list', { name: /household members/i }))
     expect(roster.getByText('owner')).toBeInTheDocument()
   })

@@ -25,8 +25,8 @@ import { Button } from '../../../components/ui/button'
 import { Drawer } from '../../../components/ui/drawer'
 import { Modal } from '../../../components/ui/modal'
 import { EmptyState } from '../../../components/ui/empty-state'
-import { Plus, Trash, Users } from '../../../components/ui/icons'
-import { Select } from '../../../components/ui/field'
+import { ActionsMenu, type ActionMenuItem } from '../../../components/ui/actions-menu'
+import { LogOut, Plus, Trash, Users, X } from '../../../components/ui/icons'
 import { useDashboard } from '../../../components/layout/dashboard-context'
 
 /**
@@ -46,6 +46,8 @@ const ROLE_HINT: Record<MemberRole, string> = {
   viewer: 'Can see everything, change nothing',
 }
 
+const ROLES: MemberRole[] = ['owner', 'member', 'viewer']
+
 function formatJoinedAt(joinedAt: string): string {
   const date = new Date(joinedAt)
   if (Number.isNaN(date.getTime())) return ''
@@ -56,17 +58,17 @@ function formatJoinedAt(joinedAt: string): string {
   })
 }
 
+function formatExpiry(expiresAt: string): string {
+  const date = new Date(expiresAt)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 /** Falls back to the local part of the email when the IdP gave us no name. */
 function displayNameOf(member: TenantMember): string {
   const name = member.name?.trim()
   if (name) return name
   return member.email.split('@')[0]
-}
-
-function formatExpiry(expiresAt: string): string {
-  const date = new Date(expiresAt)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 export function MembersPanel() {
@@ -75,6 +77,7 @@ export function MembersPanel() {
 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [pendingRevoke, setPendingRevoke] = useState<Invitation | null>(null)
+  const [pendingRemove, setPendingRemove] = useState<TenantMember | null>(null)
   const [lastResult, setLastResult] = useState<InvitationResult | null>(null)
 
   const {
@@ -86,15 +89,17 @@ export function MembersPanel() {
     queryFn: async () => (await listMembers()).data.members,
   })
 
-  // The signed-in person's own role decides whether any of this is theirs to
-  // do. The API enforces it regardless — this only avoids offering a button
-  // that would come back 403.
-  const isOwner = members.some(
-    (member) =>
-      user.email !== undefined &&
-      user.email.toLowerCase() === member.email.toLowerCase() &&
-      member.role === 'owner',
-  )
+  // Email is the identity the API and the IdP agree on, so it is what marks the
+  // current user rather than a display name two people could share.
+  const isSelf = (member: TenantMember) =>
+    user.email !== undefined && user.email.toLowerCase() === member.email.toLowerCase()
+
+  const isOwner = members.some((member) => isSelf(member) && member.role === 'owner')
+
+  // Controls appear only once the roster has actually resolved. Deriving them
+  // from a list that is still empty would flash an interface saying "you may do
+  // nothing here" and then replace it a moment later.
+  const canAdminister = !isLoading && isOwner
 
   const { data: invitations = [] } = useQuery({
     queryKey: queryKeys.invitations,
@@ -102,15 +107,12 @@ export function MembersPanel() {
     enabled: isOwner,
   })
 
-  const [pendingRemove, setPendingRemove] = useState<TenantMember | null>(null)
-
-  // A household with no owner cannot be administered by anybody, so the last
-  // one can be neither demoted nor removed. The API refuses it with 409
-  // regardless; showing it as disabled with a reason is better than letting
-  // somebody click and read an error.
+  // A household with no owner cannot be administered by anybody, so the last one
+  // can be neither demoted nor removed. The API refuses it with 409 regardless;
+  // the interface does not offer what would be refused, and says why in text
+  // rather than in a hover tooltip nobody on a phone can read.
   const ownerCount = members.filter((member) => member.role === 'owner').length
-
-  const isLastOwner = (member: TenantMember) => member.role === 'owner' && ownerCount <= 1
+  const isSoleOwner = (member: TenantMember) => member.role === 'owner' && ownerCount <= 1
 
   const roleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: MemberRole }) =>
@@ -136,20 +138,46 @@ export function MembersPanel() {
     },
   })
 
-  const errorMessage =
-    error instanceof Error
-      ? error.message
-      : revokeMutation.error instanceof Error
-        ? revokeMutation.error.message
-        : roleMutation.error instanceof Error
-          ? roleMutation.error.message
-          : removeMutation.error instanceof Error
-            ? removeMutation.error.message
-            : null
+  const failure = [
+    error,
+    roleMutation.error,
+    removeMutation.error,
+    revokeMutation.error,
+  ].find((candidate): candidate is Error => candidate instanceof Error)
+
+  /**
+   * Which row is mid-save, so only that one reports it. Keying off `isPending`
+   * alone greyed out every member in the list while one of them changed.
+   */
+  const savingUserId = roleMutation.isPending ? roleMutation.variables?.userId : undefined
+
+  function actionsFor(member: TenantMember): ActionMenuItem[] {
+    const actions: ActionMenuItem[] = ROLES.filter((role) => role !== member.role)
+      // Demoting the only owner is the one change nobody could undo from inside
+      // the app, so it is not offered at all.
+      .filter((role) => !(isSoleOwner(member) && role !== 'owner'))
+      .map((role) => ({
+        label: `Make ${role}`,
+        onClick: () => roleMutation.mutate({ userId: member.userId, role }),
+      }))
+
+    if (!isSoleOwner(member)) {
+      actions.push({
+        label: isSelf(member) ? 'Leave household' : 'Remove from household',
+        icon: isSelf(member) ? <LogOut size={15} /> : <Trash size={15} />,
+        danger: true,
+        onClick: () => setPendingRemove(member),
+      })
+    }
+
+    return actions
+  }
+
+  const removingSelf = pendingRemove !== null && isSelf(pendingRemove)
 
   return (
     <div className="page">
-      {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+      {failure ? <p className="error-text">{failure.message}</p> : null}
 
       <Card flush>
         <CardHeader
@@ -160,7 +188,7 @@ export function MembersPanel() {
               : `${members.length} ${members.length === 1 ? 'person' : 'people'} in this household`
           }
           action={
-            isOwner ? (
+            canAdminister ? (
               <Button
                 leftIcon={<Plus size={18} />}
                 onClick={() => {
@@ -175,11 +203,23 @@ export function MembersPanel() {
         />
 
         {lastResult ? (
-          <p className="muted" style={{ padding: '0 var(--space-4) var(--space-2)' }}>
-            {lastResult.status === 'accepted'
-              ? `${lastResult.member?.email ?? 'They'} already had an account and joined right away.`
-              : `Invitation sent to ${lastResult.invitation?.email ?? 'them'}. It will be applied the first time they sign in.`}
-          </p>
+          <div className="member-notice">
+            <span className="muted">
+              {lastResult.status === 'accepted'
+                ? `${lastResult.member?.email ?? 'They'} already had an account and joined right away.`
+                : `Invitation sent to ${lastResult.invitation?.email ?? 'them'}. It will be applied the first time they sign in.`}
+            </span>
+            {/* Dismissible, because it reports a moment rather than a state.
+                Left alone it would still be announcing "sent" tomorrow. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Dismiss"
+              onClick={() => setLastResult(null)}
+            >
+              <X size={14} />
+            </Button>
+          </div>
         ) : null}
 
         {isLoading ? <MembersSkeleton /> : null}
@@ -198,85 +238,51 @@ export function MembersPanel() {
           <ul className="member-list" aria-label="Household members">
             {members.map((member) => {
               const name = displayNameOf(member)
-              // Email is the identity the API and the IdP agree on, so it is
-              // what marks the current user rather than a display name that
-              // two people in one household could share.
-              const isCurrentUser =
-                user.email !== undefined &&
-                user.email.toLowerCase() === member.email.toLowerCase()
+              const saving = savingUserId === member.userId
+              const actions = actionsFor(member)
 
               return (
                 <li key={member.userId} className="data-row">
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--space-3)',
-                      minWidth: 0,
-                      flex: 1,
-                    }}
-                  >
+                  <div className="member-identity">
                     <Avatar name={name} />
-                    <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <span className="member-identity-text">
                       <span className="account-name">
                         {name}
-                        {isCurrentUser ? <span className="muted"> · you</span> : null}
+                        {isSelf(member) ? <span className="muted"> · you</span> : null}
                       </span>
-                      <span className="muted" style={{ fontSize: 12 }}>
+                      <span className="muted member-identity-meta">
                         {member.email}
                         {formatJoinedAt(member.joinedAt)
                           ? ` · joined ${formatJoinedAt(member.joinedAt)}`
                           : ''}
                       </span>
+                      {/* Only worth saying when there is somebody else to
+                          administer. Alone in a household, the absence of a
+                          menu needs no explaining — there is nothing it could
+                          have offered. And it goes under the name rather than
+                          beside the badge, which already says "owner". */}
+                      {canAdminister && isSoleOwner(member) && members.length > 1 ? (
+                        <span className="muted member-identity-meta">
+                          A household must keep one owner, so this cannot change
+                        </span>
+                      ) : null}
                     </span>
                   </div>
-                  {isOwner ? (
-                    <span
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'var(--space-2)',
-                      }}
-                    >
-                      <Select
-                        aria-label={`Role for ${name}`}
-                        value={member.role}
-                        disabled={isLastOwner(member) || roleMutation.isPending}
-                        title={
-                          isLastOwner(member)
-                            ? 'A household must keep at least one owner'
-                            : undefined
-                        }
-                        onChange={(event) =>
-                          roleMutation.mutate({
-                            userId: member.userId,
-                            role: event.target.value as MemberRole,
-                          })
-                        }
-                      >
-                        <option value="owner">owner</option>
-                        <option value="member">member</option>
-                        <option value="viewer">viewer</option>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Remove ${name}`}
-                        disabled={isLastOwner(member)}
-                        title={
-                          isLastOwner(member)
-                            ? 'A household must keep at least one owner'
-                            : undefined
-                        }
-                        leftIcon={<Trash size={15} />}
-                        onClick={() => setPendingRemove(member)}
-                      >
-                        Remove
-                      </Button>
-                    </span>
-                  ) : (
+
+                  <span className="member-row-actions">
+                    {/* One visual language for everybody: the role always reads
+                        as a badge, and only the menu beside it appears or does
+                        not. An owner and a viewer see the same roster. */}
                     <Badge tone={ROLE_TONE[member.role]}>{member.role}</Badge>
-                  )}
+
+                    {saving ? (
+                      <span className="muted member-row-status">Saving…</span>
+                    ) : null}
+
+                    {canAdminister && !saving && actions.length > 0 ? (
+                      <ActionsMenu label={`Actions for ${name}`} items={actions} />
+                    ) : null}
+                  </span>
                 </li>
               )
             })}
@@ -284,7 +290,7 @@ export function MembersPanel() {
         ) : null}
       </Card>
 
-      {isOwner && invitations.length > 0 ? (
+      {canAdminister && invitations.length > 0 ? (
         <Card flush>
           <CardHeader
             title="Pending invitations"
@@ -293,24 +299,26 @@ export function MembersPanel() {
           <ul className="member-list" aria-label="Pending invitations">
             {invitations.map((invitation) => (
               <li key={invitation.id} className="data-row">
-                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <span className="member-identity-text">
                   <span className="account-name">{invitation.email}</span>
-                  <span className="muted" style={{ fontSize: 12 }}>
+                  <span className="muted member-identity-meta">
                     Invited as {invitation.role}
                     {formatExpiry(invitation.expiresAt)
                       ? ` · expires ${formatExpiry(invitation.expiresAt)}`
                       : ''}
                   </span>
                 </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<Trash size={15} />}
-                  aria-label={`Revoke invitation for ${invitation.email}`}
-                  onClick={() => setPendingRevoke(invitation)}
-                >
-                  Revoke
-                </Button>
+                <ActionsMenu
+                  label={`Actions for ${invitation.email}`}
+                  items={[
+                    {
+                      label: 'Revoke invitation',
+                      icon: <Trash size={15} />,
+                      danger: true,
+                      onClick: () => setPendingRevoke(invitation),
+                    },
+                  ]}
+                />
               </li>
             ))}
           </ul>
@@ -324,7 +332,7 @@ export function MembersPanel() {
             subtitle="Roles are enforced by the API, not just hidden in the interface"
           />
           <dl className="role-legend">
-            {(Object.keys(ROLE_HINT) as MemberRole[]).map((role) => (
+            {ROLES.map((role) => (
               <div key={role} className="role-legend-row">
                 <dt>
                   <Badge tone={ROLE_TONE[role]}>{role}</Badge>
@@ -353,7 +361,7 @@ export function MembersPanel() {
       <Modal
         open={pendingRemove !== null}
         onClose={() => setPendingRemove(null)}
-        title="Remove from household?"
+        title={removingSelf ? 'Leave this household?' : 'Remove from household?'}
         footer={
           <>
             <Button variant="secondary" onClick={() => setPendingRemove(null)}>
@@ -364,18 +372,37 @@ export function MembersPanel() {
               disabled={removeMutation.isPending}
               onClick={() => pendingRemove && removeMutation.mutate(pendingRemove.userId)}
             >
-              {removeMutation.isPending ? 'Removing…' : 'Remove member'}
+              {removeMutation.isPending
+                ? removingSelf
+                  ? 'Leaving…'
+                  : 'Removing…'
+                : removingSelf
+                  ? 'Leave household'
+                  : 'Remove member'}
             </Button>
           </>
         }
       >
+        {/* Leaving is not the same act as removing somebody else — it takes
+            effect on the person reading the dialog — so it does not borrow the
+            same words. */}
         <p className="muted">
-          <strong style={{ color: 'var(--text-strong)' }}>
-            {pendingRemove ? displayNameOf(pendingRemove) : ''}
-          </strong>{' '}
-          loses access to this household. Everything they recorded stays — money
-          movements belong to the household, not to the person who typed them.
-          You can invite them back later.
+          {removingSelf ? (
+            <>
+              You lose access to this household straight away. Everything you
+              recorded stays — money movements belong to the household, not to
+              the person who typed them. An owner can invite you back.
+            </>
+          ) : (
+            <>
+              <strong style={{ color: 'var(--text-strong)' }}>
+                {pendingRemove ? displayNameOf(pendingRemove) : ''}
+              </strong>{' '}
+              loses access to this household. Everything they recorded stays —
+              money movements belong to the household, not to the person who
+              typed them. You can invite them back later.
+            </>
+          )}
         </p>
       </Modal>
 
