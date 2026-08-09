@@ -40,6 +40,12 @@ const ROLE_TONE: Record<MemberRole, 'brand' | 'info' | 'neutral'> = {
   viewer: 'neutral',
 }
 
+const ROLE_HINT: Record<MemberRole, string> = {
+  owner: 'Manages the household and its members',
+  member: 'Can record and edit money movements',
+  viewer: 'Can see everything, change nothing',
+}
+
 const ROLES: MemberRole[] = ['owner', 'member', 'viewer']
 
 function formatJoinedAt(joinedAt: string): string {
@@ -170,7 +176,7 @@ export function MembersPanel() {
   const removingSelf = pendingRemove !== null && isSelf(pendingRemove)
 
   return (
-    <div className="page page--narrow">
+    <div className="page">
       {failure ? <p className="error-text">{failure.message}</p> : null}
 
       <Card flush>
@@ -316,6 +322,25 @@ export function MembersPanel() {
               </li>
             ))}
           </ul>
+        </Card>
+      ) : null}
+
+      {!isLoading && members.length > 0 ? (
+        <Card>
+          <CardHeader
+            title="What each role can do"
+            subtitle="Roles are enforced by the API, not just hidden in the interface"
+          />
+          <dl className="role-legend">
+            {ROLES.map((role) => (
+              <div key={role} className="role-legend-row">
+                <dt>
+                  <Badge tone={ROLE_TONE[role]}>{role}</Badge>
+                </dt>
+                <dd className="muted">{ROLE_HINT[role]}</dd>
+              </div>
+            ))}
+          </dl>
         </Card>
       ) : null}
 

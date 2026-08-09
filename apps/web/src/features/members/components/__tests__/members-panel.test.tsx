@@ -114,18 +114,12 @@ describe('MembersPanel', () => {
     expect(await screen.findByText('Network unreachable')).toBeInTheDocument()
   })
 
-  /**
-   * The roster page no longer carries a legend of every role. It competed with
-   * the content it sat above — three roles explained over a household of one —
-   * and the explanation belongs where somebody actually picks a role, which is
-   * the invite drawer. `InviteForm` shows it as the hint of the role field.
-   */
-  it('does not explain roles it is not asking anybody to choose', async () => {
+  it('explains each role once members are listed', async () => {
     mockedListMembers.mockResolvedValue({ data: { members: [buildMember()] } })
 
     renderWithProviders(<MembersPanel />)
 
-    await screen.findByText('Victor Olave')
-    expect(screen.queryByText(/what each role can do/i)).not.toBeInTheDocument()
+    expect(await screen.findByText(/Manages the household and its members/)).toBeInTheDocument()
+    expect(screen.getByText(/Can see everything, change nothing/)).toBeInTheDocument()
   })
 })

@@ -88,18 +88,6 @@
   flex-direction: column;
   gap: var(--space-6);
 }
-/**
- * A page that reads rather than dashboards.
- *
- * The grid pages fill whatever width they are given because their content
- * does — cards, tables, charts. A page that is a short list of rows does not:
- * stretched to a wide monitor it becomes a bar with a name pinned to one edge
- * and its badge pinned to the other, a gap of a thousand pixels between them,
- * and it reads as breakage rather than as space.
- */
-.page--narrow {
-  max-width: 880px;
-}
 
 /* ---- Sidebar (black) ---- */
 .sidebar {
@@ -335,6 +323,24 @@
 }
 .plinto-card--flush {
   padding: 0;
+}
+/**
+ * A header inside a flush card has to carry its own inset.
+ *
+ * `.card-header` was written for a padded card and only sets a bottom margin,
+ * so dropping one into a flush card left the title against the left border and
+ * its action button against the right. The card is flush precisely so the rows
+ * below can run edge to edge and their separators cross the whole width — the
+ * header is not part of that, and needs the padding the card gave up.
+ *
+ * The inset is `--pad-card` on purpose: a row's content sits at
+ * `--space-4` (list) + `--space-2` (row) from the edge, which is the same 24px,
+ * so the title lines up with the avatar under it rather than nearly lining up.
+ */
+.plinto-card--flush > .card-header {
+  padding: var(--pad-card) var(--pad-card) 0;
+  /* Smaller than the default: the list below contributes its own top padding. */
+  margin-bottom: var(--space-2);
 }
 .card-header {
   display: flex;
@@ -1042,7 +1048,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 0 var(--space-3) var(--space-2) var(--space-4);
+  /* Left inset matches the card header and the row content above and below it,
+     so the notice sits in the same column as everything else. */
+  padding: 0 var(--space-3) var(--space-2) var(--pad-card);
 }
 /* Below this the two halves of a member row stop fitting side by side, so the
    actions drop under the identity rather than overflowing the card. */
