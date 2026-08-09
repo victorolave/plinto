@@ -44,3 +44,6 @@ Thumbs.db
 
 # Package manager local store
 .pnpm-store/
+
+# Registro local de una carga puntual viva (scripts/import-spreadsheet)
+manifest.json

@@ -24,10 +24,13 @@ npx ts-node -O '{"module":"commonjs"}' scripts/import-spreadsheet/load.ts data.j
 npx ts-node -O '{"module":"commonjs"}' scripts/import-spreadsheet/revert.ts
 ```
 
-`manifest.json` está versionado a propósito: es el registro de los 2.789 ids que
-la corrida real creó, y sin él no hay cómo deshacerla. `revert.ts` borra
-exactamente esos ids y no "todo lo del hogar", así que lo que se haya creado en
-Plinto después de la carga sobrevive.
+`--apply` deja un `manifest.json` con los ids que creó, y `revert.ts` borra
+exactamente esos y no "todo lo del hogar", así que lo que se haya creado en
+Plinto después de la carga sobrevive. Guardalo mientras la carga esté viva: sin
+él no hay cómo deshacerla.
+
+**Cuidado**: `--apply` borra el hogar entero antes de escribir. Lo que hubiera
+antes no vuelve — `revert.ts` deshace esta carga, no restaura lo anterior.
 
 `DATABASE_URL` sale de `apps/api/.env`. `extract.py` usa solo la stdlib: esta
 máquina no tiene openpyxl ni libreoffice, y agregar una dependencia para leer un
