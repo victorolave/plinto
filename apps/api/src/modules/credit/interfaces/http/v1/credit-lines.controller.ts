@@ -18,16 +18,43 @@ import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pi
 import {
   CreateCreditLineSchema,
   UpdateCreditLineSchema,
+  CreateCreditLineStatementSchema,
+  UpdateCreditLineStatementSchema,
 } from '../../../../../common/shared-schemas'
 import { CreditLineService } from '../../../application/credit-line.service'
+import {
+  CreditLineStatementService,
+  CreditLineStatementView,
+  CreditLineWithLatestStatement,
+} from '../../../application/credit-line-statement.service'
 
 type CreateCreditLineBody = z.infer<typeof CreateCreditLineSchema>
 type UpdateCreditLineBody = z.infer<typeof UpdateCreditLineSchema>
+type CreateStatementBody = z.infer<typeof CreateCreditLineStatementSchema>
+type UpdateStatementBody = z.infer<typeof UpdateCreditLineStatementSchema>
+
+/** Flattens the derived figure into the shape the contract publishes. */
+function toStatementDto(view: CreditLineStatementView) {
+  return { ...view.statement, availableMinor: view.availableMinor }
+}
+
+function toBoardDto(row: CreditLineWithLatestStatement) {
+  return {
+    ...row.line,
+    latestStatement: row.latestStatement
+      ? { ...row.latestStatement, availableMinor: row.availableMinor as number }
+      : null,
+    availableMinor: row.availableMinor,
+  }
+}
 
 @Controller('credit-lines')
 @UseGuards(AuthGuard, TenantGuard, RoleGuard)
 export class CreditLinesController {
-  constructor(private readonly creditLineService: CreditLineService) {}
+  constructor(
+    private readonly creditLineService: CreditLineService,
+    private readonly statementService: CreditLineStatementService,
+  ) {}
 
   @Get()
   @RequirePermission('credit:read')
@@ -35,6 +62,21 @@ export class CreditLinesController {
     const creditLines = await this.creditLineService.listLines(req.tenantId as string)
 
     return { data: { creditLines } }
+  }
+
+  /**
+   * Declared before the parameterized routes so `summary` is never captured as
+   * a credit-line id — the same ordering hazard the obligations and debts
+   * controllers guard against.
+   */
+  @Get('summary')
+  @RequirePermission('credit:read')
+  async summary(@Req() req: RequestContext) {
+    const rows = await this.statementService.listLinesWithLatestStatement(
+      req.tenantId as string,
+    )
+
+    return { data: { creditLines: rows.map(toBoardDto) } }
   }
 
   @Get(':id')
@@ -101,5 +143,66 @@ export class CreditLinesController {
     })
 
     return { data: { creditLine } }
+  }
+
+  @Get(':id/statements')
+  @RequirePermission('credit:read')
+  async listStatements(@Req() req: RequestContext, @Param('id') id: string) {
+    const views = await this.statementService.listStatements(id, req.tenantId as string)
+
+    return { data: { statements: views.map(toStatementDto) } }
+  }
+
+  /**
+   * Recording a statement materializes the obligation it demands, so the bill
+   * reaches the household's board without a second step to remember. The two
+   * writes are atomic.
+   */
+  @Post(':id/statements')
+  @RequirePermission('credit:write')
+  async recordStatement(
+    @Req() req: RequestContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(CreateCreditLineStatementSchema))
+    body: CreateStatementBody,
+  ) {
+    const view = await this.statementService.recordStatement({
+      tenantId: req.tenantId as string,
+      actorUserId: req.user?.id ?? null,
+      correlationId: req.requestId ?? 'unknown',
+      creditLineId: id,
+      cutoffDate: body.cutoffDate,
+      dueDate: body.dueDate,
+      closingBalanceMinor: body.closingBalanceMinor,
+      amountDueMinor: body.amountDueMinor,
+    })
+
+    return { data: { statement: toStatementDto(view) } }
+  }
+
+  /**
+   * Correcting a statement corrects its obligation, unlike a recurring rule
+   * whose amount is snapshotted into each instance. A statement and its
+   * obligation are one fact recorded once.
+   */
+  @Patch(':id/statements/:statementId')
+  @RequirePermission('credit:write')
+  async updateStatement(
+    @Req() req: RequestContext,
+    @Param('statementId') statementId: string,
+    @Body(new ZodValidationPipe(UpdateCreditLineStatementSchema))
+    body: UpdateStatementBody,
+  ) {
+    const view = await this.statementService.updateStatement({
+      tenantId: req.tenantId as string,
+      actorUserId: req.user?.id ?? null,
+      correlationId: req.requestId ?? 'unknown',
+      id: statementId,
+      dueDate: body.dueDate,
+      closingBalanceMinor: body.closingBalanceMinor,
+      amountDueMinor: body.amountDueMinor,
+    })
+
+    return { data: { statement: toStatementDto(view) } }
   }
 }

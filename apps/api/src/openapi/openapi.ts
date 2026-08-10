@@ -43,6 +43,9 @@ import {
   CreditLineSchema,
   CreateCreditLineSchema,
   UpdateCreditLineSchema,
+  CreditLineStatementSchema,
+  CreateCreditLineStatementSchema,
+  UpdateCreditLineStatementSchema,
   DebtSummarySchema,
   TenantSchema,
   CreateTenantSchema,
@@ -149,6 +152,18 @@ const DebtSummarySchemaRef = registry.register('DebtSummary', DebtSummarySchema)
 const CreditLineSchemaRef = registry.register('CreditLine', CreditLineSchema)
 const CreateCreditLineSchemaRef = registry.register('CreateCreditLine', CreateCreditLineSchema)
 const UpdateCreditLineSchemaRef = registry.register('UpdateCreditLine', UpdateCreditLineSchema)
+const CreditLineStatementSchemaRef = registry.register(
+  'CreditLineStatement',
+  CreditLineStatementSchema,
+)
+const CreateCreditLineStatementSchemaRef = registry.register(
+  'CreateCreditLineStatement',
+  CreateCreditLineStatementSchema,
+)
+const UpdateCreditLineStatementSchemaRef = registry.register(
+  'UpdateCreditLineStatement',
+  UpdateCreditLineStatementSchema,
+)
 
 const TenantSchemaRef = registry.register('Tenant', TenantSchema)
 const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
@@ -730,6 +745,35 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'get',
+  path: '/api/credit-lines/summary',
+  tags: ['Credit'],
+  summary: 'Every credit line with what its last statement said',
+  description:
+    'A line whose current statement has not arrived reports its last known ' +
+    'figures with the cutoff they came from, so it never drops off the board. ' +
+    'A line with no statement at all reports nulls rather than zeros: zero ' +
+    'available and zero owed is a claim, and "not known yet" is the truth.',
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse(
+      'Credit lines with their latest statement.',
+      z.object({
+        creditLines: z.array(
+          CreditLineSchemaRef.and(
+            z.object({
+              latestStatement: CreditLineStatementSchemaRef.nullable(),
+              availableMinor: z.number().int().nullable(),
+            }),
+          ),
+        ),
+      }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
   path: '/api/credit-lines/{id}',
   tags: ['Credit'],
   summary: 'Read one credit line',
@@ -795,6 +839,72 @@ registry.registerPath({
   request: { params: idParam },
   responses: {
     200: dataResponse('Credit line closed.', z.object({ creditLine: CreditLineSchemaRef })),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/credit-lines/{id}/statements',
+  tags: ['Credit'],
+  summary: 'List the statements a credit line has issued',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse(
+      'Statements, newest cutoff first.',
+      z.object({ statements: z.array(CreditLineStatementSchemaRef) }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/credit-lines/{id}/statements',
+  tags: ['Credit'],
+  summary: 'Record a statement, and the payment it demands',
+  description:
+    'Recording a statement materializes the obligation it demands, atomically ' +
+    '— a statement whose obligation is missing is a bill that never reaches ' +
+    'the board. Nothing is scheduled: rules and installments can be projected ' +
+    'because they are predictable, but a statement exists when the lender ' +
+    'issues it. The period is derived from the cutoff, the limit is frozen ' +
+    'from the line, and the currency is inherited from it.',
+  security: sessionCookieAuth,
+  request: {
+    params: idParam,
+    body: { content: { 'application/json': { schema: CreateCreditLineStatementSchemaRef } } },
+  },
+  responses: {
+    201: dataResponse(
+      'Statement recorded and its obligation created.',
+      z.object({ statement: CreditLineStatementSchemaRef }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/credit-lines/{id}/statements/{statementId}',
+  tags: ['Credit'],
+  summary: 'Correct a statement',
+  description:
+    'Correcting a statement corrects its obligation, unlike a recurring rule ' +
+    'whose amount is snapshotted into each instance: a statement and its ' +
+    'obligation are one fact recorded once. The amount due may not be lowered ' +
+    'below what has already been paid against it — undo the payment first.',
+  security: sessionCookieAuth,
+  request: {
+    params: idParam.extend({ statementId: z.string() }),
+    body: { content: { 'application/json': { schema: UpdateCreditLineStatementSchemaRef } } },
+  },
+  responses: {
+    200: dataResponse(
+      'Statement corrected.',
+      z.object({ statement: CreditLineStatementSchemaRef }),
+    ),
     ...errorResponses,
   },
 })

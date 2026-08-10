@@ -43,6 +43,7 @@ model Tenant {
   obligationPayments  ObligationPayment[]
   debtSchedules       DebtSchedule[]
   creditLines         CreditLine[]
+  creditLineStatements CreditLineStatement[]
 
   @@map("tenants")
 }
@@ -246,6 +247,11 @@ model ObligationInstance {
   sourceType          ObligationSourceType @map("source_type")
   recurringRuleId     String?  @map("recurring_rule_id")
   debtScheduleId      String?  @map("debt_schedule_id")
+  /// Set only when `sourceType` is `credit_line`. Unique rather than paired
+  /// with `period`, which is what lets a line bill twice inside one calendar
+  /// month — see PRD-011. Postgres treats NULLs as distinct, so this
+  /// constrains only the rows that carry one.
+  creditLineStatementId String? @unique @map("credit_line_statement_id")
   period              String
   dueDate             DateTime @map("due_date")
   name                String
@@ -267,6 +273,10 @@ model ObligationInstance {
   /// cancelled, never deleted, so the instances it produced keep pointing at
   /// what produced them.
   debtSchedule  DebtSchedule?             @relation(fields: [debtScheduleId], references: [id], onDelete: Restrict)
+  /// Restrict for the same reason as the two above: a statement is a fact the
+  /// lender issued, so it is never deleted and the obligation it produced
+  /// keeps pointing at it.
+  creditLineStatement CreditLineStatement? @relation(fields: [creditLineStatementId], references: [id], onDelete: Restrict)
   payments      ObligationPayment[]
 
   /// Idempotency of generation. Postgres treats NULLs as distinct, so this
@@ -363,11 +373,56 @@ model CreditLine {
   createdAt  DateTime         @default(now()) @map("created_at")
   updatedAt  DateTime         @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant     Tenant                @relation(fields: [tenantId], references: [id])
+  statements CreditLineStatement[]
 
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("credit_lines")
+}
+
+/// One statement a credit line issued: what is owed in total, what must be
+/// paid, and by when. See PRD-011.
+///
+/// This is the unit of truth for a revolving balance. The household does not
+/// record the purchases behind it, so the figure the issuer declares is the
+/// only one that can be trusted — and it is a fact, entered once, rather than
+/// a total accumulated from movements.
+///
+/// It carries its own dates and its own limit rather than reading them off the
+/// line. Issuers move cutoffs and raise ceilings, and a past statement
+/// recomputed against today's limit would silently restate what that month's
+/// available credit had been.
+model CreditLineStatement {
+  id                  String   @id @default(uuid())
+  tenantId            String   @map("tenant_id")
+  creditLineId        String   @map("credit_line_id")
+  /// `YYYY-MM`. Grouping only — never identity. Two statements may share it.
+  period              String
+  cutoffDate          DateTime @map("cutoff_date")
+  dueDate             DateTime @map("due_date")
+  /// Total owed as the issuer declares it. Drives available credit.
+  closingBalanceMinor Int      @map("closing_balance_minor")
+  /// What must be paid against this statement.
+  amountDueMinor      Int      @map("amount_due_minor")
+  /// The ceiling at this cutoff, frozen. See the note above.
+  limitMinorSnapshot  Int      @map("limit_minor_snapshot")
+  currency            String
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  creditLine CreditLine @relation(fields: [creditLineId], references: [id], onDelete: Restrict)
+  obligationInstance ObligationInstance?
+
+  /// A lender does not issue two statements closing on the same day for the
+  /// same line. Keyed on the cutoff rather than the period so biweekly billing
+  /// fits, while a double submission of the same statement still cannot.
+  @@unique([creditLineId, cutoffDate])
+  @@index([tenantId])
+  @@index([tenantId, period])
+  @@index([creditLineId, cutoffDate])
+  @@map("credit_line_statements")
 }
 
 model Transfer {
@@ -448,6 +503,10 @@ enum ObligationSourceType {
   manual
   /// An installment of a debt schedule (PRD-007).
   debt_schedule
+  /// The payment a credit-line statement demands (PRD-011). Unlike the three
+  /// above, one of these is never projected ahead of time: it exists because
+  /// the lender issued a statement, which nothing can predict.
+  credit_line
 }
 
 /// Only the two states somebody decides. Settlement is derived from the

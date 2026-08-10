@@ -20,6 +20,8 @@ export {
   UpdateDebtScheduleSchema,
   CreateCreditLineSchema,
   UpdateCreditLineSchema,
+  CreateCreditLineStatementSchema,
+  UpdateCreditLineStatementSchema,
   CreateCategorySchema,
   UpdateCategorySchema,
   PaginationQuerySchema,
