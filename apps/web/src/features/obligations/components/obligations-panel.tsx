@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useFormattingLocale } from '../../../i18n/formatting'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import {
   type ObligationInstance,
   type ObligationStatus,
@@ -25,13 +28,6 @@ import { EmptyState } from '../../../components/ui/empty-state'
 import { ActionsMenu } from '../../../components/ui/actions-menu'
 import { ChevronRight, Plus, Repeat, Target } from '../../../components/ui/icons'
 
-const STATUS_LABEL: Record<ObligationStatus, string> = {
-  pending: 'Pending',
-  partial: 'Partial',
-  paid: 'Paid',
-  overdue: 'Overdue',
-}
-
 // Overdue is the only fault state here: pending and partial are simply where a
 // month legitimately sits before its due dates arrive.
 const STATUS_TONE: Record<ObligationStatus, 'success' | 'warning' | 'danger' | 'neutral'> =
@@ -45,6 +41,9 @@ const STATUS_TONE: Record<ObligationStatus, 'success' | 'warning' | 'danger' | '
 type ActiveDrawer = 'create' | 'reconcile' | null
 
 export function ObligationsPanel() {
+  const t = useTranslations('obligations')
+  const toErrorMessage = useErrorMessage()
+  const locale = useFormattingLocale()
   const queryClient = useQueryClient()
   const [period, setPeriod] = useState(() => currentPeriod())
   const [drawer, setDrawer] = useState<ActiveDrawer>(null)
@@ -85,12 +84,12 @@ export function ObligationsPanel() {
     onSuccess: invalidatePeriod,
   })
 
-  const activeError =
+  const error = toErrorMessage(
     removePaymentMutation.error ??
-    obligationsQuery.error ??
-    summaryQuery.error ??
-    transactionsQuery.error
-  const error = activeError instanceof Error ? activeError.message : null
+      obligationsQuery.error ??
+      summaryQuery.error ??
+      transactionsQuery.error,
+  )
 
   // Not memoized: `totals` and `obligations` are fresh arrays on every render
   // (the `?? []` fallbacks), so a useMemo keyed on them would recompute anyway
@@ -127,22 +126,22 @@ export function ObligationsPanel() {
             variant="ghost"
             size="sm"
             onClick={() => setPeriod((current) => shiftPeriod(current, -1))}
-            aria-label="Previous month"
+            aria-label={t('previousMonth')}
           >
             <ChevronRight size={16} style={{ transform: 'rotate(180deg)' }} />
           </Button>
-          <strong>{formatPeriod(period)}</strong>
+          <strong>{formatPeriod(period, locale)}</strong>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setPeriod((current) => shiftPeriod(current, 1))}
-            aria-label="Next month"
+            aria-label={t('nextMonth')}
           >
             <ChevronRight size={16} />
           </Button>
         </div>
         <Button leftIcon={<Plus size={18} />} onClick={() => setDrawer('create')}>
-          One-off obligation
+          {t('oneOff')}
         </Button>
       </div>
 
@@ -151,11 +150,11 @@ export function ObligationsPanel() {
       {!loading && obligations.length === 0 ? (
         <EmptyState
           icon={<Target size={30} />}
-          title={`Nothing due in ${formatPeriod(period)}`}
-          description="Obligations appear here once your recurring rules are materialized for the month, or you can record a one-off."
+          title={t('empty.title', { period: formatPeriod(period, locale) })}
+          description={t('empty.description')}
           action={
             <Button leftIcon={<Plus size={18} />} onClick={() => setDrawer('create')}>
-              One-off obligation
+              {t('oneOff')}
             </Button>
           }
         />
@@ -173,17 +172,17 @@ export function ObligationsPanel() {
                     {obligation.sourceType === 'recurring_rule' ? (
                       <Repeat
                         size={13}
-                        aria-label="From a recurring rule"
+                        aria-label={t('fromRecurringRule')}
                         style={{ marginLeft: 'var(--space-2)', opacity: 0.55 }}
                       />
                     ) : null}
                   </div>
                   <div className="account-meta" style={{ textTransform: 'none' }}>
-                    Due {obligation.dueDate.slice(0, 10)}
+                    {t('dueOn', { date: obligation.dueDate.slice(0, 10) })}
                     {obligation.paidAmountMinor > 0 ? (
                       <>
-                        {' '}
-                        · settled{' '}
+                        {' · '}
+                        {t('settled')}{' '}
                         <Amount
                           minor={obligation.paidAmountMinor}
                           currency={obligation.currency}
@@ -202,18 +201,20 @@ export function ObligationsPanel() {
                     size="sm"
                   />
                   <Badge tone={STATUS_TONE[obligation.status]}>
-                    {STATUS_LABEL[obligation.status]}
+                    {t(`status.${obligation.status}`)}
                   </Badge>
                   <ActionsMenu
-                    label={`Actions for ${obligation.name}`}
+                    label={t('actionsFor', { name: obligation.name })}
                     items={[
                       {
-                        label: 'Link a payment',
+                        label: t('linkPayment'),
                         icon: <Plus size={15} />,
                         onClick: () => openReconcile(obligation),
                       },
                       ...obligation.payments.map((payment) => ({
-                        label: `Unlink ${payment.transactionId.slice(0, 8)}`,
+                        label: t('unlinkPayment', {
+                          reference: payment.transactionId.slice(0, 8),
+                        }),
                         danger: true,
                         onClick: () =>
                           removePaymentMutation.mutate({
@@ -233,8 +234,8 @@ export function ObligationsPanel() {
       <Drawer
         open={drawer === 'create'}
         onClose={closeDrawer}
-        title="One-off obligation"
-        description={`Recorded in ${formatPeriod(period)}`}
+        title={t('oneOff')}
+        description={t('recordedIn', { period: formatPeriod(period, locale) })}
       >
         <ObligationForm
           period={period}
@@ -246,7 +247,7 @@ export function ObligationsPanel() {
       <Drawer
         open={drawer === 'reconcile' && reconciling !== null}
         onClose={closeDrawer}
-        title="Link a payment"
+        title={t('linkPayment')}
         description={reconciling?.name}
       >
         {reconciling ? (

@@ -2,6 +2,9 @@
 
 import { type FormEvent, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
+import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import {
   CreateTransactionSchema,
   UpdateTransactionSchema,
@@ -24,7 +27,7 @@ import {
   buildTransactionCreateInput,
   buildTransactionUpdateInput,
   toOccurredAtIso,
-  transactionTypeOptions,
+  TRANSACTION_TYPES,
 } from '../lib/transaction-input'
 
 export interface TransactionFormProps {
@@ -42,6 +45,10 @@ export function TransactionForm({
   editing,
   onSaved,
 }: TransactionFormProps) {
+  const t = useTranslations('transactions')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
+  const toValidationMessage = useValidationMessage()
   const [type, setType] = useState<TransactionType>(editing?.type ?? 'income')
   const [selectedAccountId, setSelectedAccountId] = useState(
     editing?.accountId ?? accounts[0]?.id ?? '',
@@ -85,7 +92,7 @@ export function TransactionForm({
   const submitting = createMutation.isPending || updateMutation.isPending
   const mutationError = editing ? updateMutation.error : createMutation.error
   const error =
-    validationError ?? (mutationError instanceof Error ? mutationError.message : null)
+    validationError ?? toErrorMessage(mutationError)
 
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId)
   // The scale follows the account the transaction lands in: a transaction
@@ -114,7 +121,7 @@ export function TransactionForm({
       })
       const result = UpdateTransactionSchema.safeParse(input)
       if (!result.success) {
-        setValidationError(result.error.issues[0]?.message ?? 'Invalid transaction')
+        setValidationError(toValidationMessage(result.error.issues[0]) ?? t('form.invalid'))
         return
       }
 
@@ -133,7 +140,7 @@ export function TransactionForm({
     })
     const result = CreateTransactionSchema.safeParse(input)
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? 'Invalid transaction')
+      setValidationError(toValidationMessage(result.error.issues[0]) ?? t('form.invalid'))
       return
     }
 
@@ -145,7 +152,7 @@ export function TransactionForm({
     <form onSubmit={handleSubmit} className="drawer-form">
       <div className="stack">
         <SegmentedControl
-          options={transactionTypeOptions}
+          options={TRANSACTION_TYPES.map((value) => ({ value, label: t(value) }))}
           value={type}
           onChange={(value) => {
             setType(value)
@@ -153,7 +160,7 @@ export function TransactionForm({
           }}
         />
 
-        <Field label="Account" htmlFor="tx-account">
+        <Field label={t('form.account')} htmlFor="tx-account">
           <Select
             id="tx-account"
             value={selectedAccountId}
@@ -168,7 +175,7 @@ export function TransactionForm({
           </Select>
         </Field>
 
-        <Field label="Category" hint="Optional" htmlFor="tx-category">
+        <Field label={t('form.category')} hint={t('form.optional')} htmlFor="tx-category">
           <CategorySelect
             type={type}
             value={categoryId}
@@ -177,7 +184,7 @@ export function TransactionForm({
           />
         </Field>
 
-        <Field label="Amount" htmlFor="tx-amount">
+        <Field label={t('form.amount')} htmlFor="tx-amount">
           <Input
             id="tx-amount"
             type="number"
@@ -190,16 +197,16 @@ export function TransactionForm({
           />
         </Field>
 
-        <Field label="Description" hint="Optional" htmlFor="tx-description">
+        <Field label={t('form.description')} hint={t('form.optional')} htmlFor="tx-description">
           <Input
             id="tx-description"
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="e.g. Mercadona"
+            placeholder={t('form.descriptionPlaceholder')}
           />
         </Field>
 
-        <Field label="Date" hint="Optional" htmlFor="tx-date">
+        <Field label={t('form.date')} hint={t('form.optional')} htmlFor="tx-date">
           <Input
             id="tx-date"
             type="date"
@@ -214,10 +221,10 @@ export function TransactionForm({
       <div className="drawer-form-actions">
         <Button type="submit" block disabled={submitting || !selectedAccountId}>
           {submitting
-            ? 'Saving…'
+            ? tCommon('saving')
             : editing
-              ? 'Save changes'
-              : 'Record transaction'}
+              ? t('form.saveChanges')
+              : t('form.recordTransaction')}
         </Button>
       </div>
     </form>

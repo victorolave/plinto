@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import type { Account } from '../services/accounts'
 import type { AccountBalance } from '../../transactions/services/transactions'
 import { ActionsMenu } from '../../../components/ui/actions-menu'
@@ -15,6 +16,8 @@ export interface AccountCardProps {
 
 /** One account's card: icon, name/type, actions menu, and balance. */
 export function AccountCard({ account, balance, onEdit, onArchive }: AccountCardProps) {
+  const t = useTranslations('accounts')
+  const tCommon = useTranslations('common')
   const AccountIcon = accountTypeIcon[account.type]
   return (
     <div className="account-card">
@@ -24,19 +27,22 @@ export function AccountCard({ account, balance, onEdit, onArchive }: AccountCard
         </span>
         <div className="account-card-id">
           <div className="account-name">{account.name}</div>
-          <div className="account-type">{account.type}</div>
+          {/* The account type is a domain enum (`cash`, `bank`, …) that was
+              being printed raw. It is a word the user reads, so it gets
+              translated like any other. */}
+          <div className="account-type">{t(`type.${account.type}`)}</div>
         </div>
         <div className="account-card-actions">
           <ActionsMenu
-            label="Account actions"
+            label={t('accountActions')}
             items={[
               {
-                label: 'Edit',
+                label: tCommon('edit'),
                 icon: <Pencil size={15} />,
                 onClick: onEdit,
               },
               {
-                label: 'Archive',
+                label: t('archive'),
                 icon: <Trash size={15} />,
                 danger: true,
                 onClick: onArchive,
@@ -47,7 +53,7 @@ export function AccountCard({ account, balance, onEdit, onArchive }: AccountCard
       </div>
 
       <div className="account-card-balance">
-        <span className="plinto-eyebrow">Balance</span>
+        <span className="plinto-eyebrow">{t('balance')}</span>
         <Amount
           minor={balance?.balanceMinor ?? 0}
           currency={account.currency}

@@ -2,11 +2,15 @@
 
 import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { createTenant, updateProfile } from '../services/onboarding'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import { Button } from '../../../components/ui/button'
 import { Field, Input } from '../../../components/ui/field'
 
 export function OnboardingForm() {
+  const t = useTranslations('onboarding.form')
+  const toErrorMessage = useErrorMessage()
   const [name, setName] = useState('')
   const [tenantName, setTenantName] = useState('')
   const [baseCurrency, setBaseCurrency] = useState('COP')
@@ -24,8 +28,7 @@ export function OnboardingForm() {
   })
 
   const loading = submitMutation.isPending
-  const error =
-    submitMutation.error instanceof Error ? submitMutation.error.message : null
+  const error = toErrorMessage(submitMutation.error)
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -34,27 +37,27 @@ export function OnboardingForm() {
 
   return (
     <form onSubmit={handleSubmit} className="stack">
-      <Field label="Your name" htmlFor="onboarding-name">
+      <Field label={t('yourName')} htmlFor="onboarding-name">
         <Input
           id="onboarding-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          placeholder="e.g. Marta Ruiz"
+          placeholder={t('yourNamePlaceholder')}
           required
         />
       </Field>
-      <Field label="Household name" htmlFor="onboarding-tenant">
+      <Field label={t('householdName')} htmlFor="onboarding-tenant">
         <Input
           id="onboarding-tenant"
           value={tenantName}
           onChange={(event) => setTenantName(event.target.value)}
-          placeholder="e.g. Ruiz Family"
+          placeholder={t('householdNamePlaceholder')}
           required
         />
       </Field>
       <Field
-        label="Base currency"
-        hint="The default currency for this household."
+        label={t('baseCurrency')}
+        hint={t('baseCurrencyHint')}
         htmlFor="onboarding-currency"
       >
         <Input
@@ -66,7 +69,7 @@ export function OnboardingForm() {
       </Field>
       {error ? <p className="error-text">{error}</p> : null}
       <Button type="submit" disabled={loading} block>
-        {loading ? 'Submitting…' : 'Continue'}
+        {loading ? t('submitting') : t('continue')}
       </Button>
     </form>
   )

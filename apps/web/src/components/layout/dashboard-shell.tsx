@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { apiFetch } from '../../lib/api/client'
 import { listTenants, selectTenant } from '../../features/tenants/services/tenant-selection'
 import { queryKeys } from '../../lib/api/query-keys'
@@ -20,18 +21,35 @@ interface MeResponse {
   }
 }
 
-const TITLES: Record<
-  DashboardSection,
-  [string, (ctx: { name: string; tenant: string }) => string]
-> = {
-  overview: ['Dashboard', ({ name }) => (name ? `Welcome back, ${name}` : 'Your household at a glance')],
-  accounts: ['Accounts', () => 'Balances by currency'],
-  transactions: ['Transactions', ({ tenant }) => (tenant ? `${tenant} ledger` : 'Income, expenses and transfers')],
-  obligations: ['Obligations', () => 'What the household owes this month'],
-  debts: ['Debts', () => 'What the household owes in total'],
-  credit: ['Credit', () => 'Cards and rotating lines'],
-  categories: ['Categories', () => 'Organize your spending'],
-  settings: ['Settings', () => 'Household & members'],
+/**
+ * Which subtitle key a section uses, and whether it takes a value.
+ *
+ * The English copy used to live inline here as template literals. Two of the
+ * eight subtitles are conditional on runtime data (a first name, a household
+ * name), which is why this is a small table rather than a flat key lookup —
+ * the condition is structure, not language, so it stays in code while every
+ * word of it moves to the catalogue.
+ */
+type SubtitleResolver = (ctx: { name: string; tenant: string }) => {
+  key: string
+  values?: Record<string, string>
+}
+
+const SUBTITLE: Record<DashboardSection, SubtitleResolver> = {
+  overview: ({ name }) =>
+    name
+      ? { key: 'subtitle.overviewWelcome', values: { name } }
+      : { key: 'subtitle.overviewGeneric' },
+  accounts: () => ({ key: 'subtitle.accounts' }),
+  transactions: ({ tenant }) =>
+    tenant
+      ? { key: 'subtitle.transactionsTenant', values: { tenant } }
+      : { key: 'subtitle.transactionsGeneric' },
+  obligations: () => ({ key: 'subtitle.obligations' }),
+  debts: () => ({ key: 'subtitle.debts' }),
+  credit: () => ({ key: 'subtitle.credit' }),
+  categories: () => ({ key: 'subtitle.categories' }),
+  settings: () => ({ key: 'subtitle.settings' }),
 }
 
 /**
@@ -40,6 +58,7 @@ const TITLES: Record<
  * between section routes; only `{children}` (the active page) remounts.
  */
 export function DashboardShell({ children }: { children: ReactNode }) {
+  const t = useTranslations('shell')
   const router = useRouter()
   const pathname = usePathname()
   const section = sectionFromPath(pathname)
@@ -110,9 +129,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   }
 
   const firstName = (user.name ?? '').trim().split(/\s+/)[0] ?? ''
-  const activeTenantName = tenants.find((t) => t.id === activeTenantId)?.name ?? ''
-  const [title, subtitleFn] = TITLES[section]
-  const subtitle = subtitleFn({ name: firstName, tenant: activeTenantName })
+  const activeTenantName = tenants.find((tenant) => tenant.id === activeTenantId)?.name ?? ''
+  const title = t(`title.${section}`)
+  const resolvedSubtitle = SUBTITLE[section]({ name: firstName, tenant: activeTenantName })
+  const subtitle = t(resolvedSubtitle.key, resolvedSubtitle.values)
   const goToAdd = () => router.push(SECTION_HREF.transactions)
 
   if (booting) {
@@ -127,7 +147,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             priority
           />
         </span>
-        <span className="app-loading__label">Loading your household…</span>
+        <span className="app-loading__label">{t('loading')}</span>
         <span className="app-loading__bar" aria-hidden="true" />
       </div>
     )
@@ -140,7 +160,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         tenants,
         activeTenantId,
         onSelectTenant: handleSelectTenant,
-        user: { name: user.name || 'Your account', email: user.email || undefined },
+        user: { name: user.name || t('yourAccount'), email: user.email || undefined },
         onLogout: handleLogout,
         loggingOut,
       }}

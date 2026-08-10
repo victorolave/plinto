@@ -1,11 +1,15 @@
 'use client'
 
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { listTenants, selectTenant } from '../services/tenant-selection'
 import { queryKeys } from '../../../lib/api/query-keys'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import { ChevronRight } from '../../../components/ui/icons'
 
 export function TenantSelector() {
+  const t = useTranslations('selectTenant')
+  const toErrorMessage = useErrorMessage()
   const {
     data: tenants = [],
     isLoading: loading,
@@ -26,11 +30,10 @@ export function TenantSelector() {
     selectMutation.mutate(tenantId)
   }
 
-  const activeError = selectMutation.error ?? loadError
-  const error = activeError instanceof Error ? activeError.message : null
+  const error = toErrorMessage(selectMutation.error ?? loadError)
 
   if (loading) {
-    return <p className="muted">Loading households…</p>
+    return <p className="muted">{t('loading')}</p>
   }
 
   if (error) {
@@ -38,7 +41,7 @@ export function TenantSelector() {
   }
 
   if (tenants.length === 0) {
-    return <p className="muted">You don’t belong to any household yet.</p>
+    return <p className="muted">{t('noHouseholds')}</p>
   }
 
   return (

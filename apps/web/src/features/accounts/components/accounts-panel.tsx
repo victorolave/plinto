@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import {
   Account,
   AccountType,
@@ -25,6 +27,9 @@ import { Plus, Wallet } from '../../../components/ui/icons'
 import { AccountsSkeleton } from './accounts-skeleton'
 
 export function AccountsPanel() {
+  const t = useTranslations('accounts')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
   const queryClient = useQueryClient()
 
   const accountsQuery = useQuery({
@@ -98,8 +103,7 @@ export function AccountsPanel() {
   const archiving = archiveMutation.isPending
   // Archive/restore errors are derived straight from the mutations rather than a
   // separate actionError state.
-  const actionError = archiveMutation.error ?? restoreMutation.error
-  const actionErrorMessage = actionError instanceof Error ? actionError.message : null
+  const actionErrorMessage = toErrorMessage(archiveMutation.error ?? restoreMutation.error)
 
   const balanceByAccount = useMemo(
     () => new Map(balances.map((b) => [b.accountId, b])),
@@ -152,11 +156,11 @@ export function AccountsPanel() {
       {!loading && activeAccounts.length === 0 ? (
         <EmptyState
           icon={<Wallet size={30} />}
-          title="Start with your first account"
-          description="An account is where your money lives — a bank, a wallet, a credit card. Each one tracks a single currency so your balances always stay clean."
+          title={t('empty.title')}
+          description={t('empty.description')}
           action={
             <Button leftIcon={<Plus size={18} />} onClick={openCreate}>
-              Add account
+              {t('addAccount')}
             </Button>
           }
         />
@@ -182,7 +186,9 @@ export function AccountsPanel() {
             onClick={() => setShowArchived((prev) => !prev)}
             aria-expanded={showArchived}
           >
-            {showArchived ? 'Hide' : 'Show'} archived ({archivedAccounts.length})
+            {showArchived
+              ? t('hideArchived', { count: archivedAccounts.length })
+              : t('showArchived', { count: archivedAccounts.length })}
           </button>
 
           {showArchived ? (
@@ -192,7 +198,7 @@ export function AccountsPanel() {
                   <div style={{ minWidth: 0 }}>
                     <div className="account-name">{account.name}</div>
                     <div className="account-meta">
-                      {account.type} · {account.currency}
+                      {t(`type.${account.type}`)} · {account.currency}
                     </div>
                   </div>
                   <Button
@@ -200,7 +206,7 @@ export function AccountsPanel() {
                     size="sm"
                     onClick={() => handleRestore(account)}
                   >
-                    Restore
+                    {t('restore')}
                   </Button>
                 </div>
               ))}
@@ -212,20 +218,20 @@ export function AccountsPanel() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title={editingAccount ? 'Edit account' : 'Add account'}
+        title={editingAccount ? t('editAccount') : t('addAccount')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setOpen(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" form="account-form" disabled={submitting}>
               {submitting
                 ? editingAccount
-                  ? 'Saving…'
-                  : 'Creating…'
+                  ? tCommon('saving')
+                  : t('creating')
                 : editingAccount
-                  ? 'Save changes'
-                  : 'Create account'}
+                  ? t('saveChanges')
+                  : t('createAccount')}
             </Button>
           </>
         }
@@ -240,24 +246,25 @@ export function AccountsPanel() {
       <Modal
         open={pendingArchive !== null}
         onClose={() => setPendingArchive(null)}
-        title="Archive account?"
+        title={t('archiveModal.title')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setPendingArchive(null)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button variant="danger" onClick={confirmArchive} disabled={archiving}>
-              {archiving ? 'Archiving…' : 'Archive account'}
+              {archiving ? t('archiveModal.archiving') : t('archiveModal.confirm')}
             </Button>
           </>
         }
       >
         <p className="muted">
-          <strong style={{ color: 'var(--text-strong)' }}>
-            {pendingArchive?.name}
-          </strong>{' '}
-          will be hidden from your accounts and transaction forms. Its history stays
-          intact and you can restore it any time.
+          {t.rich('archiveModal.body', {
+            name: pendingArchive?.name ?? '',
+            strong: (chunks) => (
+              <strong style={{ color: 'var(--text-strong)' }}>{chunks}</strong>
+            ),
+          })}
         </p>
       </Modal>
     </div>

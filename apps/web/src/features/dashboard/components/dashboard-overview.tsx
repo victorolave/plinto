@@ -3,6 +3,9 @@
 import { type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useFormattingLocale } from '../../../i18n/formatting'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import { isLiabilityAccountType } from '@plinto/shared'
 import { listAccounts } from '../../accounts/services/accounts'
 import {
@@ -24,6 +27,7 @@ import {
   ChevronRight,
   accountTypeIcon,
 } from '../../../components/ui/icons'
+import { DashboardSkeleton } from './dashboard-skeleton'
 import { SECTION_HREF } from '../../../components/layout/dashboard-nav'
 import { useDashboard } from '../../../components/layout/dashboard-context'
 
@@ -73,21 +77,35 @@ function signedMinor(transaction: Transaction): number {
   return transaction.type === 'income' ? transaction.amountMinor : -transaction.amountMinor
 }
 
-function formatUtcDate(occurredAt: string): string {
+function formatUtcDate(occurredAt: string, locale: string): string {
   if (!occurredAt) return ''
-  return new Date(occurredAt).toLocaleDateString(undefined, {
+  return new Date(occurredAt).toLocaleDateString(locale, {
     timeZone: 'UTC',
     day: 'numeric',
     month: 'short',
   })
 }
 
-const monthLabel = new Date().toLocaleDateString(undefined, {
-  month: 'long',
-  year: 'numeric',
-})
+/**
+ * This used to be a module-level `const`, formatted with the runtime's own
+ * locale and evaluated once at import time — the worst shape of the hydration
+ * bug in this codebase. The server module and the browser module each computed
+ * their own string, in their own language, and React then found two different
+ * month names in the same slot.
+ *
+ * Taking `locale` as an argument and calling it during render fixes both
+ * halves: same language on both sides, and re-evaluated per render so the label
+ * is not frozen at whatever moment the module happened to load.
+ */
+function formatMonthLabel(locale: string): string {
+  return new Date().toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+}
 
 export function DashboardOverview() {
+  const t = useTranslations('dashboard')
+  const tAccounts = useTranslations('accounts')
+  const toErrorMessage = useErrorMessage()
+  const locale = useFormattingLocale()
   const router = useRouter()
   const { activeTenantName: tenantName } = useDashboard()
 
@@ -109,8 +127,9 @@ export function DashboardOverview() {
   const transactions: Transaction[] = transactionsQuery.data ?? []
   const loading =
     accountsQuery.isLoading || balancesQuery.isLoading || transactionsQuery.isLoading
-  const loadError = accountsQuery.error ?? balancesQuery.error ?? transactionsQuery.error
-  const error = loadError instanceof Error ? loadError.message : null
+  const error = toErrorMessage(
+    accountsQuery.error ?? balancesQuery.error ?? transactionsQuery.error,
+  )
 
   const totals = sumByCurrency(balances)
   const recent = transactions.slice(0, 6)
@@ -120,16 +139,18 @@ export function DashboardOverview() {
   return (
     <div className="page">
       <div className="cluster">
-        <span className="plinto-eyebrow">{monthLabel} · balances</span>
+        <span className="plinto-eyebrow">
+          {t('monthBalances', { month: formatMonthLabel(locale) })}
+        </span>
         {totals.length > 1 ? (
-          <Badge tone="info">Currencies shown separately</Badge>
+          <Badge tone="info">{t('currenciesSeparate')}</Badge>
         ) : null}
       </div>
 
       {error ? <p className="error-text">{error}</p> : null}
 
       {loading ? (
-        <p className="muted">Loading your household…</p>
+        <DashboardSkeleton />
       ) : (
         <>
           {totals.length > 0 ? (
@@ -137,16 +158,22 @@ export function DashboardOverview() {
               {totals.map((total, index) => (
                 <StatCard
                   key={total.currency}
-                  label={`Available (${total.currency})`}
+                  label={t('available', { currency: total.currency })}
                   valueMinor={total.totalMinor}
                   currency={total.currency}
                   accent={index === 0}
                   deltaLabel={
                     total.owedMinor > 0
-                      ? `${formatMoneyMagnitude(total.owedMinor, total.currency)} owed`
+                      ? t('owedAmount', {
+                          amount: formatMoneyMagnitude(
+                            total.owedMinor,
+                            total.currency,
+                            locale,
+                          ),
+                        })
                       : index === 0
-                        ? 'across all accounts'
-                        : `${total.currency} accounts`
+                        ? t('acrossAllAccounts')
+                        : t('currencyAccounts', { currency: total.currency })
                   }
                   icon={<Wallet size={16} />}
                 />
@@ -156,14 +183,11 @@ export function DashboardOverview() {
             <Card>
               <div className="empty-state">
                 <strong style={{ color: 'var(--text-strong)' }}>
-                  No balances yet
+                  {t('noBalances.title')}
                 </strong>
-                <p className="muted">
-                  Add an account and record your first transaction to see your
-                  household balance here.
-                </p>
+                <p className="muted">{t('noBalances.description')}</p>
                 <Button onClick={() => router.push(SECTION_HREF.accounts)}>
-                  Add account
+                  {tAccounts('addAccount')}
                 </Button>
               </div>
             </Card>
@@ -181,8 +205,12 @@ export function DashboardOverview() {
             <Card flush>
               <div style={{ padding: 'var(--space-5) var(--space-5) 0' }}>
                 <CardHeader
-                  title="Recent activity"
-                  subtitle={tenantName ? `${tenantName} · all members` : 'All members'}
+                  title={t('recentActivity')}
+                  subtitle={
+                    tenantName
+                      ? t('allMembersOf', { tenant: tenantName })
+                      : t('allMembers')
+                  }
                   action={
                     <Button
                       variant="ghost"
@@ -190,7 +218,7 @@ export function DashboardOverview() {
                       rightIcon={<ChevronRight size={15} />}
                       onClick={() => router.push(SECTION_HREF.transactions)}
                     >
-                      See all
+                      {t('seeAll')}
                     </Button>
                   }
                 />
@@ -198,9 +226,7 @@ export function DashboardOverview() {
               <div style={{ padding: '0 var(--space-4) var(--space-3)' }}>
                 {recent.length === 0 ? (
                   <div className="empty-state">
-                    <p className="muted">
-                      No transactions yet. Add your first one to start tracking.
-                    </p>
+                    <p className="muted">{t('noTransactions')}</p>
                   </div>
                 ) : (
                   recent.map((transaction) => {
@@ -214,10 +240,11 @@ export function DashboardOverview() {
                         </span>
                         <div className="tx-main">
                           <div className="tx-title">
-                            {transaction.description || (income ? 'Income' : 'Expense')}
+                            {transaction.description ||
+                              t(income ? 'income' : 'expense')}
                           </div>
                           <div className="tx-meta">
-                            <span>{formatUtcDate(transaction.occurredAt)}</span>
+                            <span>{formatUtcDate(transaction.occurredAt, locale)}</span>
                             {account ? (
                               <>
                                 <span>·</span>
@@ -244,19 +271,19 @@ export function DashboardOverview() {
 
             <Card>
               <CardHeader
-                title="Accounts"
+                title={t('accounts')}
                 action={
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => router.push(SECTION_HREF.accounts)}
                   >
-                    Manage
+                    {t('manage')}
                   </Button>
                 }
               />
               {accounts.length === 0 ? (
-                <p className="muted">No accounts yet.</p>
+                <p className="muted">{t('noAccounts')}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {accounts.slice(0, 4).map((account) => {
@@ -278,7 +305,7 @@ export function DashboardOverview() {
                           <div style={{ minWidth: 0 }}>
                             <div className="account-name">{account.name}</div>
                             <div className="account-meta">
-                              {account.type} · {account.currency}
+                              {tAccounts(`type.${account.type}`)} · {account.currency}
                             </div>
                           </div>
                         </div>

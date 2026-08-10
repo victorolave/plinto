@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import type { Category, CategoryType } from '../services/categories'
 
 export function filterCategoriesByType(categories: Category[], type: CategoryType): Category[] {
@@ -14,6 +15,7 @@ interface CategorySelectProps {
 }
 
 export function CategorySelect({ type, value, onChange, categories }: CategorySelectProps) {
+  const t = useTranslations('categories')
   const filtered = filterCategoriesByType(categories, type)
 
   return (
@@ -22,7 +24,7 @@ export function CategorySelect({ type, value, onChange, categories }: CategorySe
       value={value ?? ''}
       onChange={(event) => onChange(event.target.value || null)}
     >
-      <option value="">No category</option>
+      <option value="">{t('noCategory')}</option>
       {filtered.map((category) => (
         <option key={category.id} value={category.id}>
           {category.name}

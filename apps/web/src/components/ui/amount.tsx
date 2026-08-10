@@ -1,4 +1,8 @@
+'use client'
+
 import { minorUnitExponent, toMajorUnits } from '@plinto/shared'
+import { FALLBACK_FORMATTING_LOCALE } from '../../i18n/config'
+import { useFormattingLocale } from '../../i18n/formatting'
 
 /**
  * Money rendering for Plinto.
@@ -20,12 +24,22 @@ import { minorUnitExponent, toMajorUnits } from '@plinto/shared'
  * looks like money.
  */
 
-export function formatMoneyMagnitude(minor: number, currency: string): string {
+/**
+ * `locale` used to be `undefined` — "whatever the runtime says". That is the
+ * hydration bug described in `i18n/formatting.ts`: it makes the server and the
+ * browser format the same amount differently. The `Amount` component below
+ * passes the real request locale; the default only covers non-React callers.
+ */
+export function formatMoneyMagnitude(
+  minor: number,
+  currency: string,
+  locale: string = FALLBACK_FORMATTING_LOCALE,
+): string {
   const magnitudeMajor = toMajorUnits(Math.abs(minor), currency)
   const fractionDigits = minorUnitExponent(currency)
 
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,
       minimumFractionDigits: fractionDigits,
@@ -33,7 +47,7 @@ export function formatMoneyMagnitude(minor: number, currency: string): string {
     }).format(magnitudeMajor)
   } catch {
     // Unknown/invalid ISO code — fall back to "CODE 1,234.56".
-    const number = new Intl.NumberFormat(undefined, {
+    const number = new Intl.NumberFormat(locale, {
       minimumFractionDigits: fractionDigits,
       maximumFractionDigits: fractionDigits,
     }).format(magnitudeMajor)
@@ -75,6 +89,7 @@ export function Amount({
   showSign = false,
   className = '',
 }: AmountProps) {
+  const formattingLocale = useFormattingLocale()
   const isNegative = minor < 0
   const sign = isNegative ? '−' : showSign && minor > 0 ? '+' : ''
   const toneClass = colorize
@@ -89,7 +104,7 @@ export function Amount({
   return (
     <span className={classes}>
       {sign}
-      {formatMoneyMagnitude(minor, currency)}
+      {formatMoneyMagnitude(minor, currency, formattingLocale)}
     </span>
   )
 }

@@ -1,14 +1,13 @@
+import { getTranslations } from 'next-intl/server'
 import { AuthLayout } from '../components/layout/auth-layout'
 
-export default function NotFound() {
+export default async function NotFound() {
+  const t = await getTranslations('notFound')
+
   return (
-    <AuthLayout
-      eyebrow="404"
-      title="Page not found"
-      subtitle="The page you’re looking for doesn’t exist."
-    >
+    <AuthLayout eyebrow={t('eyebrow')} title={t('title')} subtitle={t('subtitle')}>
       <a href="/dashboard" className="btn btn--block">
-        Back to dashboard
+        {t('backToDashboard')}
       </a>
     </AuthLayout>
   )

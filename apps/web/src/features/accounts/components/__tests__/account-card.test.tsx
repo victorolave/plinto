@@ -5,7 +5,7 @@ import { renderWithProviders } from '../../../../test/render-with-providers'
 import { AccountCard } from '../account-card'
 import type { Account } from '../../services/accounts'
 import type { AccountBalance } from '../../../transactions/services/transactions'
-import { formatMoneyMagnitude } from '../../../../components/ui/amount'
+import { money } from '../../../../test/money'
 
 const account: Account = {
   id: 'acc-1',
@@ -32,7 +32,7 @@ describe('AccountCard', () => {
 
     expect(screen.getByText('Main Checking')).toBeInTheDocument()
     expect(
-      screen.getByText(formatMoneyMagnitude(balance.balanceMinor, balance.currency)),
+      screen.getByText(money(balance.balanceMinor, balance.currency)),
     ).toBeInTheDocument()
   })
 
@@ -41,7 +41,7 @@ describe('AccountCard', () => {
       <AccountCard account={account} balance={undefined} onEdit={vi.fn()} onArchive={vi.fn()} />,
     )
 
-    expect(screen.getByText(formatMoneyMagnitude(0, account.currency))).toBeInTheDocument()
+    expect(screen.getByText(money(0, account.currency))).toBeInTheDocument()
   })
 
   it('fires onEdit and onArchive through the actions menu', async () => {

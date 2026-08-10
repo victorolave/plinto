@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { AuthLayout } from '../../../components/layout/auth-layout'
 import { fetchCurrentUser } from '../../../lib/auth/server-session'
 import { Repeat } from '../../../components/ui/icons'
@@ -25,35 +26,40 @@ async function redirectIfAuthenticated() {
 export default async function LoginPage() {
   await redirectIfAuthenticated()
 
+  const t = await getTranslations('login')
+
   return (
     <AuthLayout
-      eyebrow="Welcome back"
-      title="Sign in to Plinto"
-      subtitle="Continue with your identity provider to reach your households."
+      eyebrow={t('eyebrow')}
+      title={t('title')}
+      subtitle={t('subtitle')}
     >
       <div className="auth-actions">
         <a href="/api/auth/login" className="btn btn--block auth-cta">
           <LockIcon />
-          Continue securely
+          {t('continueSecurely')}
         </a>
         <p className="auth-reassurance">
           <ShieldIcon />
-          Secured by your identity provider — we never see or store your
-          password.
+          {t('reassurance')}
         </p>
       </div>
 
       <div className="auth-benefits">
-        <span className="auth-benefits-label">What&rsquo;s inside</span>
+        <span className="auth-benefits-label">{t('benefitsLabel')}</span>
         <ul className="auth-benefit-list">
           {BENEFITS.map((benefit) => (
-            <li key={benefit.title} className="auth-benefit">
+            <li key={benefit.id} className="auth-benefit">
               <span className="auth-benefit-icon" aria-hidden="true">
                 {benefit.icon}
               </span>
               <span className="auth-benefit-copy">
-                <span className="auth-benefit-title">{benefit.title}</span>
-                <span className="auth-benefit-sub">{benefit.sub}</span>
+                <span className="auth-benefit-title">
+                  {t(`benefits.${benefit.id}.title`)}
+                </span>
+                <span className="auth-benefit-sub">
+                  {t(`benefits.${benefit.id}.sub`)}
+                </span>
               </span>
             </li>
           ))}
@@ -63,22 +69,12 @@ export default async function LoginPage() {
   )
 }
 
+// Only the icon and a stable id live here now; both lines of copy come from the
+// catalogue, keyed by that id.
 const BENEFITS = [
-  {
-    title: 'Every household, one account',
-    sub: 'Switch between the households you manage without signing in again.',
-    icon: <HouseholdIcon />,
-  },
-  {
-    title: 'Accounts, transactions & categories',
-    sub: 'Track balances and organize spending in one clear place.',
-    icon: <LedgerIcon />,
-  },
-  {
-    title: 'Recurring transactions on autopilot',
-    sub: 'Set a rule once and let the monthly entries post themselves.',
-    icon: <Repeat size={20} />,
-  },
+  { id: 'households', icon: <HouseholdIcon /> },
+  { id: 'ledger', icon: <LedgerIcon /> },
+  { id: 'recurring', icon: <Repeat size={20} /> },
 ] as const
 
 /* Inline icons — Lucide-style, 20px, stroke 1.5, currentColor. */

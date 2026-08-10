@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { IconButton } from './button'
 import { X } from './icons'
 
@@ -35,6 +36,8 @@ export function Drawer({
   children,
   size = 'md',
 }: DrawerProps) {
+  const t = useTranslations('common')
+
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
@@ -66,7 +69,7 @@ export function Drawer({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             {badge}
-            <IconButton label="Close" onClick={onClose} style={{ border: 'none' }}>
+            <IconButton label={t('close')} onClick={onClose} style={{ border: 'none' }}>
               <X size={18} />
             </IconButton>
           </div>

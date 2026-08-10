@@ -2,7 +2,10 @@
 
 import { type FormEvent, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { CreateCategorySchema, UpdateCategorySchema } from '@plinto/shared'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
+import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import {
   type Category,
   type CategoryType,
@@ -12,15 +15,13 @@ import {
 import { Button } from '../../../components/ui/button'
 import { Field, Input, Select } from '../../../components/ui/field'
 
-const categoryTypeOptions: Array<{ value: CategoryType; label: string }> = [
-  { value: 'expense', label: 'Expense' },
-  { value: 'income', label: 'Income' },
-]
+/** The order the type dropdown offers. Labels come from `categories.type.*`. */
+const CATEGORY_TYPES: CategoryType[] = ['expense', 'income']
 
 // Curated, well-spread hues for quick labelling. Custom colors stay possible
 // via the native picker / hex field.
 const PRESET_COLORS = [
-  '#FD5447',
+  '#E8492C',
   '#F59E0B',
   '#EAB308',
   '#22C55E',
@@ -43,6 +44,10 @@ export interface CategoryFormProps {
 }
 
 export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
+  const t = useTranslations('categories')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
+  const toValidationMessage = useValidationMessage()
   const [name, setName] = useState(editing?.name ?? '')
   // Type is fixed once a category exists (it partitions income vs expense).
   const [type, setType] = useState<CategoryType>(editing?.type ?? 'expense')
@@ -63,8 +68,7 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
 
   const submitting = createMutation.isPending || updateMutation.isPending
   const mutationError = createMutation.error ?? updateMutation.error
-  const error =
-    validationError ?? (mutationError instanceof Error ? mutationError.message : null)
+  const error = validationError ?? toErrorMessage(mutationError)
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -76,7 +80,7 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
       const payload = { name: name.trim(), color: trimmedColor || null }
       const result = UpdateCategorySchema.safeParse(payload)
       if (!result.success) {
-        setValidationError(result.error.issues[0]?.message ?? 'Invalid category')
+        setValidationError(toValidationMessage(result.error.issues[0]) ?? t('form.invalid'))
         return
       }
       updateMutation.mutate({ id: editing.id, payload })
@@ -90,7 +94,7 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
     }
     const result = CreateCategorySchema.safeParse(payload)
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? 'Invalid category')
+      setValidationError(toValidationMessage(result.error.issues[0]) ?? t('form.invalid'))
       return
     }
     createMutation.mutate(payload)
@@ -99,45 +103,42 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
   return (
     <form onSubmit={handleSubmit} className="drawer-form">
       <div className="stack">
-        <Field label="Name" htmlFor="category-name">
+        <Field label={t('form.name')} htmlFor="category-name">
           <Input
             id="category-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. Groceries"
+            placeholder={t('form.namePlaceholder')}
             required
           />
         </Field>
 
         {!editing ? (
-          <Field label="Type" htmlFor="category-type">
+          <Field label={t('form.type')} htmlFor="category-type">
             <Select
               id="category-type"
               value={type}
               onChange={(event) => setType(event.target.value as CategoryType)}
             >
-              {categoryTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {CATEGORY_TYPES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`type.${value}`)}
                 </option>
               ))}
             </Select>
           </Field>
         ) : null}
 
-        <Field
-          label="Color"
-          hint="Optional — a marker shown next to this category."
-        >
+        <Field label={t('form.color')} hint={t('form.colorHint')}>
           <div className="color-picker">
-            <div className="color-swatches" role="group" aria-label="Preset colors">
+            <div className="color-swatches" role="group" aria-label={t('form.presetColors')}>
               {PRESET_COLORS.map((preset) => (
                 <button
                   key={preset}
                   type="button"
                   className={`color-swatch-btn ${sameColor(color, preset) ? 'is-active' : ''}`.trim()}
                   style={{ background: preset }}
-                  aria-label={`Use ${preset}`}
+                  aria-label={t('form.usePreset', { color: preset })}
                   aria-pressed={sameColor(color, preset)}
                   onClick={() => setColor(preset)}
                 />
@@ -148,16 +149,16 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
               <input
                 type="color"
                 className="color-native"
-                aria-label="Custom color"
-                value={isHexColor(color) ? color : '#FD5447'}
+                aria-label={t('form.customColor')}
+                value={isHexColor(color) ? color : '#E8492C'}
                 onChange={(event) => setColor(event.target.value.toUpperCase())}
               />
               <Input
                 id="category-color"
                 value={color}
                 onChange={(event) => setColor(event.target.value)}
-                placeholder="#FD5447"
-                aria-label="Hex color"
+                placeholder="#E8492C"
+                aria-label={t('form.hexColor')}
               />
               {color.trim() ? (
                 <Button
@@ -166,7 +167,7 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
                   size="sm"
                   onClick={() => setColor('')}
                 >
-                  Clear
+                  {t('form.clear')}
                 </Button>
               ) : null}
             </div>
@@ -178,7 +179,11 @@ export function CategoryForm({ editing, onSaved }: CategoryFormProps) {
 
       <div className="drawer-form-actions">
         <Button type="submit" block disabled={submitting}>
-          {submitting ? 'Saving…' : editing ? 'Save changes' : 'Create category'}
+          {submitting
+            ? tCommon('saving')
+            : editing
+              ? t('form.saveChanges')
+              : t('form.createCategory')}
         </Button>
       </div>
     </form>

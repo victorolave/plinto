@@ -2,7 +2,10 @@
 
 import { type FormEvent, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { CreateObligationSchema, toMajorUnitsString, toMinorUnits } from '@plinto/shared'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
+import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import { createObligation } from '../services/obligations'
 import { Button } from '../../../components/ui/button'
 import { Field, Input, Select } from '../../../components/ui/field'
@@ -33,6 +36,10 @@ export interface ObligationFormProps {
  * every period.
  */
 export function ObligationForm({ period, currencies, onSaved }: ObligationFormProps) {
+  const t = useTranslations('obligations.form')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
+  const toValidationMessage = useValidationMessage()
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [dueDate, setDueDate] = useState(defaultDueDate(period))
@@ -68,7 +75,7 @@ export function ObligationForm({ period, currencies, onSaved }: ObligationFormPr
     // invisible in the month reporting it.
     const result = CreateObligationSchema.safeParse(payload)
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? 'Invalid obligation')
+      setValidationError(toValidationMessage(result.error.issues[0]) ?? t('invalid'))
       return
     }
 
@@ -79,18 +86,18 @@ export function ObligationForm({ period, currencies, onSaved }: ObligationFormPr
   return (
     <form onSubmit={handleSubmit} className="drawer-form">
       <div className="stack">
-        <Field label="Name" htmlFor="obligation-name">
+        <Field label={t('name')} htmlFor="obligation-name">
           <Input
             id="obligation-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. Income tax filing"
+            placeholder={t('namePlaceholder')}
             required
           />
         </Field>
 
         <div className="form-grid">
-          <Field label="Amount" htmlFor="obligation-amount">
+          <Field label={t('amount')} htmlFor="obligation-amount">
             <Input
               id="obligation-amount"
               type="number"
@@ -102,7 +109,7 @@ export function ObligationForm({ period, currencies, onSaved }: ObligationFormPr
               required
             />
           </Field>
-          <Field label="Currency" htmlFor="obligation-currency">
+          <Field label={t('currency')} htmlFor="obligation-currency">
             <Select
               id="obligation-currency"
               value={currency}
@@ -118,8 +125,8 @@ export function ObligationForm({ period, currencies, onSaved }: ObligationFormPr
         </div>
 
         <Field
-          label="Due date"
-          hint={`Must fall inside ${period}`}
+          label={t('dueDate')}
+          hint={t('dueDateHint', { period })}
           htmlFor="obligation-due"
         >
           <Input
@@ -136,7 +143,7 @@ export function ObligationForm({ period, currencies, onSaved }: ObligationFormPr
 
       <div className="drawer-form-actions">
         <Button type="submit" block disabled={submitting}>
-          {submitting ? 'Saving…' : 'Record obligation'}
+          {submitting ? tCommon('saving') : t('recordObligation')}
         </Button>
       </div>
     </form>

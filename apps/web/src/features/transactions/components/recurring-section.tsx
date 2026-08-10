@@ -11,15 +11,10 @@ import { Button } from '../../../components/ui/button'
 import { Amount } from '../../../components/ui/amount'
 import { Badge } from '../../../components/ui/badge'
 import { ActionsMenu } from '../../../components/ui/actions-menu'
+import { useTranslations } from 'next-intl'
 import { Pencil, Plus, Repeat, Trash, X } from '../../../components/ui/icons'
 import { EmptyState } from '../../../components/ui/empty-state'
 import { RecurringListSkeleton } from './transactions-skeleton'
-
-const STATUS_LABEL: Record<RecurringRuleStatus, string> = {
-  active: 'Active',
-  paused: 'Paused',
-  archived: 'Archived',
-}
 
 // Paused is deliberately not `danger`: it is a normal, reversible user choice,
 // not a fault state.
@@ -53,6 +48,9 @@ export function RecurringSection({
   onArchive,
   onRestore,
 }: RecurringSectionProps) {
+  const t = useTranslations('transactions.recurring')
+  const tCommon = useTranslations('common')
+  const tAccounts = useTranslations('accounts')
   const accountById = useMemo(
     () => new Map(accounts.map((a) => [a.id, a])),
     [accounts],
@@ -74,8 +72,8 @@ export function RecurringSection({
     <Card flush>
       <div style={{ padding: 'var(--space-5) var(--space-5) 0' }}>
         <CardHeader
-          title="Recurring transactions"
-          subtitle="Rules that post automatically each month when due"
+          title={t('title')}
+          subtitle={t('subtitle')}
           action={
             <Button
               variant="secondary"
@@ -84,7 +82,7 @@ export function RecurringSection({
               onClick={onAdd}
               disabled={accounts.length === 0}
             >
-              New rule
+              {t('newRule')}
             </Button>
           }
         />
@@ -95,8 +93,8 @@ export function RecurringSection({
           <EmptyState
             compact
             icon={<Repeat size={24} />}
-            title="No recurring rules yet"
-            description="Automate rent, salary or subscriptions — they post themselves each month when due."
+            title={t('empty.title')}
+            description={t('empty.description')}
           />
         ) : null}
         {liveRules.map((rule) => {
@@ -108,7 +106,10 @@ export function RecurringSection({
               <div style={{ minWidth: 0 }}>
                 <div className="account-name">{rule.name}</div>
                 <div className="account-meta" style={{ textTransform: 'none' }}>
-                  Day {rule.dayOfMonth} · {account?.name ?? 'account'}
+                  {t('dayAndAccount', {
+                    day: rule.dayOfMonth,
+                    account: account?.name ?? t('accountFallback'),
+                  })}
                 </div>
               </div>
               <div
@@ -118,29 +119,29 @@ export function RecurringSection({
                   <Amount minor={rule.amountMinor} currency={currency} size="sm" />
                 ) : null}
                 <Badge tone={STATUS_TONE[rule.status]}>
-                  {STATUS_LABEL[rule.status]}
+                  {t(`status.${rule.status}`)}
                 </Badge>
                 <ActionsMenu
-                  label={`Actions for ${rule.name}`}
+                  label={t('actionsFor', { name: rule.name })}
                   items={[
                     {
-                      label: 'Edit',
+                      label: tCommon('edit'),
                       icon: <Pencil size={15} />,
                       onClick: () => onEdit(rule),
                     },
                     isPaused
                       ? {
-                          label: 'Resume',
+                          label: t('resume'),
                           icon: <Repeat size={15} />,
                           onClick: () => onResume(rule),
                         }
                       : {
-                          label: 'Pause',
+                          label: t('pause'),
                           icon: <X size={15} />,
                           onClick: () => onPause(rule),
                         },
                     {
-                      label: 'Archive',
+                      label: tAccounts('archive'),
                       icon: <Trash size={15} />,
                       danger: true,
                       onClick: () => onArchive(rule),
@@ -161,7 +162,9 @@ export function RecurringSection({
             onClick={() => setShowArchived((prev) => !prev)}
             aria-expanded={showArchived}
           >
-            {showArchived ? 'Hide' : 'Show'} archived ({archivedRules.length})
+            {showArchived
+              ? tAccounts('hideArchived', { count: archivedRules.length })
+              : tAccounts('showArchived', { count: archivedRules.length })}
           </button>
 
           {showArchived ? (
@@ -173,7 +176,10 @@ export function RecurringSection({
                     <div style={{ minWidth: 0 }}>
                       <div className="account-name">{rule.name}</div>
                       <div className="account-meta" style={{ textTransform: 'none' }}>
-                        Day {rule.dayOfMonth} · {account?.name ?? 'account'}
+                        {t('dayAndAccount', {
+                    day: rule.dayOfMonth,
+                    account: account?.name ?? t('accountFallback'),
+                  })}
                       </div>
                     </div>
                     <Button
@@ -181,7 +187,7 @@ export function RecurringSection({
                       size="sm"
                       onClick={() => onRestore(rule)}
                     >
-                      Restore
+                      {tAccounts('restore')}
                     </Button>
                   </div>
                 )

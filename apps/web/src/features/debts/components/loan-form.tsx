@@ -2,6 +2,9 @@
 
 import { type FormEvent, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
+import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import { CreateLoanSchema, isLiabilityAccountType, toMinorUnits } from '@plinto/shared'
 import { createAccount, type Account } from '../../accounts/services/accounts'
 import { recordLoan } from '../services/loans'
@@ -28,6 +31,9 @@ export interface LoanFormProps {
  * so creating it is part of this flow rather than a prerequisite.
  */
 export function LoanForm({ accounts, onSaved }: LoanFormProps) {
+  const t = useTranslations('debts.loanForm')
+  const toErrorMessage = useErrorMessage()
+  const toValidationMessage = useValidationMessage()
   const queryClient = useQueryClient()
 
   const lenders = useMemo(
@@ -79,7 +85,7 @@ export function LoanForm({ accounts, onSaved }: LoanFormProps) {
   const submitting = loanMutation.isPending || createLenderMutation.isPending
   const mutationError = loanMutation.error ?? createLenderMutation.error
   const error =
-    validationError ?? (mutationError instanceof Error ? mutationError.message : null)
+    validationError ?? toErrorMessage(mutationError)
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -117,7 +123,7 @@ export function LoanForm({ accounts, onSaved }: LoanFormProps) {
 
     const result = CreateLoanSchema.safeParse(payload)
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? 'Invalid loan')
+      setValidationError(toValidationMessage(result.error.issues[0]) ?? t('invalid'))
       return
     }
 
@@ -128,12 +134,10 @@ export function LoanForm({ accounts, onSaved }: LoanFormProps) {
     <form onSubmit={handleSubmit} className="drawer-form">
       <div className="stack">
         {destinations.length === 0 ? (
-          <p className="muted">
-            You need an account to receive the money before recording a loan.
-          </p>
+          <p className="muted">{t('needDestinationAccount')}</p>
         ) : null}
 
-        <Field label="Received into" htmlFor="loan-destination">
+        <Field label={t('receivedInto')} htmlFor="loan-destination">
           <Select
             id="loan-destination"
             value={destinationId}
@@ -148,7 +152,7 @@ export function LoanForm({ accounts, onSaved }: LoanFormProps) {
           </Select>
         </Field>
 
-        <Field label="Lender" htmlFor="loan-lender">
+        <Field label={t('lender')} htmlFor="loan-lender">
           <Select
             id="loan-lender"
             value={lenderId}
@@ -159,27 +163,27 @@ export function LoanForm({ accounts, onSaved }: LoanFormProps) {
                 {account.name} ({account.currency})
               </option>
             ))}
-            <option value={NEW_LENDER}>+ New lender…</option>
+            <option value={NEW_LENDER}>{t('newLender')}</option>
           </Select>
         </Field>
 
         {creatingLender ? (
           <Field
-            label="Lender name"
-            hint={currency ? `Tracked in ${currency}` : undefined}
+            label={t('lenderName')}
+            hint={currency ? t('trackedIn', { currency }) : undefined}
             htmlFor="loan-lender-name"
           >
             <Input
               id="loan-lender-name"
               value={newLenderName}
               onChange={(event) => setNewLenderName(event.target.value)}
-              placeholder="e.g. Lineru"
+              placeholder={t('lenderNamePlaceholder')}
               required
             />
           </Field>
         ) : null}
 
-        <Field label="Amount received" htmlFor="loan-amount">
+        <Field label={t('amountReceived')} htmlFor="loan-amount">
           <Input
             id="loan-amount"
             type="number"
@@ -191,16 +195,16 @@ export function LoanForm({ accounts, onSaved }: LoanFormProps) {
           />
         </Field>
 
-        <Field label="Description" hint="Optional" htmlFor="loan-description">
+        <Field label={t('description')} hint={t('optional')} htmlFor="loan-description">
           <Input
             id="loan-description"
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="e.g. Anticipo de nómina"
+            placeholder={t('descriptionPlaceholder')}
           />
         </Field>
 
-        <Field label="Date" hint="Optional" htmlFor="loan-date">
+        <Field label={t('date')} hint={t('optional')} htmlFor="loan-date">
           <Input
             id="loan-date"
             type="date"
@@ -209,17 +213,14 @@ export function LoanForm({ accounts, onSaved }: LoanFormProps) {
           />
         </Field>
 
-        <p className="muted">
-          This is not income. The money arrives in your account and the same
-          amount appears as owed to the lender.
-        </p>
+        <p className="muted">{t('notIncomeNote')}</p>
 
         {error ? <p className="error-text">{error}</p> : null}
       </div>
 
       <div className="drawer-form-actions">
         <Button type="submit" block disabled={submitting || destinations.length === 0}>
-          {submitting ? 'Recording…' : 'Record loan'}
+          {submitting ? t('recording') : t('recordLoan')}
         </Button>
       </div>
     </form>

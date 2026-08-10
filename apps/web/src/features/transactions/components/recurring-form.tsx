@@ -2,6 +2,9 @@
 
 import { type FormEvent, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
+import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import {
   CreateRecurringTransactionRuleSchema,
   UpdateRecurringTransactionRuleSchema,
@@ -20,10 +23,8 @@ import { Field, Input, Select } from '../../../components/ui/field'
 import { Repeat } from '../../../components/ui/icons'
 import { amountInputStep } from '../../../components/ui/amount'
 
-const recurringTypeOptions: Array<{ value: TransactionType; label: string }> = [
-  { value: 'income', label: 'Income' },
-  { value: 'expense', label: 'Expense' },
-]
+/** Order only; labels come from `transactions.income` / `transactions.expense`. */
+const RECURRING_TYPES: TransactionType[] = ['income', 'expense']
 
 /** Converts a date-only input (YYYY-MM-DD) to a UTC-midnight ISO instant.
  * Returns an empty string (rather than throwing) for an empty or invalid
@@ -49,6 +50,11 @@ export interface RecurringFormProps {
 }
 
 export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFormProps) {
+  const t = useTranslations('transactions.recurringForm')
+  const tTx = useTranslations('transactions')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
+  const toValidationMessage = useValidationMessage()
   const [name, setName] = useState(editing?.name ?? '')
   const [accountId, setAccountId] = useState(editing?.accountId ?? accounts[0]?.id ?? '')
   const [type, setType] = useState<TransactionType>(editing?.type ?? 'expense')
@@ -89,7 +95,7 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
   const submitting = createMutation.isPending || updateMutation.isPending
   const mutationError = createMutation.error ?? updateMutation.error
   const error =
-    validationError ?? (mutationError instanceof Error ? mutationError.message : null)
+    validationError ?? toErrorMessage(mutationError)
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -110,7 +116,7 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
 
       const result = UpdateRecurringTransactionRuleSchema.safeParse(payload)
       if (!result.success) {
-        setValidationError(result.error.issues[0]?.message ?? 'Invalid recurring rule')
+        setValidationError(toValidationMessage(result.error.issues[0]) ?? t('invalid'))
         return
       }
 
@@ -130,7 +136,7 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
 
     const result = CreateRecurringTransactionRuleSchema.safeParse(payload)
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? 'Invalid recurring rule')
+      setValidationError(toValidationMessage(result.error.issues[0]) ?? t('invalid'))
       return
     }
 
@@ -141,7 +147,7 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
   return (
     <form onSubmit={handleSubmit} className="drawer-form">
       <div className="stack">
-        <Field label="Name" htmlFor="recurring-name">
+        <Field label={t('name')} htmlFor="recurring-name">
           <Input
             id="recurring-name"
             value={name}
@@ -155,7 +161,7 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
             already posted are transactions carrying those exact values. */}
         {!editing ? (
           <div className="form-grid">
-            <Field label="Account" htmlFor="recurring-account">
+            <Field label={t('account')} htmlFor="recurring-account">
               <Select
                 id="recurring-account"
                 value={accountId}
@@ -169,15 +175,15 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
                 ))}
               </Select>
             </Field>
-            <Field label="Type" htmlFor="recurring-type">
+            <Field label={t('type')} htmlFor="recurring-type">
               <Select
                 id="recurring-type"
                 value={type}
                 onChange={(event) => setType(event.target.value as TransactionType)}
               >
-                {recurringTypeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
+                {RECURRING_TYPES.map((value) => (
+                  <option key={value} value={value}>
+                    {tTx(value)}
                   </option>
                 ))}
               </Select>
@@ -186,7 +192,7 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
         ) : null}
 
         <div className="form-grid">
-          <Field label="Amount" htmlFor="recurring-amount">
+          <Field label={t('amount')} htmlFor="recurring-amount">
             <Input
               id="recurring-amount"
               type="number"
@@ -198,7 +204,7 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
               required
             />
           </Field>
-          <Field label="Day of month" hint="1–28" htmlFor="recurring-day">
+          <Field label={t('dayOfMonth')} hint={t('dayOfMonthHint')} htmlFor="recurring-day">
             <Input
               id="recurring-day"
               type="number"
@@ -212,7 +218,7 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
           </Field>
         </div>
 
-        <Field label="Start date" htmlFor="recurring-start">
+        <Field label={t('startDate')} htmlFor="recurring-start">
           <Input
             id="recurring-start"
             type="date"
@@ -232,7 +238,11 @@ export function RecurringForm({ accounts, editing = null, onSaved }: RecurringFo
           leftIcon={<Repeat size={16} />}
           disabled={submitting || !accountId}
         >
-          {submitting ? 'Saving…' : editing ? 'Save changes' : 'Create monthly rule'}
+          {submitting
+            ? tCommon('saving')
+            : editing
+              ? t('saveChanges')
+              : t('createRule')}
         </Button>
       </div>
     </form>

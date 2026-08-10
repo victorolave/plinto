@@ -1,6 +1,8 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import type { ObligationCurrencyTotal } from '../services/obligations'
+import { StatGridSkeleton } from '../../../components/ui/stat-grid-skeleton'
 import { CurrencyTag } from '../../../components/ui/amount'
 import { Amount } from '../../../components/ui/amount'
 
@@ -19,17 +21,11 @@ export interface ObligationSummaryProps {
  * minus paid, which is the same trap the aggregate avoids in SQL.
  */
 export function ObligationSummary({ totals, loading }: ObligationSummaryProps) {
+  const t = useTranslations('obligations')
+
   if (loading) {
-    return (
-      <div className="stat-grid" role="status" aria-label="Loading period totals">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="stat-card" aria-hidden="true">
-            <span className="skeleton skeleton-line" style={{ width: 72, height: 11 }} />
-            <span className="skeleton skeleton-line" style={{ width: 130, height: 22 }} />
-          </div>
-        ))}
-      </div>
-    )
+    // Was a hand-rolled copy of the same three tiles; shares the component now.
+    return <StatGridSkeleton cards={3} label={t('loadingTotals')} />
   }
 
   if (totals.length === 0) {
@@ -40,10 +36,14 @@ export function ObligationSummary({ totals, loading }: ObligationSummaryProps) {
     <>
       {totals.map((total) => (
         <div className="stat-grid" key={total.currency}>
-          <Figure label="Total" minor={total.expectedMinor} currency={total.currency} />
-          <Figure label="Paid" minor={total.paidMinor} currency={total.currency} />
           <Figure
-            label="Outstanding"
+            label={t('total')}
+            minor={total.expectedMinor}
+            currency={total.currency}
+          />
+          <Figure label={t('paid')} minor={total.paidMinor} currency={total.currency} />
+          <Figure
+            label={t('outstanding')}
             minor={total.outstandingMinor}
             currency={total.currency}
             // The figure that answers "do we make it to the end of the month?"

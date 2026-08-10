@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { isLiabilityAccountType } from '@plinto/shared'
 import type { Account } from '../services/accounts'
 import type { AccountBalance } from '../../transactions/services/transactions'
@@ -25,6 +26,8 @@ export function AccountGroup({
   onArchive,
   onAddAccount,
 }: AccountGroupProps) {
+  const t = useTranslations('accounts')
+
   // Assets only, for the same reason the dashboard splits them: a section
   // total that quietly nets a debt account against a bank account stops being
   // the number somebody came here to read.
@@ -48,17 +51,15 @@ export function AccountGroup({
     <section>
       <div className="section-head">
         <CurrencyTag currency={currency} />
-        <h2 className="card-title">
-          {accounts.length} account{accounts.length > 1 ? 's' : ''}
-        </h2>
+        <h2 className="card-title">{t('accountCount', { count: accounts.length })}</h2>
         <div className="section-total">
           <span className="plinto-eyebrow">
-            {owed > 0 ? `Held in ${currency}` : `Total in ${currency}`}
+            {owed > 0 ? t('heldIn', { currency }) : t('totalIn', { currency })}
           </span>
           <Amount minor={total} currency={currency} size="lg" />
           {owed > 0 ? (
             <span className="muted" style={{ fontSize: 12 }}>
-              <Amount minor={owed} currency={currency} size="sm" /> owed
+              <Amount minor={owed} currency={currency} size="sm" /> {t('owed')}
             </span>
           ) : null}
         </div>
@@ -79,7 +80,7 @@ export function AccountGroup({
           <span className="account-add-icon">
             <Plus size={20} />
           </span>
-          Add account
+          {t('addAccount')}
         </button>
       </div>
     </section>

@@ -1,4 +1,5 @@
 import type { Transaction, TransactionType } from '../services/transactions'
+import { FALLBACK_FORMATTING_LOCALE } from '../../../i18n/config'
 
 export interface TransactionCreateInput {
   accountId: string
@@ -45,12 +46,18 @@ export function buildTransactionUpdateInput(
   return result
 }
 
-export function formatOccurredAtDate(occurredAt: string): string {
+export function formatOccurredAtDate(
+  occurredAt: string,
+  locale: string = FALLBACK_FORMATTING_LOCALE,
+): string {
   if (!occurredAt) return ''
   // occurredAt is stored as a UTC instant; date-only inputs are persisted at UTC
   // midnight. Render the UTC calendar date so the displayed day matches the date
   // the user picked, avoiding a local-timezone off-by-one (issue #6).
-  return new Date(occurredAt).toLocaleDateString(undefined, { timeZone: 'UTC' })
+  //
+  // `locale` is explicit for the same reason the timezone is: leaving either to
+  // the runtime makes the server and the browser disagree about the string.
+  return new Date(occurredAt).toLocaleDateString(locale, { timeZone: 'UTC' })
 }
 
 export function isAutomaticRecurringTransaction(
@@ -69,7 +76,9 @@ export function toOccurredAtIso(value: string): string | undefined {
   return new Date(`${value}T00:00:00.000Z`).toISOString()
 }
 
-export const transactionTypeOptions: Array<{ value: TransactionType; label: string }> = [
-  { value: 'income', label: 'Income' },
-  { value: 'expense', label: 'Expense' },
-]
+/**
+ * The order income/expense are offered in. Labels come from the catalogue
+ * (`transactions.income` / `transactions.expense`) — this module is not a React
+ * component and cannot translate, so it carries the values, not the words.
+ */
+export const TRANSACTION_TYPES: TransactionType[] = ['income', 'expense']
