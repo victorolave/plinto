@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { AccountTypeSchema } from './account.schema'
-import { VALIDATION_CODE, validationParams } from './validation-code'
+import { VALIDATION_CODE, validationIssue } from './validation-code'
 
 export const TransactionTypeSchema = z.enum(['income', 'expense'])
 export const TransactionSourceSchema = z.enum(['manual', 'job'])
@@ -39,10 +39,10 @@ export const UpdateTransactionSchema = z.object({
   description: z.string().trim().min(1).nullable().optional(),
   occurredAt: z.string().datetime().optional(),
   categoryId: z.string().nullable().optional(),
-}).refine((value) => Object.values(value).some((field) => field !== undefined), {
-  message: 'At least one field must be provided',
-  params: validationParams(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
-})
+}).refine(
+  (value) => Object.values(value).some((field) => field !== undefined),
+  validationIssue(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
+)
 
 export const AccountBalanceSchema = z.object({
   accountId: z.string(),
@@ -66,11 +66,10 @@ export const CreateTransferSchema = z.object({
   feeMinor: z.number().int().nonnegative().optional(),
   description: z.string().trim().min(1).optional(),
   occurredAt: z.string().datetime().optional(),
-}).refine((value) => value.sourceAccountId !== value.destinationAccountId, {
-  message: 'Source and destination accounts must differ',
-  path: ['destinationAccountId'],
-  params: validationParams(VALIDATION_CODE.ACCOUNTS_MUST_DIFFER),
-})
+}).refine(
+  (value) => value.sourceAccountId !== value.destinationAccountId,
+  validationIssue(VALIDATION_CODE.ACCOUNTS_MUST_DIFFER, ['destinationAccountId']),
+)
 
 export const TransferSchema = z.object({
   id: z.string(),
