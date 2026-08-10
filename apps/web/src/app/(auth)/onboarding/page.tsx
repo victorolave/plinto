@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { OnboardingForm } from '../../../features/auth/components/onboarding-form'
 import { AuthLayout } from '../../../components/layout/auth-layout'
 import { fetchCurrentUser } from '../../../lib/auth/server-session'
@@ -20,12 +21,10 @@ async function redirectIfOnboarded() {
 export default async function OnboardingPage() {
   await redirectIfOnboarded()
 
+  const t = await getTranslations('onboarding')
+
   return (
-    <AuthLayout
-      eyebrow="Get started"
-      title="Complete your profile"
-      subtitle="Tell us your name and set up your first household."
-    >
+    <AuthLayout eyebrow={t('eyebrow')} title={t('title')} subtitle={t('subtitle')}>
       <OnboardingForm />
     </AuthLayout>
   )

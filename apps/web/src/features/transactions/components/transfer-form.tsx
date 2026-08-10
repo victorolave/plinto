@@ -2,6 +2,10 @@
 
 import { type FormEvent, useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useFormattingLocale } from '../../../i18n/formatting'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
+import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import { CreateTransferSchema, toMajorUnitsString, toMinorUnits } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import { createTransfer } from '../services/transactions'
@@ -18,6 +22,11 @@ export interface TransferFormProps {
 }
 
 export function TransferForm({ accounts, onSaved }: TransferFormProps) {
+  const t = useTranslations('transactions.transferForm')
+  const tTx = useTranslations('transactions')
+  const toErrorMessage = useErrorMessage()
+  const toValidationMessage = useValidationMessage()
+  const locale = useFormattingLocale()
   const [sourceAccountId, setSourceAccountId] = useState(accounts[0]?.id ?? '')
   const [destAccountId, setDestAccountId] = useState(
     (accounts[1] ?? accounts[0])?.id ?? '',
@@ -38,9 +47,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
   })
 
   const submitting = transferMutation.isPending
-  const error =
-    validationError ??
-    (transferMutation.error instanceof Error ? transferMutation.error.message : null)
+  const error = validationError ?? toErrorMessage(transferMutation.error)
 
   const sourceAccount = accounts.find((a) => a.id === sourceAccountId)
   const destAccount = accounts.find((a) => a.id === destAccountId)
@@ -64,7 +71,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
     event.preventDefault()
 
     if (!sourceAccountId || !destAccountId) {
-      setValidationError('Select both source and destination accounts')
+      setValidationError(t('selectBothAccounts'))
       return
     }
 
@@ -99,7 +106,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
 
     const result = CreateTransferSchema.safeParse(payload)
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? 'Invalid transfer')
+      setValidationError(toValidationMessage(result.error.issues[0]) ?? t('invalid'))
       return
     }
 
@@ -117,7 +124,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
           <p className="muted">You need at least two accounts to transfer.</p>
         ) : null}
 
-        <Field label="From account" htmlFor="transfer-from">
+        <Field label={t('fromAccount')} htmlFor="transfer-from">
           <Select
             id="transfer-from"
             value={sourceAccountId}
@@ -132,7 +139,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
           </Select>
         </Field>
 
-        <Field label="To account" htmlFor="transfer-to">
+        <Field label={t('toAccount')} htmlFor="transfer-to">
           <Select
             id="transfer-to"
             value={destAccountId}
@@ -150,8 +157,10 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
         <Field
           label={
             isCrossCurrency
-              ? `Amount (${sourceAccount?.currency ?? 'source'})`
-              : 'Amount'
+              ? t('amountIn', {
+                  currency: sourceAccount?.currency ?? t('sourceFallback'),
+                })
+              : t('amount')
           }
           htmlFor="transfer-amount"
         >
@@ -170,7 +179,9 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
         {isCrossCurrency ? (
           <>
             <Field
-              label={`Destination amount (${destAccount?.currency ?? 'destination'})`}
+              label={t('destinationAmountIn', {
+                currency: destAccount?.currency ?? t('destinationFallback'),
+              })}
               htmlFor="transfer-dest-amount"
             >
               <Input
@@ -184,29 +195,38 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
                 required
               />
             </Field>
-            <Field label="FX rate" htmlFor="transfer-fx">
+            <Field label={t('fxRate')} htmlFor="transfer-fx">
               <Input
                 id="transfer-fx"
                 type="text"
                 value={fxRate}
                 onChange={(event) => setFxRate(event.target.value)}
-                placeholder="e.g. 4200.00"
+                placeholder={t('fxRatePlaceholder')}
                 required
               />
             </Field>
             {amount && destAmount && fxRate ? (
               <p className="muted">
-                {formatMoneyMagnitude(toMinorUnits(amount, sourceCurrency), sourceCurrency)}{' '}
-                → {formatMoneyMagnitude(
-                  toMinorUnits(destAmount, destinationCurrency),
-                  destinationCurrency,
-                )}{' '}
-                at rate {fxRate}
+                {t('conversionPreview', {
+                  from: formatMoneyMagnitude(
+                    toMinorUnits(amount, sourceCurrency),
+                    sourceCurrency,
+                    locale,
+                  ),
+                  to: formatMoneyMagnitude(
+                    toMinorUnits(destAmount, destinationCurrency),
+                    destinationCurrency,
+                    locale,
+                  ),
+                  rate: fxRate,
+                })}
               </p>
             ) : null}
             <Field
-              label="Fee"
-              hint={`Optional, in ${sourceCurrency || 'the source currency'}`}
+              label={t('fee')}
+              hint={t('feeHint', {
+                currency: sourceCurrency || t('theSourceCurrency'),
+              })}
               htmlFor="transfer-fee"
             >
               <Input
@@ -222,7 +242,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
           </>
         ) : null}
 
-        <Field label="Description" hint="Optional" htmlFor="transfer-description">
+        <Field label={t('description')} hint={tTx('form.optional')} htmlFor="transfer-description">
           <Input
             id="transfer-description"
             value={description}
@@ -230,7 +250,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
           />
         </Field>
 
-        <Field label="Date" hint="Optional" htmlFor="transfer-date">
+        <Field label={t('date')} hint={tTx('form.optional')} htmlFor="transfer-date">
           <Input
             id="transfer-date"
             type="date"
@@ -249,7 +269,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
           leftIcon={<ArrowSwap size={16} />}
           disabled={!canSubmit}
         >
-          {submitting ? 'Transferring…' : 'Transfer'}
+          {submitting ? t('transferring') : t('transfer')}
         </Button>
       </div>
     </form>

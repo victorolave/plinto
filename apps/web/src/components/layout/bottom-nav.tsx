@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { ComponentType } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   TrendDown,
   Card,
@@ -26,26 +27,31 @@ import { useDashboard } from './dashboard-context'
 
 interface BarEntry {
   id: DashboardSection
-  label: string
+  /**
+   * Key in the `nav` namespace. Usually the same as `id`, but the bar calls the
+   * overview "Home" where the sidebar calls it "Dashboard" — so the label key
+   * has to be able to diverge from the section id.
+   */
+  labelKey: string
   icon: ComponentType<IconProps>
 }
 
 /** Sections shown directly in the bottom bar (flanking the central add button). */
 const PRIMARY: BarEntry[] = [
-  { id: 'overview', label: 'Home', icon: Home },
-  { id: 'accounts', label: 'Accounts', icon: Wallet },
+  { id: 'overview', labelKey: 'home', icon: Home },
+  { id: 'accounts', labelKey: 'accounts', icon: Wallet },
 ]
 const SECONDARY: BarEntry[] = [
-  { id: 'transactions', label: 'Transactions', icon: List },
+  { id: 'transactions', labelKey: 'transactions', icon: List },
 ]
 
 /** Sections that live inside the "More" sheet (everything not in the bar). */
 const MORE_SECTIONS: BarEntry[] = [
-  { id: 'obligations', label: 'Obligations', icon: Target },
-  { id: 'debts', label: 'Debts', icon: TrendDown },
-  { id: 'credit', label: 'Credit', icon: Card },
-  { id: 'categories', label: 'Categories', icon: Tag },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'obligations', labelKey: 'obligations', icon: Target },
+  { id: 'debts', labelKey: 'debts', icon: TrendDown },
+  { id: 'credit', labelKey: 'credit', icon: Card },
+  { id: 'categories', labelKey: 'categories', icon: Tag },
+  { id: 'settings', labelKey: 'settings', icon: Settings },
 ]
 
 export interface BottomNavProps {
@@ -53,6 +59,7 @@ export interface BottomNavProps {
 }
 
 function BarLink({ entry, active }: { entry: BarEntry; active: DashboardSection }) {
+  const t = useTranslations('nav')
   const Icon = entry.icon
   const isActive = entry.id === active
   return (
@@ -62,7 +69,7 @@ function BarLink({ entry, active }: { entry: BarEntry; active: DashboardSection 
       aria-current={isActive ? 'page' : undefined}
     >
       <Icon size={21} stroke={isActive ? 2.3 : 2} />
-      <span>{entry.label}</span>
+      <span>{t(entry.labelKey)}</span>
     </Link>
   )
 }
@@ -73,6 +80,9 @@ function BarLink({ entry, active }: { entry: BarEntry; active: DashboardSection 
 export function BottomNav({ onAdd }: BottomNavProps) {
   const { tenants, activeTenantId, onSelectTenant, user, onLogout, loggingOut } =
     useDashboard()
+  const t = useTranslations('nav')
+  const tShell = useTranslations('shell')
+  const tCommon = useTranslations('common')
   const [moreOpen, setMoreOpen] = useState(false)
   const active = sectionFromPath(usePathname() ?? '')
 
@@ -96,7 +106,7 @@ export function BottomNav({ onAdd }: BottomNavProps) {
 
   return (
     <>
-      <nav className="bottom-nav" aria-label="Primary">
+      <nav className="bottom-nav" aria-label={t('primary')}>
         {PRIMARY.map((entry) => (
           <BarLink key={entry.id} entry={entry} active={active} />
         ))}
@@ -108,7 +118,7 @@ export function BottomNav({ onAdd }: BottomNavProps) {
             setMoreOpen(false)
             onAdd()
           }}
-          aria-label="Add transaction"
+          aria-label={tShell('addTransaction')}
         >
           <Plus size={24} stroke={2.4} />
         </button>
@@ -125,7 +135,7 @@ export function BottomNav({ onAdd }: BottomNavProps) {
           onClick={() => setMoreOpen((v) => !v)}
         >
           <Menu size={21} stroke={moreActive ? 2.3 : 2} />
-          <span>More</span>
+          <span>{t('more')}</span>
         </button>
       </nav>
 
@@ -138,7 +148,7 @@ export function BottomNav({ onAdd }: BottomNavProps) {
           <div
             className="more-sheet"
             role="dialog"
-            aria-label="More"
+            aria-label={t('more')}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="more-sheet-handle" aria-hidden="true" />
@@ -152,7 +162,7 @@ export function BottomNav({ onAdd }: BottomNavProps) {
               <button
                 type="button"
                 className="more-sheet-close"
-                aria-label="Close"
+                aria-label={tCommon('close')}
                 onClick={() => setMoreOpen(false)}
               >
                 <X size={18} />
@@ -181,7 +191,7 @@ export function BottomNav({ onAdd }: BottomNavProps) {
                     onClick={() => setMoreOpen(false)}
                   >
                     <Icon size={20} stroke={isActive ? 2.3 : 2} />
-                    {entry.label}
+                    {t(entry.labelKey)}
                   </Link>
                 )
               })}
@@ -194,7 +204,7 @@ export function BottomNav({ onAdd }: BottomNavProps) {
               disabled={loggingOut}
             >
               <LogOut size={18} />
-              {loggingOut ? 'Logging out…' : 'Log out'}
+              {loggingOut ? tShell('loggingOut') : tShell('logOut')}
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import type { ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface AuthLayoutProps {
   /** Small uppercase label above the title. */
@@ -20,6 +21,12 @@ interface AuthLayoutProps {
  * owns the structure so every flow stays consistent.
  */
 export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutProps) {
+  // `useTranslations` rather than the async `getTranslations`: this layout is
+  // rendered both from Server Components (not-found, login) and from Client
+  // Components (error.tsx, which must be `'use client'` to receive `reset`).
+  // An async component cannot be rendered from a client boundary.
+  const t = useTranslations('authLayout')
+
   return (
     <main className="auth-shell">
       <aside className="auth-brand-panel">
@@ -40,11 +47,8 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
             priority
           />
           <div className="auth-brand-pitch">
-            <p className="auth-tagline">Household finances, made simple.</p>
-            <p className="auth-brand-sub">
-              Track accounts, transactions and categories across every household
-              you manage — in one place.
-            </p>
+            <p className="auth-tagline">{t('tagline')}</p>
+            <p className="auth-brand-sub">{t('pitch')}</p>
           </div>
         </div>
       </aside>
@@ -60,9 +64,9 @@ export function AuthLayout({ eyebrow, title, subtitle, children }: AuthLayoutPro
         </div>
 
         <footer className="auth-footer">
-          <a href="mailto:support@plinto.app">Need help?</a>
+          <a href="mailto:support@plinto.app">{t('needHelp')}</a>
           <span aria-hidden="true">·</span>
-          <a href="/terms">Terms</a>
+          <a href="/terms">{t('terms')}</a>
         </footer>
       </section>
     </main>

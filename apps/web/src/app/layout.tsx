@@ -1,46 +1,53 @@
 import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
-import { Inter, Montserrat, Roboto_Mono } from 'next/font/google'
+import { Archivo, DM_Mono } from 'next/font/google'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages, getTranslations } from 'next-intl/server'
 import { QueryProvider } from '../components/providers/query-provider'
 import '../styles/globals.css'
 
-// Inter — product UI, body & data (the SaaS-native workhorse).
-const inter = Inter({
+// Archivo carries the whole interface — display, running heads and body
+// alike. A Swiss system does not need a second voice to make hierarchy;
+// size and tracking do that work.
+const archivo = Archivo({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-archivo',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
 })
 
-// Montserrat — geometric, heavy display & brand, matching the wordmark.
-const montserrat = Montserrat({
+// DM Mono sets figures and the 12px caps labels. Tabular digits are what
+// make a column of amounts read as a column.
+const dmMono = DM_Mono({
   subsets: ['latin'],
-  variable: '--font-montserrat',
+  variable: '--font-dm-mono',
   display: 'swap',
-  weight: ['600', '700', '800'],
+  weight: ['400', '500'],
 })
 
-// Roboto Mono — tabular figures so money amounts align.
-const robotoMono = Roboto_Mono({
-  subsets: ['latin'],
-  variable: '--font-roboto-mono',
-  display: 'swap',
-  weight: ['400', '500', '600'],
-})
-
-export const metadata: Metadata = {
-  title: 'Plinto',
-  description: 'Everything your family spends, in one calm place.',
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('app')
+  return {
+    title: t('name'),
+    description: t('description'),
+  }
 }
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = await getLocale()
+
+  // The whole message catalogue is handed to the client provider. Plinto's two
+  // catalogues are small and every route is behind the same authenticated
+  // shell, so splitting them per-route would add build complexity to save a few
+  // kilobytes on a screen the user has already authenticated to reach.
+  const messages = await getMessages()
+
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${montserrat.variable} ${robotoMono.variable}`}
-    >
+    <html lang={locale} className={`${archivo.variable} ${dmMono.variable}`}>
       <body>
-        <QueryProvider>{children}</QueryProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <QueryProvider>{children}</QueryProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

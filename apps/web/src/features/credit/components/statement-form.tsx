@@ -2,6 +2,10 @@
 
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
+import { useValidationMessage } from '../../../lib/api/use-validation-message'
+import { useFormattingLocale } from '../../../i18n/formatting'
 import {
   CreateCreditLineStatementSchema,
   UpdateCreditLineStatementSchema,
@@ -46,6 +50,12 @@ const toDateInput = (iso: string): string => iso.slice(0, 10)
  * would move the obligation between months.
  */
 export function StatementForm({ line, statement, onSaved }: StatementFormProps) {
+  const t = useTranslations('credit.statementForm')
+  const tCommon = useTranslations('common')
+  const tValidation = useTranslations('validation')
+  const toErrorMessage = useErrorMessage()
+  const toValidationMessage = useValidationMessage()
+  const locale = useFormattingLocale()
   const queryClient = useQueryClient()
   const editing = statement !== undefined
 
@@ -110,9 +120,7 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
   })
 
   const submitting = saveMutation.isPending
-  const error =
-    validationError ??
-    (saveMutation.error instanceof Error ? saveMutation.error.message : null)
+  const error = validationError ?? toErrorMessage(saveMutation.error)
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -135,7 +143,7 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
       : CreateCreditLineStatementSchema.safeParse(payload)
 
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? 'Invalid statement')
+      setValidationError(toValidationMessage(result.error.issues[0]) ?? t('invalid'))
       return
     }
 
@@ -143,7 +151,9 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
     // cannot, since either field may arrive alone. Checked here so the message
     // appears beside the inputs rather than as a 422 from the server.
     if (payload.amountDueMinor > payload.closingBalanceMinor) {
-      setValidationError('The amount due cannot exceed the closing balance')
+      // Same wording the shared schema raises for the create path, so both
+      // routes into this rule read identically to the user.
+      setValidationError(tValidation('dueWithinBalance'))
       return
     }
 
@@ -156,8 +166,8 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
       <div className="stack">
         <div className="form-grid">
           <Field
-            label="Statement date"
-            hint={editing ? 'Fixed — it decides which month this belongs to' : undefined}
+            label={t('statementDate')}
+            hint={editing ? t('statementDateFixedHint') : undefined}
             htmlFor="statement-cutoff"
           >
             <Input
@@ -169,7 +179,7 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
               required
             />
           </Field>
-          <Field label="Payment due" htmlFor="statement-due">
+          <Field label={t('paymentDue')} htmlFor="statement-due">
             <Input
               id="statement-due"
               type="date"
@@ -181,8 +191,8 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
         </div>
 
         <Field
-          label="Total owed"
-          hint="The full balance on the statement, not just this month's payment"
+          label={t('totalOwed')}
+          hint={t('totalOwedHint')}
           htmlFor="statement-balance"
         >
           <Input
@@ -196,7 +206,7 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
           />
         </Field>
 
-        <Field label="To pay this month" htmlFor="statement-due-amount">
+        <Field label={t('toPayThisMonth')} htmlFor="statement-due-amount">
           <Input
             id="statement-due-amount"
             type="number"
@@ -210,33 +220,20 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
 
         {availablePreview !== null && closingBalance !== '' ? (
           <p className="muted">
-            {availablePreview >= 0 ? (
-              <>
-                Leaves{' '}
-                <strong style={{ color: 'var(--text-strong)' }}>
-                  {formatMoneyMagnitude(availablePreview, line.currency)}
-                </strong>{' '}
-                available on this line.
-              </>
-            ) : (
-              <>
-                That is{' '}
-                <strong style={{ color: 'var(--text-strong)' }}>
-                  {formatMoneyMagnitude(-availablePreview, line.currency)}
-                </strong>{' '}
-                over your limit — recorded as it is, not refused.
-              </>
-            )}
+            {t.rich(availablePreview >= 0 ? 'leavesAvailable' : 'overLimit', {
+              amount: formatMoneyMagnitude(
+                Math.abs(availablePreview),
+                line.currency,
+                locale,
+              ),
+              strong: (chunks) => (
+                <strong style={{ color: 'var(--text-strong)' }}>{chunks}</strong>
+              ),
+            })}
           </p>
         ) : null}
 
-        {editing ? (
-          <p className="muted">
-            The payment on the obligations board changes with it. It cannot go
-            below what you have already paid against this statement — undo the
-            payment first if the issuer really lowered it after you paid.
-          </p>
-        ) : null}
+        {editing ? <p className="muted">{t('editingNote')}</p> : null}
 
         {error ? <p className="error-text">{error}</p> : null}
       </div>
@@ -244,10 +241,10 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
       <div className="drawer-form-actions">
         <Button type="submit" block disabled={submitting}>
           {submitting
-            ? 'Saving…'
+            ? tCommon('saving')
             : editing
-              ? 'Save changes'
-              : 'Save statement'}
+              ? t('saveChanges')
+              : t('saveStatement')}
         </Button>
       </div>
     </form>

@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import type { ComponentType } from 'react'
 import {
   TrendDown,
@@ -26,21 +27,24 @@ export type { DashboardSection } from './dashboard-nav'
 
 interface NavEntry {
   id: DashboardSection
-  label: string
   icon: ComponentType<IconProps>
 }
 
+// The label is no longer stored here — it is looked up from the `nav` namespace
+// by `id` at render time. Keeping a string in this table would mean the nav
+// froze into whatever language the module was authored in.
 const NAV: NavEntry[] = [
-  { id: 'overview', label: 'Dashboard', icon: Home },
-  { id: 'accounts', label: 'Accounts', icon: Wallet },
-  { id: 'transactions', label: 'Transactions', icon: List },
-  { id: 'obligations', label: 'Obligations', icon: Target },
-  { id: 'debts', label: 'Debts', icon: TrendDown },
-  { id: 'credit', label: 'Credit', icon: Card },
-  { id: 'categories', label: 'Categories', icon: Tag },
+  { id: 'overview', icon: Home },
+  { id: 'accounts', icon: Wallet },
+  { id: 'transactions', icon: List },
+  { id: 'obligations', icon: Target },
+  { id: 'debts', icon: TrendDown },
+  { id: 'credit', icon: Card },
+  { id: 'categories', icon: Tag },
 ]
 
 function NavItem({ entry, active }: { entry: NavEntry; active: DashboardSection }) {
+  const t = useTranslations('nav')
   const Icon = entry.icon
   const isActive = entry.id === active
   return (
@@ -51,7 +55,7 @@ function NavItem({ entry, active }: { entry: NavEntry; active: DashboardSection 
     >
       <span className="nav-item-marker" />
       <Icon size={19} stroke={isActive ? 2.2 : 2} />
-      {entry.label}
+      {t(entry.id)}
     </Link>
   )
 }
@@ -62,15 +66,20 @@ function NavItem({ entry, active }: { entry: NavEntry; active: DashboardSection 
 export function Sidebar() {
   const { tenants, activeTenantId, onSelectTenant, user, onLogout, loggingOut } =
     useDashboard()
+  const t = useTranslations('nav')
+  const tShell = useTranslations('shell')
   const active = sectionFromPath(usePathname() ?? '')
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
+        {/* 92×28 is the rendered size at the file's own 3.27:1. The previous
+            104×18 was 5.78:1, so the box Next reserved never matched the
+            bitmap and the layout shifted once the image decoded. */}
         <Image
           src="/brand/logo-horizontal-white.png"
           alt="Plinto"
-          width={104}
-          height={18}
+          width={92}
+          height={28}
           priority
         />
       </div>
@@ -95,7 +104,7 @@ export function Sidebar() {
         >
           <span className="nav-item-marker" />
           <Settings size={19} />
-          Settings
+          {t('settings')}
         </Link>
 
         <div className="sidebar-user">
@@ -105,7 +114,7 @@ export function Sidebar() {
             {user.email ? <div className="sidebar-user-email">{user.email}</div> : null}
           </div>
           <IconButton
-            label="Log out"
+            label={tShell('logOut')}
             onClick={onLogout}
             disabled={loggingOut}
             style={{
@@ -113,7 +122,7 @@ export function Sidebar() {
               height: 28,
               background: 'transparent',
               border: 'none',
-              color: 'var(--ink-text-subtle)',
+              color: 'var(--chrome-text-subtle)',
             }}
           >
             <LogOut size={16} />

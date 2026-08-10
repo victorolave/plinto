@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { IconButton } from './button'
 import { MoreVertical } from './icons'
 
@@ -14,11 +15,13 @@ export interface ActionMenuItem {
 /** Reusable kebab (⋮) dropdown of row/card actions. Closes on outside click and Escape. */
 export function ActionsMenu({
   items,
-  label = 'Actions',
+  label,
 }: {
   items: ActionMenuItem[]
+  /** Accessible name for the trigger. Defaults to a localised "Actions". */
   label?: string
 }) {
+  const t = useTranslations('common')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -43,7 +46,7 @@ export function ActionsMenu({
   return (
     <div className="actions-menu" ref={ref}>
       <IconButton
-        label={label}
+        label={label ?? t('actions')}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}

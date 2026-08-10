@@ -1,5 +1,9 @@
+'use client'
+
 import type { ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { formatMoneyMagnitude } from './amount'
+import { useFormattingLocale } from '../../i18n/formatting'
 import { TrendUp, TrendDown } from './icons'
 
 export interface StatCardProps {
@@ -25,6 +29,11 @@ export function StatCard({
   accent = false,
   icon,
 }: StatCardProps) {
+  const t = useTranslations('statCard')
+  // Without this the headline figure fell back to the default formatting
+  // locale while every other amount on the same screen followed the request's
+  // — a stat tile reading `$ 4.560.000` above a row reading `COP 4,560,000`.
+  const locale = useFormattingLocale()
   const hasDelta = typeof delta === 'number' && delta !== 0
   const up = (delta ?? 0) > 0
 
@@ -34,7 +43,9 @@ export function StatCard({
         {icon ? <span className="stat-icon">{icon}</span> : null}
         <span className="stat-label">{label}</span>
       </div>
-      <span className="stat-value">{formatMoneyMagnitude(valueMinor, currency)}</span>
+      <span className="stat-value">
+        {formatMoneyMagnitude(valueMinor, currency, locale)}
+      </span>
       {deltaLabel || hasDelta ? (
         <span
           className={`stat-delta ${
@@ -42,7 +53,11 @@ export function StatCard({
           }`}
         >
           {hasDelta ? (up ? <TrendUp size={13} /> : <TrendDown size={13} />) : null}
-          {deltaLabel ?? `${up ? '+' : '−'}${Math.abs(delta ?? 0)}% this month`}
+          {deltaLabel ??
+            t('deltaThisMonth', {
+              sign: up ? '+' : '−',
+              percent: Math.abs(delta ?? 0),
+            })}
         </span>
       ) : null}
     </div>

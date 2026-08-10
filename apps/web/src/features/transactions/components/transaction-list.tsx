@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import type { Account } from '../../accounts/services/accounts'
 import type { Transaction } from '../services/transactions'
 import { TransactionRow } from './transaction-row'
@@ -35,6 +36,9 @@ export function TransactionList({
   onClearFilters,
   onEditTransaction,
 }: TransactionListProps) {
+  const t = useTranslations('transactions')
+  const tAccounts = useTranslations('accounts')
+
   return (
     <Card flush>
       <div className="tx-list">
@@ -43,15 +47,15 @@ export function TransactionList({
           <EmptyState
             compact
             icon={<Wallet size={26} />}
-            title="No accounts yet"
-            description="Add an account first — your transactions will show up here once you have somewhere to record them."
+            title={t('noAccounts.title')}
+            description={t('noAccounts.description')}
             action={
               <Button
                 variant="secondary"
                 leftIcon={<Plus size={16} />}
                 onClick={onAddAccount}
               >
-                Add account
+                {tAccounts('addAccount')}
               </Button>
             }
           />
@@ -60,11 +64,11 @@ export function TransactionList({
           <EmptyState
             compact
             icon={<List size={26} />}
-            title="No transactions yet"
-            description="Record your first one to start building your household ledger."
+            title={t('noTransactions.title')}
+            description={t('noTransactions.description')}
             action={
               <Button leftIcon={<Plus size={16} />} onClick={onAddTransaction}>
-                Add transaction
+                {t('addTransaction')}
               </Button>
             }
           />
@@ -73,12 +77,12 @@ export function TransactionList({
           <EmptyState
             compact
             icon={<Filter size={24} />}
-            title="No matching transactions"
-            description="Nothing matches your current search and filters."
+            title={t('noMatches.title')}
+            description={t('noMatches.description')}
             action={
               filtersActive ? (
                 <Button variant="secondary" onClick={onClearFilters}>
-                  Clear filters
+                  {t('clearFilters')}
                 </Button>
               ) : undefined
             }

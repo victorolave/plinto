@@ -1,0 +1,685 @@
+{
+  "app": {
+    "name": "Plinto",
+    "description": "Everything your family spends, in one calm place."
+  },
+  "common": {
+    "actions": "Actions",
+    "add": "Add",
+    "cancel": "Cancel",
+    "close": "Close",
+    "create": "Create",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "save": "Save",
+    "saving": "Saving…",
+    "tryAgain": "Try again"
+  },
+  "nav": {
+    "accounts": "Accounts",
+    "categories": "Categories",
+    "credit": "Credit",
+    "debts": "Debts",
+    "home": "Home",
+    "more": "More",
+    "obligations": "Obligations",
+    "overview": "Dashboard",
+    "primary": "Primary",
+    "settings": "Settings",
+    "transactions": "Transactions"
+  },
+  "shell": {
+    "addTransaction": "Add transaction",
+    "loading": "Loading your household…",
+    "logOut": "Log out",
+    "loggingOut": "Logging out…",
+    "yourAccount": "Your account",
+    "title": {
+      "accounts": "Accounts",
+      "categories": "Categories",
+      "credit": "Credit",
+      "debts": "Debts",
+      "obligations": "Obligations",
+      "overview": "Dashboard",
+      "settings": "Settings",
+      "transactions": "Transactions"
+    },
+    "subtitle": {
+      "accounts": "Balances by currency",
+      "categories": "Organize your spending",
+      "credit": "Cards and rotating lines",
+      "debts": "What the household owes in total",
+      "obligations": "What the household owes this month",
+      "overviewGeneric": "Your household at a glance",
+      "overviewWelcome": "Welcome back, {name}",
+      "settings": "Household & members",
+      "transactionsGeneric": "Income, expenses and transfers",
+      "transactionsTenant": "{tenant} ledger"
+    }
+  },
+  "tenantSwitcher": {
+    "household": "Household",
+    "selectHousehold": "Select household"
+  },
+  "authLayout": {
+    "needHelp": "Need help?",
+    "pitch": "Track accounts, transactions and categories across every household you manage — in one place.",
+    "tagline": "Household finances, made simple.",
+    "terms": "Terms"
+  },
+  "errorPage": {
+    "eyebrow": "Error",
+    "subtitle": "An unexpected error occurred. Please try again.",
+    "title": "Something went wrong"
+  },
+  "globalError": {
+    "title": "Unexpected error"
+  },
+  "notFound": {
+    "backToDashboard": "Back to dashboard",
+    "eyebrow": "404",
+    "subtitle": "The page you’re looking for doesn’t exist.",
+    "title": "Page not found"
+  },
+  "accounts": {
+    "accountActions": "Account actions",
+    "accountCount": "{count, plural, one {# account} other {# accounts}}",
+    "addAccount": "Add account",
+    "archive": "Archive",
+    "balance": "Balance",
+    "createAccount": "Create account",
+    "creating": "Creating…",
+    "editAccount": "Edit account",
+    "heldIn": "Held in {currency}",
+    "hideArchived": "Hide archived ({count})",
+    "loading": "Loading accounts",
+    "owed": "owed",
+    "restore": "Restore",
+    "saveChanges": "Save changes",
+    "showArchived": "Show archived ({count})",
+    "totalIn": "Total in {currency}",
+    "type": {
+      "bank": "Bank",
+      "cash": "Cash",
+      "credit": "Credit",
+      "debt": "Debt",
+      "savings": "Savings"
+    },
+    "empty": {
+      "description": "An account is where your money lives — a bank, a wallet, a credit card. Each one tracks a single currency so your balances always stay clean.",
+      "title": "Start with your first account"
+    },
+    "archiveModal": {
+      "archiving": "Archiving…",
+      "body": "<strong>{name}</strong> will be hidden from your accounts and transaction forms. Its history stays intact and you can restore it any time.",
+      "confirm": "Archive account",
+      "title": "Archive account?"
+    },
+    "form": {
+      "currency": "Currency",
+      "currencyFixedHint": "Currency cannot change once the account exists.",
+      "invalid": "Invalid account",
+      "name": "Account name",
+      "namePlaceholder": "e.g. Family checking",
+      "type": "Account type"
+    }
+  },
+  "categories": {
+    "actionsFor": "Actions for {name}",
+    "count": "{count, plural, one {# category} other {# categories}}",
+    "drawerDescription": "Used to label income and expenses",
+    "editCategory": "Edit category",
+    "loading": "Loading categories",
+    "newCategory": "New category",
+    "noCategory": "No category",
+    "type": {
+      "expense": "Expense",
+      "income": "Income"
+    },
+    "empty": {
+      "description": "Categories label your income and expenses so you can see where the money actually goes.",
+      "title": "No categories yet"
+    },
+    "deleteModal": {
+      "body": "<strong>{name}</strong> will be removed. Transactions using it keep their record but lose this label.",
+      "confirm": "Delete category",
+      "deleting": "Deleting…",
+      "title": "Delete category?"
+    },
+    "form": {
+      "clear": "Clear",
+      "color": "Color",
+      "colorHint": "Optional — a marker shown next to this category.",
+      "createCategory": "Create category",
+      "customColor": "Custom color",
+      "hexColor": "Hex color",
+      "invalid": "Invalid category",
+      "name": "Name",
+      "namePlaceholder": "e.g. Groceries",
+      "presetColors": "Preset colors",
+      "saveChanges": "Save changes",
+      "type": "Type",
+      "usePreset": "Use {color}"
+    }
+  },
+  "dashboard": {
+    "accounts": "Accounts",
+    "acrossAllAccounts": "across all accounts",
+    "allMembers": "All members",
+    "allMembersOf": "{tenant} · all members",
+    "available": "Available ({currency})",
+    "currenciesSeparate": "Currencies shown separately",
+    "currencyAccounts": "{currency} accounts",
+    "expense": "Expense",
+    "income": "Income",
+    "loading": "Loading your household…",
+    "manage": "Manage",
+    "monthBalances": "{month} · balances",
+    "noAccounts": "No accounts yet.",
+    "noTransactions": "No transactions yet. Add your first one to start tracking.",
+    "owedAmount": "{amount} owed",
+    "recentActivity": "Recent activity",
+    "seeAll": "See all",
+    "noBalances": {
+      "description": "Add an account and record your first transaction to see your household balance here.",
+      "title": "No balances yet"
+    }
+  },
+  "members": {
+    "actionsFor": "Actions for {name}",
+    "dismiss": "Dismiss",
+    "expiresOn": "expires {date}",
+    "invitationSent": "Invitation sent to {email}. It will be applied the first time they sign in.",
+    "invite": "Invite",
+    "invitedAs": "Invited as {role}",
+    "joinedOn": "joined {date}",
+    "joinedRightAway": "{email} already had an account and joined right away.",
+    "leaveHousehold": "Leave household",
+    "loading": "Loading members",
+    "peopleCount": "{count, plural, one {# person in this household} other {# people in this household}}",
+    "pendingInvitations": "Pending invitations",
+    "pendingInvitationsSubtitle": "Applied the first time each person signs in",
+    "removeFromHousehold": "Remove from household",
+    "revokeInvitation": "Revoke invitation",
+    "soleOwnerNote": "A household must keep one owner, so this cannot change",
+    "thatPerson": "They",
+    "title": "Household members",
+    "you": "you",
+    "role": {
+      "member": "member",
+      "owner": "owner",
+      "viewer": "viewer"
+    },
+    "makeRole": {
+      "member": "Make member",
+      "owner": "Make owner",
+      "viewer": "Make viewer"
+    },
+    "roleHint": {
+      "member": "Can record and edit money movements",
+      "owner": "Manages the household and its members",
+      "viewer": "Can see everything, change nothing"
+    },
+    "inviteHint": {
+      "member": "Can record and edit money movements",
+      "owner": "Can also manage the household and its members",
+      "viewer": "Can see everything, change nothing"
+    },
+    "roleLegend": {
+      "subtitle": "Roles are enforced by the API, not just hidden in the interface",
+      "title": "What each role can do"
+    },
+    "empty": {
+      "description": "This household has no members, which should not be possible — whoever created it is its owner. Try reloading.",
+      "title": "No members yet"
+    },
+    "inviteDrawer": {
+      "description": "They join this household with the role you pick",
+      "title": "Invite someone"
+    },
+    "inviteForm": {
+      "email": "Email",
+      "emailHint": "They do not need a Plinto account yet",
+      "emailPlaceholder": "e.g. sandra@example.com",
+      "invalid": "Invalid invitation",
+      "note": "If that address already has a Plinto account they join right away. Otherwise the invitation waits for their first sign-in, and expires after 14 days.",
+      "role": "Role",
+      "send": "Send invitation",
+      "sending": "Sending…"
+    },
+    "removeModal": {
+      "leaveBody": "You lose access to this household straight away. Everything you recorded stays — money movements belong to the household, not to the person who typed them. An owner can invite you back.",
+      "leaveConfirm": "Leave household",
+      "leaveTitle": "Leave this household?",
+      "leaving": "Leaving…",
+      "removeBody": "<strong>{name}</strong> loses access to this household. Everything they recorded stays — money movements belong to the household, not to the person who typed them. You can invite them back later.",
+      "removeConfirm": "Remove member",
+      "removeTitle": "Remove from household?",
+      "removing": "Removing…"
+    },
+    "revokeModal": {
+      "body": "<strong>{email}</strong> will no longer join this household when they sign in. You can invite them again later.",
+      "revoking": "Revoking…",
+      "title": "Revoke invitation?"
+    }
+  },
+  "debts": {
+    "cancelDebtFor": "Cancel {name}",
+    "inProgressCount": "{count, plural, =0 {No financed purchases in progress} one {# financed purchase in progress} other {# financed purchases in progress}}",
+    "installmentSummary": "{count} × {amount} · {percent}% paid",
+    "left": "Left",
+    "loading": "Loading debts",
+    "owed": "Owed ({currency})",
+    "owedBreakdown": "{instalments} in instalments · {loans} on loans and cards",
+    "recordPurchase": "Record purchase",
+    "badge": {
+      "cancelled": "cancelled",
+      "settled": "settled"
+    },
+    "cancelModal": {
+      "body": "<strong>{name}</strong> stops producing instalments from here on. The ones it already produced stay — some of them are paid, and removing them would leave payments with no reason behind them.",
+      "cancelling": "Cancelling…",
+      "confirm": "Cancel plan",
+      "keepIt": "Keep it",
+      "title": "Cancel this plan?"
+    },
+    "drawer": {
+      "description": "Fixed instalments that end on their own",
+      "title": "Record a financed purchase"
+    },
+    "empty": {
+      "description": "Record a purchase paid in fixed instalments and each one shows up on the obligations board — ending on its own after the last.",
+      "title": "Nothing financed yet"
+    },
+    "form": {
+      "eachInstallment": "Each installment",
+      "firstDue": "First installment due",
+      "howMany": "How many",
+      "invalid": "Invalid schedule",
+      "lastInstallmentNote": "The last installment will charge <strong>{amount}</strong>, so the plan adds up to exactly what you owe.",
+      "lender": "Lender",
+      "namePlaceholder": "e.g. Fridge",
+      "needLiabilityAccount": "You need a debt or credit account first — that is what the installments pay down.",
+      "recordPurchase": "Record purchase",
+      "totalToRepay": "Total to repay",
+      "totalToRepayHint": "Interest included — what the lender says you will pay in all",
+      "whatYouBought": "What you bought"
+    },
+    "loanForm": {
+      "amountReceived": "Amount received",
+      "date": "Date",
+      "description": "Description",
+      "descriptionPlaceholder": "e.g. Payroll advance",
+      "invalid": "Invalid loan",
+      "lender": "Lender",
+      "lenderName": "Lender name",
+      "lenderNamePlaceholder": "e.g. Lineru",
+      "needDestinationAccount": "You need an account to receive the money before recording a loan.",
+      "newLender": "+ New lender…",
+      "notIncomeNote": "This is not income. The money arrives in your account and the same amount appears as owed to the lender.",
+      "optional": "Optional",
+      "receivedInto": "Received into",
+      "recordLoan": "Record loan",
+      "recording": "Recording…",
+      "trackedIn": "Tracked in {currency}"
+    },
+    "section": {
+      "finished": "Finished",
+      "inProgress": "In progress"
+    }
+  },
+  "obligations": {
+    "actionsFor": "Actions for {name}",
+    "dueOn": "Due {date}",
+    "fromRecurringRule": "From a recurring rule",
+    "linkPayment": "Link a payment",
+    "loading": "Loading obligations",
+    "loadingTotals": "Loading period totals",
+    "nextMonth": "Next month",
+    "oneOff": "One-off obligation",
+    "outstanding": "Outstanding",
+    "paid": "Paid",
+    "previousMonth": "Previous month",
+    "recordedIn": "Recorded in {period}",
+    "settled": "settled",
+    "total": "Total",
+    "unlinkPayment": "Unlink {reference}",
+    "status": {
+      "overdue": "Overdue",
+      "paid": "Paid",
+      "partial": "Partial",
+      "pending": "Pending"
+    },
+    "empty": {
+      "description": "Obligations appear here once your recurring rules are materialized for the month, or you can record a one-off.",
+      "title": "Nothing due in {period}"
+    },
+    "form": {
+      "amount": "Amount",
+      "currency": "Currency",
+      "dueDate": "Due date",
+      "dueDateHint": "Must fall inside {period}",
+      "invalid": "Invalid obligation",
+      "name": "Name",
+      "namePlaceholder": "e.g. Income tax filing",
+      "recordObligation": "Record obligation"
+    },
+    "reconcile": {
+      "alreadySettled": "already settled {amount}",
+      "expected": "Expected <strong>{amount}</strong>",
+      "linking": "Linking…",
+      "markSettled": "Mark as settled",
+      "noDescription": "No description",
+      "noEligibleExpense": "No expense in {currency} is available to settle this obligation. Record the payment as a transaction first.",
+      "transaction": "Transaction",
+      "transactionHint": "Only expenses in this obligation’s currency can settle it"
+    }
+  },
+  "transactions": {
+    "accountBalances": "Account balances",
+    "addTransaction": "Add transaction",
+    "allAccounts": "All accounts",
+    "automatic": "Automatic",
+    "clearFilters": "Clear filters",
+    "dateRangePreset": "Date range preset",
+    "editTransaction": "Edit transaction",
+    "expense": "Expense",
+    "filterByAccount": "Filter by account",
+    "financed": "Financed",
+    "fromDate": "From date",
+    "income": "Income",
+    "loadFailed": "Failed to load transactions",
+    "loading": "Loading transactions",
+    "loadingRecurring": "Loading recurring rules",
+    "loan": "Loan",
+    "searchLabel": "Search transactions",
+    "searchPlaceholder": "Search by description or account",
+    "showingLatest": "Showing the latest {shown} of {total} transactions.",
+    "toDate": "To date",
+    "transfer": "Transfer",
+    "filter": {
+      "all": "All",
+      "expense": "Expenses",
+      "income": "Income"
+    },
+    "datePreset": {
+      "30d": "Last 30 days",
+      "all": "All time",
+      "custom": "Custom range",
+      "month": "This month",
+      "year": "This year"
+    },
+    "noAccounts": {
+      "description": "Add an account first — your transactions will show up here once you have somewhere to record them.",
+      "title": "No accounts yet"
+    },
+    "noTransactions": {
+      "description": "Record your first one to start building your household ledger.",
+      "title": "No transactions yet"
+    },
+    "noMatches": {
+      "description": "Nothing matches your current search and filters.",
+      "title": "No matching transactions"
+    },
+    "drawer": {
+      "debtDescription": "Fixed installments that end on their own",
+      "debtTitle": "Record a financed purchase",
+      "editRuleTitle": "Edit recurring rule",
+      "loanDescription": "Money you received and owe back",
+      "loanTitle": "Record a loan",
+      "newRuleTitle": "New recurring rule",
+      "ruleDescription": "Posts automatically each month when due",
+      "transactionDescription": "Logged to your household ledger",
+      "transferDescription": "Move money with explicit FX when currencies differ",
+      "transferTitle": "Transfer between accounts"
+    },
+    "form": {
+      "account": "Account",
+      "amount": "Amount",
+      "category": "Category",
+      "date": "Date",
+      "description": "Description",
+      "descriptionPlaceholder": "e.g. Supermarket",
+      "invalid": "Invalid transaction",
+      "optional": "Optional",
+      "recordTransaction": "Record transaction",
+      "saveChanges": "Save changes"
+    },
+    "transferForm": {
+      "amount": "Amount",
+      "amountIn": "Amount ({currency})",
+      "conversionPreview": "{from} → {to} at rate {rate}",
+      "date": "Date",
+      "description": "Description",
+      "destinationAmountIn": "Destination amount ({currency})",
+      "destinationFallback": "destination",
+      "fee": "Fee",
+      "feeHint": "Optional, in {currency}",
+      "fromAccount": "From account",
+      "fxRate": "FX rate",
+      "fxRatePlaceholder": "e.g. 4200.00",
+      "invalid": "Invalid transfer",
+      "selectBothAccounts": "Select both source and destination accounts",
+      "sourceFallback": "source",
+      "theSourceCurrency": "the source currency",
+      "toAccount": "To account",
+      "transfer": "Transfer",
+      "transferring": "Transferring…"
+    },
+    "recurringForm": {
+      "account": "Account",
+      "amount": "Amount",
+      "createRule": "Create monthly rule",
+      "dayOfMonth": "Day of month",
+      "dayOfMonthHint": "1–28",
+      "invalid": "Invalid recurring rule",
+      "name": "Name",
+      "saveChanges": "Save changes",
+      "startDate": "Start date",
+      "type": "Type"
+    },
+    "recurring": {
+      "accountFallback": "account",
+      "actionsFor": "Actions for {name}",
+      "dayAndAccount": "Day {day} · {account}",
+      "newRule": "New rule",
+      "pause": "Pause",
+      "resume": "Resume",
+      "subtitle": "Rules that post automatically each month when due",
+      "title": "Recurring transactions",
+      "status": {
+        "active": "Active",
+        "archived": "Archived",
+        "paused": "Paused"
+      },
+      "empty": {
+        "description": "Automate rent, salary or subscriptions — they post themselves each month when due.",
+        "title": "No recurring rules yet"
+      }
+    }
+  },
+  "settings": {
+    "language": {
+      "subtitle": "Applies to this browser. Amounts and dates follow the language you pick.",
+      "title": "Language"
+    }
+  },
+  "login": {
+    "benefitsLabel": "What’s inside",
+    "continueSecurely": "Continue securely",
+    "eyebrow": "Welcome back",
+    "reassurance": "Secured by your identity provider — we never see or store your password.",
+    "subtitle": "Continue with your identity provider to reach your households.",
+    "title": "Sign in to Plinto",
+    "benefits": {
+      "households": {
+        "sub": "Switch between the households you manage without signing in again.",
+        "title": "Every household, one account"
+      },
+      "ledger": {
+        "sub": "Track balances and organize spending in one clear place.",
+        "title": "Accounts, transactions & categories"
+      },
+      "recurring": {
+        "sub": "Set a rule once and let the monthly entries post themselves.",
+        "title": "Recurring transactions on autopilot"
+      }
+    }
+  },
+  "onboarding": {
+    "eyebrow": "Get started",
+    "subtitle": "Tell us your name and set up your first household.",
+    "title": "Complete your profile",
+    "form": {
+      "baseCurrency": "Base currency",
+      "baseCurrencyHint": "The default currency for this household.",
+      "continue": "Continue",
+      "householdName": "Household name",
+      "householdNamePlaceholder": "e.g. Ruiz Family",
+      "submitting": "Submitting…",
+      "yourName": "Your name",
+      "yourNamePlaceholder": "e.g. Marta Ruiz"
+    }
+  },
+  "selectTenant": {
+    "eyebrow": "Welcome back",
+    "loading": "Loading households…",
+    "noHouseholds": "You don’t belong to any household yet.",
+    "subtitle": "Select the household you want to work in right now.",
+    "title": "Choose a household"
+  },
+  "credit": {
+    "addCreditLine": "Add credit line",
+    "addStatement": "Add statement",
+    "availableOfLimit": "{available} available of {limit}",
+    "closeAction": "Close",
+    "closeLineFor": "Close {name}",
+    "dueOn": "due {day}",
+    "editLimitFor": "Edit {name} limit",
+    "editStatementFor": "Edit {name} statement",
+    "lastPaid": "Last paid",
+    "lastStatementOn": "last statement {day}",
+    "limitAwaitingFirstStatement": "{limit} limit · waiting for the first statement",
+    "linesOpen": "{count, plural, =0 {No credit lines open} one {# credit line open} other {# credit lines open}}",
+    "loading": "Loading credit lines",
+    "owedOnCredit": "Owed on credit ({currency})",
+    "stillAvailable": "{amount} still available",
+    "toPay": "To pay",
+    "badge": {
+      "closed": "closed",
+      "estimated": "estimated"
+    },
+    "closeModal": {
+      "body": "<strong>{name}</strong> stops accepting new statements. The ones it already issued stay — some of them are paid, and removing them would leave payments with no reason behind them.",
+      "closing": "Closing…",
+      "confirm": "Close line",
+      "keepIt": "Keep it",
+      "title": "Close this credit line?"
+    },
+    "drawer": {
+      "addDescription": "A card, or a rotating line like ADDI",
+      "addTitle": "Add a credit line",
+      "editLineDescription": "Name and ceiling — statements keep the limit they were measured against",
+      "editLineFallback": "Edit credit line",
+      "editLineTitle": "Edit {name}",
+      "fixStatementDescription": "The payment on the obligations board changes with it",
+      "fixStatementFallback": "Fix statement",
+      "fixStatementTitle": "Fix {name} statement",
+      "statementDescription": "Its payment goes straight onto the obligations board",
+      "statementFallback": "Statement",
+      "statementTitle": "{name} statement"
+    },
+    "empty": {
+      "description": "Add a card or a line like ADDI, then enter each statement as it arrives. One number a month gives you the payment, the balance and how much room you have left.",
+      "title": "No cards or rotating lines yet"
+    },
+    "form": {
+      "addCreditLine": "Add credit line",
+      "creatingNote": "No cutoff or payment day here. Each statement brings its own dates, so a lender switching you from monthly to biweekly needs nothing changed.",
+      "currency": "Currency",
+      "currencyFixedHint": "Fixed — the statements below carry their own amounts",
+      "editingNote": "Statements already recorded keep the limit they were measured against, so changing this never restates a figure you have read.",
+      "invalid": "Invalid credit line",
+      "limit": "Credit limit",
+      "limitHint": "Your ceiling today — you can change it whenever the issuer does",
+      "name": "Name",
+      "namePlaceholder": "e.g. ADDI, Visa Bancolombia",
+      "saveChanges": "Save changes"
+    },
+    "section": {
+      "closed": "Closed",
+      "open": "Open"
+    },
+    "statementForm": {
+      "editingNote": "The payment on the obligations board changes with it. It cannot go below what you have already paid against this statement — undo the payment first if the issuer really lowered it after you paid.",
+      "invalid": "Invalid statement",
+      "leavesAvailable": "Leaves <strong>{amount}</strong> available on this line.",
+      "overLimit": "That is <strong>{amount}</strong> over your limit — recorded as it is, not refused.",
+      "paymentDue": "Payment due",
+      "saveChanges": "Save changes",
+      "saveStatement": "Save statement",
+      "statementDate": "Statement date",
+      "statementDateFixedHint": "Fixed — it decides which month this belongs to",
+      "toPayThisMonth": "To pay this month",
+      "totalOwed": "Total owed",
+      "totalOwedHint": "The full balance on the statement, not just this month’s payment"
+    }
+  },
+  "validation": {
+    "accountsMustDiffer": "Source and destination accounts must differ",
+    "atLeastOneField": "At least one field must be provided",
+    "dueDateInsidePeriod": "The due date must fall inside the period",
+    "dueWithinBalance": "The amount due cannot exceed the closing balance",
+    "invalidEnumValue": "Pick one of the available options",
+    "invalidString": "That value is not in a valid format",
+    "invalidType": "That value is not valid",
+    "lastInstallmentEmpty": "The installments already cover the whole principal; the last one would be empty",
+    "tooBig": "That value is too large",
+    "tooSmall": "That value is too small"
+  },
+  "apiErrors": {
+    "ACCOUNT_NOT_FOUND": "That account no longer exists.",
+    "ALREADY_A_MEMBER": "That person is already a member of this household.",
+    "CATEGORY_NOT_FOUND": "That category no longer exists.",
+    "CATEGORY_TYPE_MISMATCH": "That category does not apply to this kind of transaction.",
+    "CREDIT_LINE_CLOSED": "That credit line is closed and no longer accepts statements.",
+    "CREDIT_LINE_NOT_FOUND": "That credit line no longer exists.",
+    "CREDIT_STATEMENT_BELOW_PAID": "The amount cannot go below what has already been paid against this statement.",
+    "CREDIT_STATEMENT_DUE_ABOVE_BALANCE": "The amount due cannot exceed the closing balance.",
+    "CREDIT_STATEMENT_DUE_BEFORE_CUTOFF": "The payment date cannot fall before the statement date.",
+    "CREDIT_STATEMENT_NOT_FOUND": "That statement no longer exists.",
+    "DEBT_ACCOUNT_NOT_A_LIABILITY": "That account is not a liability, so it cannot carry a debt.",
+    "DEBT_SCHEDULE_NOT_FOUND": "That debt no longer exists.",
+    "INVALID_PERIOD": "That period is not valid.",
+    "INVITATION_EMAIL_REQUIRED": "An email address is required to send the invitation.",
+    "INVITATION_NOT_FOUND": "That invitation no longer exists.",
+    "LAST_OWNER": "A household must keep at least one owner.",
+    "LENDER_NOT_A_LIABILITY": "The lender account must be a liability.",
+    "LOAN_CURRENCY_MISMATCH": "Both accounts must use the same currency.",
+    "LOAN_DESTINATION_IS_A_LIABILITY": "The destination account cannot be a liability.",
+    "MEMBERSHIP_NOT_FOUND": "That membership no longer exists.",
+    "OBLIGATION_CURRENCY_MISMATCH": "The payment currency does not match the obligation.",
+    "OBLIGATION_NOT_FOUND": "That obligation no longer exists.",
+    "OBLIGATION_PAYMENT_NOT_FOUND": "That payment no longer exists.",
+    "PROFILE_REQUIRED": "Complete your profile before continuing.",
+    "RECURRING_RULE_ARCHIVED": "That recurring rule is archived.",
+    "RECURRING_RULE_NOT_FOUND": "That recurring rule no longer exists.",
+    "REPORT_INVALID_PERIOD": "That reporting period is not valid.",
+    "REQUEST_FAILED": "The request could not be completed. Please try again.",
+    "TRANSACTION_ALREADY_RECONCILED": "That transaction is already reconciled.",
+    "TRANSACTION_NOT_AN_EXPENSE": "Only an expense can be applied here.",
+    "TRANSACTION_NOT_FOUND": "That transaction no longer exists.",
+    "TRANSFER_FX_NOT_ALLOWED": "A transfer between accounts in the same currency cannot carry an exchange rate.",
+    "TRANSFER_FX_REQUIRED": "A transfer between different currencies needs an exchange rate.",
+    "TRANSFER_SAME_ACCOUNT": "A transfer needs two different accounts.",
+    "UNAUTHORIZED": "Your session ended. Please sign in again.",
+    "UNKNOWN": "Something went wrong. Please try again.",
+    "USER_NOT_FOUND": "That person no longer exists.",
+    "VALIDATION_ERROR": "Some of the details are not valid. Check the fields and try again."
+  },
+  "statCard": {
+    "deltaThisMonth": "{sign}{percent}% this month"
+  }
+}

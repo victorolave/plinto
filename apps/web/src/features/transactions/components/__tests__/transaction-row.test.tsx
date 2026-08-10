@@ -6,7 +6,8 @@ import { TransactionRow } from '../transaction-row'
 import type { Transaction } from '../../services/transactions'
 import type { Account } from '../../../accounts/services/accounts'
 import { formatOccurredAtDate } from '../../lib/transaction-input'
-import { formatMoneyMagnitude } from '../../../../components/ui/amount'
+import { testFormattingLocale } from '../../../../test/render-with-providers'
+import { money } from '../../../../test/money'
 
 const account: Account = {
   id: 'acc-1',
@@ -37,10 +38,14 @@ describe('TransactionRow', () => {
     )
 
     expect(screen.getByText('Coffee shop')).toBeInTheDocument()
-    expect(screen.getByText(formatOccurredAtDate(transaction.occurredAt))).toBeInTheDocument()
+    expect(
+      // Same locale the component renders in — otherwise the expected string
+      // and the DOM disagree on date order and separators.
+      screen.getByText(formatOccurredAtDate(transaction.occurredAt, testFormattingLocale())),
+    ).toBeInTheDocument()
     expect(screen.getByText('Main Checking')).toBeInTheDocument()
     expect(
-      screen.getByText(`−${formatMoneyMagnitude(transaction.amountMinor, transaction.currency)}`),
+      screen.getByText(`−${money(transaction.amountMinor, transaction.currency)}`),
     ).toBeInTheDocument()
   })
 

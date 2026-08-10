@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '../ui/button'
 import { LogOut } from '../ui/icons'
 
 export function LogoutButton() {
+  const t = useTranslations('shell')
   const [loading, setLoading] = useState(false)
 
   const handleLogout = async () => {
@@ -38,7 +40,7 @@ export function LogoutButton() {
       disabled={loading}
       leftIcon={<LogOut size={16} />}
     >
-      {loading ? 'Logging out…' : 'Log out'}
+      {loading ? t('loggingOut') : t('logOut')}
     </Button>
   )
 }

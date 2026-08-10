@@ -4,7 +4,9 @@
  * rows, recurring rows — so the loaded content settles in without a jump.
  */
 
-const RADIUS_MD = 'var(--radius-md)'
+import { useTranslations } from 'next-intl'
+
+const RADIUS_MD = 'var(--radius-control)'
 
 export function BalanceStripSkeleton({ pills = 3 }: { pills?: number }) {
   return (
@@ -42,8 +44,10 @@ function TransactionRowSkeleton() {
 }
 
 export function TransactionListSkeleton({ rows = 6 }: { rows?: number }) {
+  const t = useTranslations('transactions')
+
   return (
-    <div role="status" aria-label="Loading transactions">
+    <div role="status" aria-label={t('loading')}>
       {Array.from({ length: rows }).map((_, index) => (
         <TransactionRowSkeleton key={index} />
       ))}
@@ -52,8 +56,10 @@ export function TransactionListSkeleton({ rows = 6 }: { rows?: number }) {
 }
 
 export function RecurringListSkeleton({ rows = 2 }: { rows?: number }) {
+  const t = useTranslations('transactions')
+
   return (
-    <div role="status" aria-label="Loading recurring rules">
+    <div role="status" aria-label={t('loadingRecurring')}>
       {Array.from({ length: rows }).map((_, index) => (
         <div key={index} className="data-row" aria-hidden="true">
           <div style={{ minWidth: 0, flex: 1 }}>

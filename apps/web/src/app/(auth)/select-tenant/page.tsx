@@ -1,13 +1,12 @@
+import { getTranslations } from 'next-intl/server'
 import { TenantSelector } from '../../../features/tenants/components/tenant-selector'
 import { AuthLayout } from '../../../components/layout/auth-layout'
 
-export default function SelectTenantPage() {
+export default async function SelectTenantPage() {
+  const t = await getTranslations('selectTenant')
+
   return (
-    <AuthLayout
-      eyebrow="Welcome back"
-      title="Choose a household"
-      subtitle="Select the household you want to work in right now."
-    >
+    <AuthLayout eyebrow={t('eyebrow')} title={t('title')} subtitle={t('subtitle')}>
       <TenantSelector />
     </AuthLayout>
   )

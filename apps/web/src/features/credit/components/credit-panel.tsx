@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useFormattingLocale } from '../../../i18n/formatting'
 import {
   closeCreditLine,
   getCreditSummary,
@@ -19,13 +21,15 @@ import { Drawer } from '../../../components/ui/drawer'
 import { Modal } from '../../../components/ui/modal'
 import { EmptyState } from '../../../components/ui/empty-state'
 import { StatCard } from '../../../components/ui/stat-card'
+import { StatGridSkeleton } from '../../../components/ui/stat-grid-skeleton'
+import { CreditListSkeleton } from './credit-skeleton'
 import { Amount, formatMoneyMagnitude } from '../../../components/ui/amount'
 import { Plus, Card as CardIcon } from '../../../components/ui/icons'
 
 const DATE_FORMAT: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
 
-function formatDay(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+function formatDay(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     ...DATE_FORMAT,
     timeZone: 'UTC',
   })
@@ -49,6 +53,9 @@ function isStale(row: CreditLineWithLatest, now: Date): boolean {
 }
 
 export function CreditPanel() {
+  const t = useTranslations('credit')
+  const tCommon = useTranslations('common')
+  const locale = useFormattingLocale()
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [statementFor, setStatementFor] = useState<CreditLine | null>(null)
@@ -118,19 +125,20 @@ export function CreditPanel() {
     <div className="page">
       {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
 
+      {isLoading ? <StatGridSkeleton cards={1} /> : null}
+
       {totals.size > 0 ? (
         <div className="stat-grid">
           {[...totals.entries()].map(([currency, bucket], index) => (
             <StatCard
               key={currency}
-              label={`Owed on credit (${currency})`}
+              label={t('owedOnCredit', { currency })}
               valueMinor={bucket.owedMinor}
               currency={currency}
               accent={index === 0}
-              deltaLabel={`${formatMoneyMagnitude(
-                bucket.availableMinor,
-                currency,
-              )} still available`}
+              deltaLabel={t('stillAvailable', {
+                amount: formatMoneyMagnitude(bucket.availableMinor, currency, locale),
+              })}
               icon={<CardIcon size={16} />}
             />
           ))}
@@ -138,36 +146,48 @@ export function CreditPanel() {
       ) : null}
 
       <div className="categories-head">
-        <span className="muted">
-          {isLoading
-            ? 'Loading…'
-            : `${active.length} credit line${active.length === 1 ? '' : 's'} open`}
-        </span>
+        {/* While loading this is a placeholder rather than the word "Loading…":
+            the skeletons above and below already say the page is busy, and a
+            text label beside them reads as a third, competing signal. */}
+        {isLoading ? (
+          <span
+            className="skeleton skeleton-line"
+            style={{ width: 132, height: 12 }}
+            aria-hidden="true"
+          />
+        ) : (
+          <span className="muted">{t('linesOpen', { count: active.length })}</span>
+        )}
         <Button leftIcon={<Plus size={18} />} onClick={() => setFormOpen(true)}>
-          Add credit line
+          {t('addCreditLine')}
         </Button>
       </div>
 
       {!isLoading && rows.length === 0 ? (
         <EmptyState
           icon={<CardIcon size={30} />}
-          title="No cards or rotating lines yet"
-          description="Add a card or a line like ADDI, then enter each statement as it arrives. One number a month gives you the payment, the balance and how much room you have left."
+          title={t('empty.title')}
+          description={t('empty.description')}
           action={
             <Button leftIcon={<Plus size={18} />} onClick={() => setFormOpen(true)}>
-              Add credit line
+              {t('addCreditLine')}
             </Button>
           }
         />
       ) : null}
 
+      {isLoading ? <CreditListSkeleton /> : null}
+
+      {/* `id` is the React key and `title` is the rendered copy — they used to
+          be the same English string, which would have made the key change with
+          the language. */}
       {[
-        { title: 'Open', rows: active },
-        { title: 'Closed', rows: closed },
+        { id: 'open', title: t('section.open'), rows: active },
+        { id: 'closed', title: t('section.closed'), rows: closed },
       ]
         .filter((section) => section.rows.length > 0)
         .map((section) => (
-          <Card key={section.title} flush>
+          <Card key={section.id} flush>
             <CardHeader title={section.title} />
             <ul className="member-list" aria-label={section.title}>
               {section.rows.map((row) => {
@@ -184,7 +204,7 @@ export function CreditPanel() {
                           <button
                             type="button"
                             className="link-button"
-                            aria-label={`Edit ${row.name} limit`}
+                            aria-label={t('editLimitFor', { name: row.name })}
                             onClick={() => setEditingLine(row)}
                           >
                             {row.name}
@@ -193,26 +213,43 @@ export function CreditPanel() {
                           row.name
                         )}{' '}
                         {row.status === 'closed' ? (
-                          <Badge tone="neutral">closed</Badge>
+                          <Badge tone="neutral">{t('badge.closed')}</Badge>
                         ) : stale ? (
-                          <Badge tone="warning">estimated</Badge>
+                          <Badge tone="warning">{t('badge.estimated')}</Badge>
                         ) : null}
                       </span>
                       <span className="muted" style={{ fontSize: 12 }}>
                         {statement ? (
                           <>
-                            {formatMoneyMagnitude(row.availableMinor ?? 0, row.currency)}{' '}
-                            available of{' '}
-                            {formatMoneyMagnitude(row.limitMinor, row.currency)} ·{' '}
+                            {t('availableOfLimit', {
+                              available: formatMoneyMagnitude(
+                                row.availableMinor ?? 0,
+                                row.currency,
+                                locale,
+                              ),
+                              limit: formatMoneyMagnitude(
+                                row.limitMinor,
+                                row.currency,
+                                locale,
+                              ),
+                            })}
+                            {' · '}
                             {stale
-                              ? `last statement ${formatDay(statement.cutoffDate)}`
-                              : `due ${formatDay(statement.dueDate)}`}
+                              ? t('lastStatementOn', {
+                                  day: formatDay(statement.cutoffDate, locale),
+                                })
+                              : t('dueOn', {
+                                  day: formatDay(statement.dueDate, locale),
+                                })}
                           </>
                         ) : (
-                          <>
-                            {formatMoneyMagnitude(row.limitMinor, row.currency)} limit ·
-                            waiting for the first statement
-                          </>
+                          t('limitAwaitingFirstStatement', {
+                            limit: formatMoneyMagnitude(
+                              row.limitMinor,
+                              row.currency,
+                              locale,
+                            ),
+                          })
                         )}
                       </span>
                     </span>
@@ -225,7 +262,7 @@ export function CreditPanel() {
                     >
                       <span style={{ textAlign: 'right' }}>
                         <span className="plinto-eyebrow">
-                          {stale ? 'Last paid' : 'To pay'}
+                          {stale ? t('lastPaid') : t('toPay')}
                         </span>
                         {statement ? (
                           <Amount
@@ -242,10 +279,10 @@ export function CreditPanel() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              aria-label={`Edit ${row.name} statement`}
+                              aria-label={t('editStatementFor', { name: row.name })}
                               onClick={() => setEditing(row)}
                             >
-                              Edit
+                              {tCommon('edit')}
                             </Button>
                           ) : null}
                           <Button
@@ -253,15 +290,15 @@ export function CreditPanel() {
                             size="sm"
                             onClick={() => setStatementFor(row)}
                           >
-                            Add statement
+                            {t('addStatement')}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label={`Close ${row.name}`}
+                            aria-label={t('closeLineFor', { name: row.name })}
                             onClick={() => setPendingClose(row)}
                           >
-                            Close
+                            {t('closeAction')}
                           </Button>
                         </>
                       ) : null}
@@ -276,8 +313,8 @@ export function CreditPanel() {
       <Drawer
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        title="Add a credit line"
-        description="A card, or a rotating line like ADDI"
+        title={t('drawer.addTitle')}
+        description={t('drawer.addDescription')}
       >
         <CreditLineForm
           currencies={currencies.length > 0 ? currencies : ['COP']}
@@ -288,8 +325,12 @@ export function CreditPanel() {
       <Drawer
         open={statementFor !== null}
         onClose={() => setStatementFor(null)}
-        title={statementFor ? `${statementFor.name} statement` : 'Statement'}
-        description="Its payment goes straight onto the obligations board"
+        title={
+          statementFor
+            ? t('drawer.statementTitle', { name: statementFor.name })
+            : t('drawer.statementFallback')
+        }
+        description={t('drawer.statementDescription')}
       >
         {statementFor ? (
           <StatementForm line={statementFor} onSaved={() => setStatementFor(null)} />
@@ -299,8 +340,12 @@ export function CreditPanel() {
       <Drawer
         open={editingLine !== null}
         onClose={() => setEditingLine(null)}
-        title={editingLine ? `Edit ${editingLine.name}` : 'Edit credit line'}
-        description="Name and ceiling — statements keep the limit they were measured against"
+        title={
+          editingLine
+            ? t('drawer.editLineTitle', { name: editingLine.name })
+            : t('drawer.editLineFallback')
+        }
+        description={t('drawer.editLineDescription')}
       >
         {editingLine ? (
           <CreditLineForm
@@ -314,8 +359,12 @@ export function CreditPanel() {
       <Drawer
         open={editing !== null}
         onClose={() => setEditing(null)}
-        title={editing ? `Fix ${editing.name} statement` : 'Fix statement'}
-        description="The payment on the obligations board changes with it"
+        title={
+          editing
+            ? t('drawer.fixStatementTitle', { name: editing.name })
+            : t('drawer.fixStatementFallback')
+        }
+        description={t('drawer.fixStatementDescription')}
       >
         {editing?.latestStatement ? (
           <StatementForm
@@ -329,27 +378,33 @@ export function CreditPanel() {
       <Modal
         open={pendingClose !== null}
         onClose={() => setPendingClose(null)}
-        title="Close this credit line?"
+        title={t('closeModal.title')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setPendingClose(null)}>
-              Keep it
+              {t('closeModal.keepIt')}
             </Button>
             <Button
               variant="danger"
               disabled={closeMutation.isPending}
               onClick={() => pendingClose && closeMutation.mutate(pendingClose.id)}
             >
-              {closeMutation.isPending ? 'Closing…' : 'Close line'}
+              {closeMutation.isPending
+                ? t('closeModal.closing')
+                : t('closeModal.confirm')}
             </Button>
           </>
         }
       >
+        {/* `t.rich` rather than string concatenation: the emphasised line name
+            sits mid-sentence, and where it sits differs by language. */}
         <p className="muted">
-          <strong style={{ color: 'var(--text-strong)' }}>{pendingClose?.name}</strong>{' '}
-          stops accepting new statements. The ones it already issued stay — some
-          of them are paid, and removing them would leave payments with no reason
-          behind them.
+          {t.rich('closeModal.body', {
+            name: pendingClose?.name ?? '',
+            strong: (chunks) => (
+              <strong style={{ color: 'var(--text-strong)' }}>{chunks}</strong>
+            ),
+          })}
         </p>
       </Modal>
     </div>

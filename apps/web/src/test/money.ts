@@ -1,4 +1,6 @@
 import { formatMoneyMagnitude } from '../components/ui/amount'
+import { FORMATTING_LOCALE, type Locale } from '../i18n/config'
+import { TEST_LOCALE } from './render-with-providers'
 
 /**
  * The money string a component will actually render, ready to hand to
@@ -13,7 +15,19 @@ import { formatMoneyMagnitude } from '../components/ui/amount'
  * It never came up before because the currencies under test formatted without a
  * separator at all (`"$1,234.50"`). It appears the moment a test asserts on COP,
  * which is the household default.
+ *
+ * `locale` must match the locale the component under test is rendered in, or
+ * the expected string and the DOM disagree on separators \u2014 `1,234.50` against
+ * `1.234,50`. It defaults to `TEST_LOCALE` for the same reason
+ * `renderWithProviders` does.
  */
-export function money(minor: number, currency: string): string {
-  return formatMoneyMagnitude(minor, currency).replace(/\u00a0/g, ' ')
+export function money(
+  minor: number,
+  currency: string,
+  locale: Locale = TEST_LOCALE,
+): string {
+  return formatMoneyMagnitude(minor, currency, FORMATTING_LOCALE[locale]).replace(
+    /\u00a0/g,
+    ' ',
+  )
 }

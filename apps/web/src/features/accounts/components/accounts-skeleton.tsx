@@ -4,6 +4,8 @@
  * loaded content is calm rather than a jump from a "Loading…" line.
  */
 
+import { useTranslations } from 'next-intl'
+
 function AccountCardSkeleton() {
   return (
     <div className="account-card account-card--skeleton" aria-hidden="true">
@@ -23,8 +25,10 @@ function AccountCardSkeleton() {
 }
 
 export function AccountsSkeleton({ cards = 3 }: { cards?: number }) {
+  const t = useTranslations('accounts')
+
   return (
-    <div role="status" aria-label="Loading accounts">
+    <div role="status" aria-label={t('loading')}>
       <section>
         <div className="section-head">
           <span className="skeleton skeleton-chip" />

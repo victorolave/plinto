@@ -1,34 +1,44 @@
 /* ============================================================
-   Plinto — Elevation, shadows & motion tokens
-   Subtle, low, neutral shadows. Calm, quick transitions.
-   Borders do most of the separating; shadow is restrained.
+   PLINTO · RULES, ELEVATION, MOTION
+   ------------------------------------------------------------
+   Ported from the Plinto Design System (tokens/elevation.css).
+
+   Structure is drawn with rules: 2px opens a section, 1px separates
+   entries, nothing else divides anything. --shadow-xs and --shadow-sm
+   resolve to none on purpose, so reaching for one on a panel quietly
+   does nothing. The remaining steps are for layers that genuinely
+   leave the page — menu, dialog, toast.
    ============================================================ */
 :root {
-  /* Shadows — subtle, neutral; depth comes from borders, not drama */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.02);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --rule-width-hair: 1px;
+  --rule-width-strong: 2px;
 
-  /* Focus / brand glow */
-  --shadow-focus: 0 0 0 3px var(--plinto-red-200);
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: 0 8px 24px rgba(10, 10, 10, 0.12);
+  --shadow-lg: 0 16px 48px rgba(10, 10, 10, 0.16);
+  --shadow-overlay: 0 24px 64px rgba(10, 10, 10, 0.22);
 
-  /* Borders as elevation */
-  --ring-card: inset 0 0 0 1px var(--border-subtle);
+  --scrim: rgba(10, 10, 10, 0.55);
 
-  /* Motion */
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  /* Precise and quick. No spring, no bounce, no loop. */
   --duration-fast: 120ms;
   --duration-base: 180ms;
   --duration-slow: 280ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  /* Z-index */
+  --z-base: 0;
   --z-sticky: 100;
-  --z-dropdown: 200;
-  --z-overlay: 300;
-  --z-modal: 400;
-  --z-toast: 500;
+  --z-dropdown: 300;
+  --z-overlay: 500;
+  --z-modal: 600;
+  --z-toast: 800;
+}
+
+[data-theme='dark'] {
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.7);
+  --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.8);
+  --scrim: rgba(0, 0, 0, 0.7);
 }

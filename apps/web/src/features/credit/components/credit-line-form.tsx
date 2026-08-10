@@ -2,6 +2,9 @@
 
 import { type FormEvent, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
+import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import {
   CreateCreditLineSchema,
   UpdateCreditLineSchema,
@@ -35,6 +38,10 @@ export interface CreditLineFormProps {
  * number its owner is stuck with.
  */
 export function CreditLineForm({ currencies, line, onSaved }: CreditLineFormProps) {
+  const t = useTranslations('credit.form')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
+  const toValidationMessage = useValidationMessage()
   const queryClient = useQueryClient()
   const editing = line !== undefined
 
@@ -58,9 +65,7 @@ export function CreditLineForm({ currencies, line, onSaved }: CreditLineFormProp
   })
 
   const submitting = saveMutation.isPending
-  const error =
-    validationError ??
-    (saveMutation.error instanceof Error ? saveMutation.error.message : null)
+  const error = validationError ?? toErrorMessage(saveMutation.error)
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -81,7 +86,7 @@ export function CreditLineForm({ currencies, line, onSaved }: CreditLineFormProp
       : CreateCreditLineSchema.safeParse(payload)
 
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? 'Invalid credit line')
+      setValidationError(toValidationMessage(result.error.issues[0]) ?? t('invalid'))
       return
     }
 
@@ -92,20 +97,20 @@ export function CreditLineForm({ currencies, line, onSaved }: CreditLineFormProp
   return (
     <form onSubmit={handleSubmit} className="drawer-form">
       <div className="stack">
-        <Field label="Name" htmlFor="credit-name">
+        <Field label={t('name')} htmlFor="credit-name">
           <Input
             id="credit-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. ADDI, Visa Bancolombia"
+            placeholder={t('namePlaceholder')}
             required
           />
         </Field>
 
         <div className="form-grid">
           <Field
-            label="Credit limit"
-            hint="Your ceiling today — you can change it whenever the issuer does"
+            label={t('limit')}
+            hint={t('limitHint')}
             htmlFor="credit-limit"
           >
             <Input
@@ -119,8 +124,8 @@ export function CreditLineForm({ currencies, line, onSaved }: CreditLineFormProp
             />
           </Field>
           <Field
-            label="Currency"
-            hint={editing ? 'Fixed — the statements below carry their own amounts' : undefined}
+            label={t('currency')}
+            hint={editing ? t('currencyFixedHint') : undefined}
             htmlFor="credit-currency"
           >
             <Select
@@ -139,25 +144,18 @@ export function CreditLineForm({ currencies, line, onSaved }: CreditLineFormProp
           </Field>
         </div>
 
-        {editing ? (
-          <p className="muted">
-            Statements already recorded keep the limit they were measured
-            against, so changing this never restates a figure you have read.
-          </p>
-        ) : (
-          <p className="muted">
-            No cutoff or payment day here. Each statement brings its own dates,
-            so a lender switching you from monthly to biweekly needs nothing
-            changed.
-          </p>
-        )}
+        <p className="muted">{editing ? t('editingNote') : t('creatingNote')}</p>
 
         {error ? <p className="error-text">{error}</p> : null}
       </div>
 
       <div className="drawer-form-actions">
         <Button type="submit" block disabled={submitting}>
-          {submitting ? 'Saving…' : editing ? 'Save changes' : 'Add credit line'}
+          {submitting
+            ? tCommon('saving')
+            : editing
+              ? t('saveChanges')
+              : t('addCreditLine')}
         </Button>
       </div>
     </form>

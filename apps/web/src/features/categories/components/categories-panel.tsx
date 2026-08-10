@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import {
   Category,
   deleteCategory,
@@ -20,6 +22,9 @@ import { ActionsMenu } from '../../../components/ui/actions-menu'
 import { Plus, Pencil, Trash, Tag } from '../../../components/ui/icons'
 
 export function CategoriesPanel() {
+  const t = useTranslations('categories')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
   const queryClient = useQueryClient()
 
   const {
@@ -43,8 +48,7 @@ export function CategoriesPanel() {
     },
   })
 
-  const activeError = deleteMutation.error ?? loadError
-  const error = activeError instanceof Error ? activeError.message : null
+  const error = toErrorMessage(deleteMutation.error ?? loadError)
   const deleting = deleteMutation.isPending
 
   const openCreate = () => {
@@ -78,11 +82,9 @@ export function CategoriesPanel() {
 
       {!loading && categories.length > 0 ? (
         <div className="categories-head">
-          <span className="muted">
-            {categories.length} categor{categories.length > 1 ? 'ies' : 'y'}
-          </span>
+          <span className="muted">{t('count', { count: categories.length })}</span>
           <Button leftIcon={<Plus size={18} />} onClick={openCreate}>
-            New category
+            {t('newCategory')}
           </Button>
         </div>
       ) : null}
@@ -90,11 +92,11 @@ export function CategoriesPanel() {
       {!loading && categories.length === 0 ? (
         <EmptyState
           icon={<Tag size={30} />}
-          title="No categories yet"
-          description="Categories label your income and expenses so you can see where the money actually goes."
+          title={t('empty.title')}
+          description={t('empty.description')}
           action={
             <Button leftIcon={<Plus size={18} />} onClick={openCreate}>
-              New category
+              {t('newCategory')}
             </Button>
           }
         />
@@ -114,19 +116,19 @@ export function CategoriesPanel() {
                   />
                   <span className="account-name">{category.name}</span>
                   <Badge tone={category.type === 'income' ? 'success' : 'neutral'}>
-                    {category.type}
+                    {t(`type.${category.type}`)}
                   </Badge>
                 </div>
                 <ActionsMenu
-                  label={`Actions for ${category.name}`}
+                  label={t('actionsFor', { name: category.name })}
                   items={[
                     {
-                      label: 'Edit',
+                      label: tCommon('edit'),
                       icon: <Pencil size={15} />,
                       onClick: () => openEdit(category),
                     },
                     {
-                      label: 'Delete',
+                      label: tCommon('delete'),
                       icon: <Trash size={15} />,
                       danger: true,
                       onClick: () => setPendingDelete(category),
@@ -143,8 +145,8 @@ export function CategoriesPanel() {
       <Drawer
         open={drawerOpen}
         onClose={closeDrawer}
-        title={editing ? 'Edit category' : 'New category'}
-        description="Used to label income and expenses"
+        title={editing ? t('editCategory') : t('newCategory')}
+        description={t('drawerDescription')}
       >
         <CategoryForm editing={editing} onSaved={handleSaved} />
       </Drawer>
@@ -153,24 +155,25 @@ export function CategoriesPanel() {
       <Modal
         open={pendingDelete !== null}
         onClose={() => setPendingDelete(null)}
-        title="Delete category?"
+        title={t('deleteModal.title')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setPendingDelete(null)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button variant="danger" onClick={confirmDelete} disabled={deleting}>
-              {deleting ? 'Deleting…' : 'Delete category'}
+              {deleting ? t('deleteModal.deleting') : t('deleteModal.confirm')}
             </Button>
           </>
         }
       >
         <p className="muted">
-          <strong style={{ color: 'var(--text-strong)' }}>
-            {pendingDelete?.name}
-          </strong>{' '}
-          will be removed. Transactions using it keep their record but lose this
-          label.
+          {t.rich('deleteModal.body', {
+            name: pendingDelete?.name ?? '',
+            strong: (chunks) => (
+              <strong style={{ color: 'var(--text-strong)' }}>{chunks}</strong>
+            ),
+          })}
         </p>
       </Modal>
     </div>

@@ -3,9 +3,13 @@
  * shimmer and mirrors an obligation row (name + due date, amount, status).
  */
 
+import { useTranslations } from 'next-intl'
+
 export function ObligationsSkeleton({ rows = 4 }: { rows?: number }) {
+  const t = useTranslations('obligations')
+
   return (
-    <div role="status" aria-label="Loading obligations">
+    <div role="status" aria-label={t('loading')}>
       {Array.from({ length: rows }).map((_, index) => (
         <div key={index} className="data-row" aria-hidden="true">
           <div style={{ minWidth: 0, flex: 1 }}>

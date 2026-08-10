@@ -2,6 +2,9 @@
 
 import { type FormEvent, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useFormattingLocale } from '../../../i18n/formatting'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import type { Transaction } from '../../transactions/services/transactions'
 import type { ObligationInstance } from '../services/obligations'
 import { reconcileObligation } from '../services/obligations'
@@ -28,6 +31,9 @@ export function ReconcileForm({
   transactions,
   onSaved,
 }: ReconcileFormProps) {
+  const t = useTranslations('obligations.reconcile')
+  const toErrorMessage = useErrorMessage()
+  const locale = useFormattingLocale()
   const eligible = useMemo(
     () =>
       transactions.filter(
@@ -47,8 +53,7 @@ export function ReconcileForm({
     },
   })
 
-  const error =
-    reconcileMutation.error instanceof Error ? reconcileMutation.error.message : null
+  const error = toErrorMessage(reconcileMutation.error)
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -59,8 +64,7 @@ export function ReconcileForm({
   if (eligible.length === 0) {
     return (
       <p className="muted">
-        No expense in {obligation.currency} is available to settle this
-        obligation. Record the payment as a transaction first.
+        {t('noEligibleExpense', { currency: obligation.currency })}
       </p>
     )
   }
@@ -69,21 +73,30 @@ export function ReconcileForm({
     <form onSubmit={handleSubmit} className="drawer-form">
       <div className="stack">
         <p className="muted">
-          Expected{' '}
-          <strong style={{ color: 'var(--text-strong)' }}>
-            {formatMoneyMagnitude(obligation.expectedAmountMinor, obligation.currency)}
-          </strong>
-          {obligation.paidAmountMinor > 0 ? (
-            <>
-              {' '}· already settled{' '}
-              {formatMoneyMagnitude(obligation.paidAmountMinor, obligation.currency)}
-            </>
-          ) : null}
+          {t.rich('expected', {
+            amount: formatMoneyMagnitude(
+              obligation.expectedAmountMinor,
+              obligation.currency,
+              locale,
+            ),
+            strong: (chunks) => (
+              <strong style={{ color: 'var(--text-strong)' }}>{chunks}</strong>
+            ),
+          })}
+          {obligation.paidAmountMinor > 0
+            ? ` · ${t('alreadySettled', {
+                amount: formatMoneyMagnitude(
+                  obligation.paidAmountMinor,
+                  obligation.currency,
+                  locale,
+                ),
+              })}`
+            : null}
         </p>
 
         <Field
-          label="Transaction"
-          hint="Only expenses in this obligation's currency can settle it"
+          label={t('transaction')}
+          hint={t('transactionHint')}
           htmlFor="reconcile-transaction"
         >
           <Select
@@ -94,8 +107,12 @@ export function ReconcileForm({
           >
             {eligible.map((transaction) => (
               <option key={transaction.id} value={transaction.id}>
-                {formatMoneyMagnitude(transaction.amountMinor, transaction.currency)} ·{' '}
-                {transaction.description || 'No description'} ·{' '}
+                {formatMoneyMagnitude(
+                  transaction.amountMinor,
+                  transaction.currency,
+                  locale,
+                )}{' '}
+                · {transaction.description || t('noDescription')} ·{' '}
                 {transaction.occurredAt.slice(0, 10)}
               </option>
             ))}
@@ -107,7 +124,7 @@ export function ReconcileForm({
 
       <div className="drawer-form-actions">
         <Button type="submit" block disabled={reconcileMutation.isPending}>
-          {reconcileMutation.isPending ? 'Linking…' : 'Mark as settled'}
+          {reconcileMutation.isPending ? t('linking') : t('markSettled')}
         </Button>
       </div>
     </form>

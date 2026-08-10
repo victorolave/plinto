@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ChevronDown, Check } from '../ui/icons'
 
 export interface TenantOption {
@@ -16,6 +17,7 @@ export interface TenantSwitcherProps {
 
 /** Household switcher pinned at the top of the sidebar — tenant context stays visible. */
 export function TenantSwitcher({ tenants, activeTenantId, onSelect }: TenantSwitcherProps) {
+  const t = useTranslations('tenantSwitcher')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -44,13 +46,13 @@ export function TenantSwitcher({ tenants, activeTenantId, onSelect }: TenantSwit
         disabled={tenants.length === 0}
       >
         <span className="tenant-switcher-mark">{mark}</span>
-        <span style={{ minWidth: 0, flex: 1 }}>
-          <span className="tenant-switcher-name" style={{ display: 'block' }}>
-            {active?.name ?? 'Select household'}
+        <span className="tenant-switcher-label">
+          <span className="tenant-switcher-name">
+            {active?.name ?? t('selectHousehold')}
           </span>
-          <span className="tenant-switcher-role">Household</span>
+          <span className="tenant-switcher-role">{t('household')}</span>
         </span>
-        <ChevronDown size={16} />
+        <ChevronDown size={16} className="tenant-switcher-chevron" />
       </button>
 
       {open ? (
@@ -72,7 +74,7 @@ export function TenantSwitcher({ tenants, activeTenantId, onSelect }: TenantSwit
                 <span className="tenant-switcher-mark">
                   {tenant.name.trim().charAt(0).toUpperCase()}
                 </span>
-                <span style={{ flex: 1, minWidth: 0 }} className="tenant-switcher-name">
+                <span className="tenant-switcher-name" style={{ flex: 1, minWidth: 0 }}>
                   {tenant.name}
                 </span>
                 {isActive ? <Check size={15} /> : null}

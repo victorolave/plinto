@@ -5,13 +5,12 @@ import type { Transaction } from '../services/transactions'
 export type HistoryFilter = 'all' | 'income' | 'expense'
 export type DatePreset = 'all' | 'month' | '30d' | 'year' | 'custom'
 
-export const datePresetOptions: Array<{ value: DatePreset; label: string }> = [
-  { value: 'all', label: 'All time' },
-  { value: 'month', label: 'This month' },
-  { value: '30d', label: 'Last 30 days' },
-  { value: 'year', label: 'This year' },
-  { value: 'custom', label: 'Custom range' },
-]
+/**
+ * The order the date-range dropdown offers. Labels live in the catalogue under
+ * `transactions.datePreset.*` — this hook is not a React component and has no
+ * translator, so it must not carry the copy.
+ */
+export const DATE_PRESETS: DatePreset[] = ['all', 'month', '30d', 'year', 'custom']
 
 function toDateInputValue(date: Date): string {
   const year = date.getFullYear()

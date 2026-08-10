@@ -2,6 +2,10 @@
 
 import { type FormEvent, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useFormattingLocale } from '../../../i18n/formatting'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
+import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import {
   CreateDebtScheduleSchema,
   isLiabilityAccountType,
@@ -28,6 +32,11 @@ export interface DebtFormProps {
  * nobody is told one — interest is recorded, not calculated (PRD-007).
  */
 export function DebtForm({ accounts, onSaved }: DebtFormProps) {
+  const t = useTranslations('debts.form')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
+  const toValidationMessage = useValidationMessage()
+  const locale = useFormattingLocale()
   const queryClient = useQueryClient()
 
   const liabilities = useMemo(
@@ -77,9 +86,7 @@ export function DebtForm({ accounts, onSaved }: DebtFormProps) {
   })
 
   const submitting = createMutation.isPending
-  const error =
-    validationError ??
-    (createMutation.error instanceof Error ? createMutation.error.message : null)
+  const error = validationError ?? toErrorMessage(createMutation.error)
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -95,7 +102,7 @@ export function DebtForm({ accounts, onSaved }: DebtFormProps) {
 
     const result = CreateDebtScheduleSchema.safeParse(payload)
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? 'Invalid schedule')
+      setValidationError(toValidationMessage(result.error.issues[0]) ?? t('invalid'))
       return
     }
 
@@ -107,13 +114,10 @@ export function DebtForm({ accounts, onSaved }: DebtFormProps) {
     <form onSubmit={handleSubmit} className="drawer-form">
       <div className="stack">
         {liabilities.length === 0 ? (
-          <p className="muted">
-            You need a debt or credit account first — that is what the
-            installments pay down.
-          </p>
+          <p className="muted">{t('needLiabilityAccount')}</p>
         ) : null}
 
-        <Field label="Lender" htmlFor="debt-account">
+        <Field label={t('lender')} htmlFor="debt-account">
           <Select
             id="debt-account"
             value={accountId}
@@ -128,19 +132,19 @@ export function DebtForm({ accounts, onSaved }: DebtFormProps) {
           </Select>
         </Field>
 
-        <Field label="What you bought" htmlFor="debt-name">
+        <Field label={t('whatYouBought')} htmlFor="debt-name">
           <Input
             id="debt-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. Nevera"
+            placeholder={t('namePlaceholder')}
             required
           />
         </Field>
 
         <Field
-          label="Total to repay"
-          hint="Interest included — what the lender says you will pay in all"
+          label={t('totalToRepay')}
+          hint={t('totalToRepayHint')}
           htmlFor="debt-principal"
         >
           <Input
@@ -155,7 +159,7 @@ export function DebtForm({ accounts, onSaved }: DebtFormProps) {
         </Field>
 
         <div className="form-grid">
-          <Field label="Each installment" htmlFor="debt-installment">
+          <Field label={t('eachInstallment')} htmlFor="debt-installment">
             <Input
               id="debt-installment"
               type="number"
@@ -166,7 +170,7 @@ export function DebtForm({ accounts, onSaved }: DebtFormProps) {
               required
             />
           </Field>
-          <Field label="How many" htmlFor="debt-count">
+          <Field label={t('howMany')} htmlFor="debt-count">
             <Input
               id="debt-count"
               type="number"
@@ -180,7 +184,7 @@ export function DebtForm({ accounts, onSaved }: DebtFormProps) {
           </Field>
         </div>
 
-        <Field label="First installment due" htmlFor="debt-first-due">
+        <Field label={t('firstDue')} htmlFor="debt-first-due">
           <Input
             id="debt-first-due"
             type="date"
@@ -192,11 +196,12 @@ export function DebtForm({ accounts, onSaved }: DebtFormProps) {
 
         {lastDiffers ? (
           <p className="muted">
-            The last installment will charge{' '}
-            <strong style={{ color: 'var(--text-strong)' }}>
-              {formatMoneyMagnitude(lastInstallmentMinor, currency)}
-            </strong>
-            , so the plan adds up to exactly what you owe.
+            {t.rich('lastInstallmentNote', {
+              amount: formatMoneyMagnitude(lastInstallmentMinor, currency, locale),
+              strong: (chunks) => (
+                <strong style={{ color: 'var(--text-strong)' }}>{chunks}</strong>
+              ),
+            })}
           </p>
         ) : null}
 
@@ -205,7 +210,7 @@ export function DebtForm({ accounts, onSaved }: DebtFormProps) {
 
       <div className="drawer-form-actions">
         <Button type="submit" block disabled={submitting || liabilities.length === 0}>
-          {submitting ? 'Saving…' : 'Record purchase'}
+          {submitting ? tCommon('saving') : t('recordPurchase')}
         </Button>
       </div>
     </form>

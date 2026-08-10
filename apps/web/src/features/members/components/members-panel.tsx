@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useFormattingLocale } from '../../../i18n/formatting'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import {
   changeMemberRole,
   listMembers,
@@ -40,28 +43,22 @@ const ROLE_TONE: Record<MemberRole, 'brand' | 'info' | 'neutral'> = {
   viewer: 'neutral',
 }
 
-const ROLE_HINT: Record<MemberRole, string> = {
-  owner: 'Manages the household and its members',
-  member: 'Can record and edit money movements',
-  viewer: 'Can see everything, change nothing',
-}
-
 const ROLES: MemberRole[] = ['owner', 'member', 'viewer']
 
-function formatJoinedAt(joinedAt: string): string {
+function formatJoinedAt(joinedAt: string, locale: string): string {
   const date = new Date(joinedAt)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   })
 }
 
-function formatExpiry(expiresAt: string): string {
+function formatExpiry(expiresAt: string, locale: string): string {
   const date = new Date(expiresAt)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }
 
 /** Falls back to the local part of the email when the IdP gave us no name. */
@@ -72,6 +69,10 @@ function displayNameOf(member: TenantMember): string {
 }
 
 export function MembersPanel() {
+  const t = useTranslations('members')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
+  const locale = useFormattingLocale()
   const { user } = useDashboard()
   const queryClient = useQueryClient()
 
@@ -138,12 +139,11 @@ export function MembersPanel() {
     },
   })
 
-  const failure = [
-    error,
-    roleMutation.error,
-    removeMutation.error,
-    revokeMutation.error,
-  ].find((candidate): candidate is Error => candidate instanceof Error)
+  const failure = toErrorMessage(
+    [error, roleMutation.error, removeMutation.error, revokeMutation.error].find(
+      (candidate): candidate is Error => candidate instanceof Error,
+    ),
+  )
 
   /**
    * Which row is mid-save, so only that one reports it. Keying off `isPending`
@@ -157,13 +157,13 @@ export function MembersPanel() {
       // the app, so it is not offered at all.
       .filter((role) => !(isSoleOwner(member) && role !== 'owner'))
       .map((role) => ({
-        label: `Make ${role}`,
+        label: t(`makeRole.${role}`),
         onClick: () => roleMutation.mutate({ userId: member.userId, role }),
       }))
 
     if (!isSoleOwner(member)) {
       actions.push({
-        label: isSelf(member) ? 'Leave household' : 'Remove from household',
+        label: isSelf(member) ? t('leaveHousehold') : t('removeFromHousehold'),
         icon: isSelf(member) ? <LogOut size={15} /> : <Trash size={15} />,
         danger: true,
         onClick: () => setPendingRemove(member),
@@ -177,15 +177,13 @@ export function MembersPanel() {
 
   return (
     <div className="page">
-      {failure ? <p className="error-text">{failure.message}</p> : null}
+      {failure ? <p className="error-text">{failure}</p> : null}
 
       <Card flush>
         <CardHeader
-          title="Household members"
+          title={t('title')}
           subtitle={
-            isLoading
-              ? 'Loading…'
-              : `${members.length} ${members.length === 1 ? 'person' : 'people'} in this household`
+            isLoading ? tCommon('loading') : t('peopleCount', { count: members.length })
           }
           action={
             canAdminister ? (
@@ -196,7 +194,7 @@ export function MembersPanel() {
                   setInviteOpen(true)
                 }}
               >
-                Invite
+                {t('invite')}
               </Button>
             ) : null
           }
@@ -206,15 +204,19 @@ export function MembersPanel() {
           <div className="member-notice">
             <span className="muted">
               {lastResult.status === 'accepted'
-                ? `${lastResult.member?.email ?? 'They'} already had an account and joined right away.`
-                : `Invitation sent to ${lastResult.invitation?.email ?? 'them'}. It will be applied the first time they sign in.`}
+                ? t('joinedRightAway', {
+                    email: lastResult.member?.email ?? t('thatPerson'),
+                  })
+                : t('invitationSent', {
+                    email: lastResult.invitation?.email ?? t('thatPerson'),
+                  })}
             </span>
             {/* Dismissible, because it reports a moment rather than a state.
                 Left alone it would still be announcing "sent" tomorrow. */}
             <Button
               variant="ghost"
               size="sm"
-              aria-label="Dismiss"
+              aria-label={t('dismiss')}
               onClick={() => setLastResult(null)}
             >
               <X size={14} />
@@ -227,15 +229,15 @@ export function MembersPanel() {
         {!isLoading && members.length === 0 ? (
           <EmptyState
             icon={<Users size={30} />}
-            title="No members yet"
-            description="This household has no members, which should not be possible — whoever created it is its owner. Try reloading."
+            title={t('empty.title')}
+            description={t('empty.description')}
           />
         ) : null}
 
         {!isLoading && members.length > 0 ? (
           // A real list, not a stack of divs: this is an enumeration of people,
           // so a screen reader should announce it as one and report its length.
-          <ul className="member-list" aria-label="Household members">
+          <ul className="member-list" aria-label={t('title')}>
             {members.map((member) => {
               const name = displayNameOf(member)
               const saving = savingUserId === member.userId
@@ -248,12 +250,16 @@ export function MembersPanel() {
                     <span className="member-identity-text">
                       <span className="account-name">
                         {name}
-                        {isSelf(member) ? <span className="muted"> · you</span> : null}
+                        {isSelf(member) ? (
+                          <span className="muted"> · {t('you')}</span>
+                        ) : null}
                       </span>
                       <span className="muted member-identity-meta">
                         {member.email}
-                        {formatJoinedAt(member.joinedAt)
-                          ? ` · joined ${formatJoinedAt(member.joinedAt)}`
+                        {formatJoinedAt(member.joinedAt, locale)
+                          ? ` · ${t('joinedOn', {
+                              date: formatJoinedAt(member.joinedAt, locale),
+                            })}`
                           : ''}
                       </span>
                       {/* Only worth saying when there is somebody else to
@@ -263,7 +269,7 @@ export function MembersPanel() {
                           beside the badge, which already says "owner". */}
                       {canAdminister && isSoleOwner(member) && members.length > 1 ? (
                         <span className="muted member-identity-meta">
-                          A household must keep one owner, so this cannot change
+                          {t('soleOwnerNote')}
                         </span>
                       ) : null}
                     </span>
@@ -273,14 +279,16 @@ export function MembersPanel() {
                     {/* One visual language for everybody: the role always reads
                         as a badge, and only the menu beside it appears or does
                         not. An owner and a viewer see the same roster. */}
-                    <Badge tone={ROLE_TONE[member.role]}>{member.role}</Badge>
+                    <Badge tone={ROLE_TONE[member.role]}>{t(`role.${member.role}`)}</Badge>
 
                     {saving ? (
-                      <span className="muted member-row-status">Saving…</span>
+                      <span className="muted member-row-status">
+                        {tCommon('saving')}
+                      </span>
                     ) : null}
 
                     {canAdminister && !saving && actions.length > 0 ? (
-                      <ActionsMenu label={`Actions for ${name}`} items={actions} />
+                      <ActionsMenu label={t('actionsFor', { name })} items={actions} />
                     ) : null}
                   </span>
                 </li>
@@ -293,26 +301,28 @@ export function MembersPanel() {
       {canAdminister && invitations.length > 0 ? (
         <Card flush>
           <CardHeader
-            title="Pending invitations"
-            subtitle="Applied the first time each person signs in"
+            title={t('pendingInvitations')}
+            subtitle={t('pendingInvitationsSubtitle')}
           />
-          <ul className="member-list" aria-label="Pending invitations">
+          <ul className="member-list" aria-label={t('pendingInvitations')}>
             {invitations.map((invitation) => (
               <li key={invitation.id} className="data-row">
                 <span className="member-identity-text">
                   <span className="account-name">{invitation.email}</span>
                   <span className="muted member-identity-meta">
-                    Invited as {invitation.role}
-                    {formatExpiry(invitation.expiresAt)
-                      ? ` · expires ${formatExpiry(invitation.expiresAt)}`
+                    {t('invitedAs', { role: t(`role.${invitation.role}`) })}
+                    {formatExpiry(invitation.expiresAt, locale)
+                      ? ` · ${t('expiresOn', {
+                          date: formatExpiry(invitation.expiresAt, locale),
+                        })}`
                       : ''}
                   </span>
                 </span>
                 <ActionsMenu
-                  label={`Actions for ${invitation.email}`}
+                  label={t('actionsFor', { name: invitation.email })}
                   items={[
                     {
-                      label: 'Revoke invitation',
+                      label: t('revokeInvitation'),
                       icon: <Trash size={15} />,
                       danger: true,
                       onClick: () => setPendingRevoke(invitation),
@@ -328,16 +338,16 @@ export function MembersPanel() {
       {!isLoading && members.length > 0 ? (
         <Card>
           <CardHeader
-            title="What each role can do"
-            subtitle="Roles are enforced by the API, not just hidden in the interface"
+            title={t('roleLegend.title')}
+            subtitle={t('roleLegend.subtitle')}
           />
           <dl className="role-legend">
             {ROLES.map((role) => (
               <div key={role} className="role-legend-row">
                 <dt>
-                  <Badge tone={ROLE_TONE[role]}>{role}</Badge>
+                  <Badge tone={ROLE_TONE[role]}>{t(`role.${role}`)}</Badge>
                 </dt>
-                <dd className="muted">{ROLE_HINT[role]}</dd>
+                <dd className="muted">{t(`roleHint.${role}`)}</dd>
               </div>
             ))}
           </dl>
@@ -347,8 +357,8 @@ export function MembersPanel() {
       <Drawer
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
-        title="Invite someone"
-        description="They join this household with the role you pick"
+        title={t('inviteDrawer.title')}
+        description={t('inviteDrawer.description')}
       >
         <InviteForm
           onInvited={(result) => {
@@ -361,11 +371,11 @@ export function MembersPanel() {
       <Modal
         open={pendingRemove !== null}
         onClose={() => setPendingRemove(null)}
-        title={removingSelf ? 'Leave this household?' : 'Remove from household?'}
+        title={removingSelf ? t('removeModal.leaveTitle') : t('removeModal.removeTitle')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setPendingRemove(null)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               variant="danger"
@@ -374,11 +384,11 @@ export function MembersPanel() {
             >
               {removeMutation.isPending
                 ? removingSelf
-                  ? 'Leaving…'
-                  : 'Removing…'
+                  ? t('removeModal.leaving')
+                  : t('removeModal.removing')
                 : removingSelf
-                  ? 'Leave household'
-                  : 'Remove member'}
+                  ? t('removeModal.leaveConfirm')
+                  : t('removeModal.removeConfirm')}
             </Button>
           </>
         }
@@ -387,48 +397,45 @@ export function MembersPanel() {
             effect on the person reading the dialog — so it does not borrow the
             same words. */}
         <p className="muted">
-          {removingSelf ? (
-            <>
-              You lose access to this household straight away. Everything you
-              recorded stays — money movements belong to the household, not to
-              the person who typed them. An owner can invite you back.
-            </>
-          ) : (
-            <>
-              <strong style={{ color: 'var(--text-strong)' }}>
-                {pendingRemove ? displayNameOf(pendingRemove) : ''}
-              </strong>{' '}
-              loses access to this household. Everything they recorded stays —
-              money movements belong to the household, not to the person who
-              typed them. You can invite them back later.
-            </>
-          )}
+          {removingSelf
+            ? t('removeModal.leaveBody')
+            : t.rich('removeModal.removeBody', {
+                name: pendingRemove ? displayNameOf(pendingRemove) : '',
+                strong: (chunks) => (
+                  <strong style={{ color: 'var(--text-strong)' }}>{chunks}</strong>
+                ),
+              })}
         </p>
       </Modal>
 
       <Modal
         open={pendingRevoke !== null}
         onClose={() => setPendingRevoke(null)}
-        title="Revoke invitation?"
+        title={t('revokeModal.title')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setPendingRevoke(null)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               variant="danger"
               disabled={revokeMutation.isPending}
               onClick={() => pendingRevoke && revokeMutation.mutate(pendingRevoke.id)}
             >
-              {revokeMutation.isPending ? 'Revoking…' : 'Revoke invitation'}
+              {revokeMutation.isPending
+                ? t('revokeModal.revoking')
+                : t('revokeInvitation')}
             </Button>
           </>
         }
       >
         <p className="muted">
-          <strong style={{ color: 'var(--text-strong)' }}>{pendingRevoke?.email}</strong>{' '}
-          will no longer join this household when they sign in. You can invite
-          them again later.
+          {t.rich('revokeModal.body', {
+            email: pendingRevoke?.email ?? '',
+            strong: (chunks) => (
+              <strong style={{ color: 'var(--text-strong)' }}>{chunks}</strong>
+            ),
+          })}
         </p>
       </Modal>
     </div>

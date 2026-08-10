@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { IconButton } from './button'
 import { X } from './icons'
 
@@ -16,6 +17,8 @@ export interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, badge, footer, children }: ModalProps) {
+  const t = useTranslations('common')
+
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
@@ -39,7 +42,7 @@ export function Modal({ open, onClose, title, badge, footer, children }: ModalPr
           <h2 className="card-title">{title}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             {badge}
-            <IconButton label="Close" onClick={onClose} style={{ border: 'none' }}>
+            <IconButton label={t('close')} onClick={onClose} style={{ border: 'none' }}>
               <X size={18} />
             </IconButton>
           </div>

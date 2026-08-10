@@ -3,11 +3,15 @@
  * shimmer and mirrors a category row (swatch + name + type badge).
  */
 
-const RADIUS_XS = 'var(--radius-xs)'
+import { useTranslations } from 'next-intl'
+
+const RADIUS_XS = 'var(--radius-chip)'
 
 export function CategoriesSkeleton({ rows = 5 }: { rows?: number }) {
+  const t = useTranslations('categories')
+
   return (
-    <div role="status" aria-label="Loading categories">
+    <div role="status" aria-label={t('loading')}>
       {Array.from({ length: rows }).map((_, index) => (
         <div key={index} className="data-row" aria-hidden="true">
           <div

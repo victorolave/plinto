@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useFormattingLocale } from '../../../i18n/formatting'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import {
   cancelDebt,
   getDebtSummary,
@@ -18,6 +21,8 @@ import { Drawer } from '../../../components/ui/drawer'
 import { Modal } from '../../../components/ui/modal'
 import { EmptyState } from '../../../components/ui/empty-state'
 import { StatCard } from '../../../components/ui/stat-card'
+import { StatGridSkeleton } from '../../../components/ui/stat-grid-skeleton'
+import { DebtsListSkeleton } from './debts-skeleton'
 import { Amount, formatMoneyMagnitude } from '../../../components/ui/amount'
 import { Plus, TrendDown } from '../../../components/ui/icons'
 
@@ -27,6 +32,10 @@ function progressOf(debt: DebtSchedule): number {
 }
 
 export function DebtsPanel() {
+  const t = useTranslations('debts')
+  const tCommon = useTranslations('common')
+  const toErrorMessage = useErrorMessage()
+  const locale = useFormattingLocale()
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [pendingCancel, setPendingCancel] = useState<DebtSchedule | null>(null)
@@ -59,12 +68,7 @@ export function DebtsPanel() {
     },
   })
 
-  const errorMessage =
-    error instanceof Error
-      ? error.message
-      : cancelMutation.error instanceof Error
-        ? cancelMutation.error.message
-        : null
+  const errorMessage = toErrorMessage(error ?? cancelMutation.error)
 
   const active = debts.filter((debt) => debt.status === 'active' && !debt.settled)
   const closed = debts.filter((debt) => debt.status !== 'active' || debt.settled)
@@ -73,25 +77,32 @@ export function DebtsPanel() {
     <div className="page">
       {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
 
+      {isLoading ? <StatGridSkeleton cards={1} /> : null}
+
       {totals.length > 0 ? (
         <div className="stat-grid">
           {totals.map((total, index) => (
             <StatCard
               key={total.currency}
-              label={`Owed (${total.currency})`}
+              label={t('owed', { currency: total.currency })}
               valueMinor={total.scheduledOutstandingMinor + total.lenderOwedMinor}
               currency={total.currency}
               accent={index === 0}
               // The two figures are shown together but never merged into one
               // headline: remaining instalments and what the lender accounts
               // carry measure different things.
-              deltaLabel={`${formatMoneyMagnitude(
-                total.scheduledOutstandingMinor,
-                total.currency,
-              )} in instalments · ${formatMoneyMagnitude(
-                total.lenderOwedMinor,
-                total.currency,
-              )} on loans and cards`}
+              deltaLabel={t('owedBreakdown', {
+                instalments: formatMoneyMagnitude(
+                  total.scheduledOutstandingMinor,
+                  total.currency,
+                  locale,
+                ),
+                loans: formatMoneyMagnitude(
+                  total.lenderOwedMinor,
+                  total.currency,
+                  locale,
+                ),
+              })}
               icon={<TrendDown size={16} />}
             />
           ))}
@@ -99,36 +110,44 @@ export function DebtsPanel() {
       ) : null}
 
       <div className="categories-head">
-        <span className="muted">
-          {isLoading
-            ? 'Loading…'
-            : `${active.length} financed purchase${active.length === 1 ? '' : 's'} in progress`}
-        </span>
+        {/* A placeholder rather than the word "Loading…" — the skeletons above
+            and below already say the page is busy. */}
+        {isLoading ? (
+          <span
+            className="skeleton skeleton-line"
+            style={{ width: 168, height: 12 }}
+            aria-hidden="true"
+          />
+        ) : (
+          <span className="muted">{t('inProgressCount', { count: active.length })}</span>
+        )}
         <Button leftIcon={<Plus size={18} />} onClick={() => setFormOpen(true)}>
-          Record purchase
+          {t('recordPurchase')}
         </Button>
       </div>
 
       {!isLoading && debts.length === 0 ? (
         <EmptyState
           icon={<TrendDown size={30} />}
-          title="Nothing financed yet"
-          description="Record a purchase paid in fixed instalments and each one shows up on the obligations board — ending on its own after the last."
+          title={t('empty.title')}
+          description={t('empty.description')}
           action={
             <Button leftIcon={<Plus size={18} />} onClick={() => setFormOpen(true)}>
-              Record purchase
+              {t('recordPurchase')}
             </Button>
           }
         />
       ) : null}
 
+      {isLoading ? <DebtsListSkeleton /> : null}
+
       {[
-        { title: 'In progress', rows: active },
-        { title: 'Finished', rows: closed },
+        { id: 'inProgress', title: t('section.inProgress'), rows: active },
+        { id: 'finished', title: t('section.finished'), rows: closed },
       ]
         .filter((section) => section.rows.length > 0)
         .map((section) => (
-          <Card key={section.title} flush>
+          <Card key={section.id} flush>
             <CardHeader title={section.title} />
             <ul className="member-list" aria-label={section.title}>
               {section.rows.map((debt) => (
@@ -137,32 +156,38 @@ export function DebtsPanel() {
                     <span className="account-name">
                       {debt.name}{' '}
                       {debt.settled ? (
-                        <Badge tone="success">settled</Badge>
+                        <Badge tone="success">{t('badge.settled')}</Badge>
                       ) : debt.status === 'cancelled' ? (
-                        <Badge tone="neutral">cancelled</Badge>
+                        <Badge tone="neutral">{t('badge.cancelled')}</Badge>
                       ) : null}
                     </span>
                     <span className="muted" style={{ fontSize: 12 }}>
-                      {debt.installmentCount} ×{' '}
-                      {formatMoneyMagnitude(debt.installmentMinor, debt.currency)} ·{' '}
-                      {progressOf(debt)}% paid
+                      {t('installmentSummary', {
+                        count: debt.installmentCount,
+                        amount: formatMoneyMagnitude(
+                          debt.installmentMinor,
+                          debt.currency,
+                          locale,
+                        ),
+                        percent: progressOf(debt),
+                      })}
                     </span>
                   </span>
                   <span
                     style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}
                   >
                     <span style={{ textAlign: 'right' }}>
-                      <span className="plinto-eyebrow">Left</span>
+                      <span className="plinto-eyebrow">{t('left')}</span>
                       <Amount minor={debt.outstandingMinor} currency={debt.currency} />
                     </span>
                     {debt.status === 'active' && !debt.settled ? (
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label={`Cancel ${debt.name}`}
+                        aria-label={t('cancelDebtFor', { name: debt.name })}
                         onClick={() => setPendingCancel(debt)}
                       >
-                        Cancel
+                        {tCommon('cancel')}
                       </Button>
                     ) : null}
                   </span>
@@ -175,8 +200,8 @@ export function DebtsPanel() {
       <Drawer
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        title="Record a financed purchase"
-        description="Fixed instalments that end on their own"
+        title={t('drawer.title')}
+        description={t('drawer.description')}
       >
         <DebtForm accounts={accounts} onSaved={() => setFormOpen(false)} />
       </Drawer>
@@ -184,27 +209,31 @@ export function DebtsPanel() {
       <Modal
         open={pendingCancel !== null}
         onClose={() => setPendingCancel(null)}
-        title="Cancel this plan?"
+        title={t('cancelModal.title')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setPendingCancel(null)}>
-              Keep it
+              {t('cancelModal.keepIt')}
             </Button>
             <Button
               variant="danger"
               disabled={cancelMutation.isPending}
               onClick={() => pendingCancel && cancelMutation.mutate(pendingCancel.id)}
             >
-              {cancelMutation.isPending ? 'Cancelling…' : 'Cancel plan'}
+              {cancelMutation.isPending
+                ? t('cancelModal.cancelling')
+                : t('cancelModal.confirm')}
             </Button>
           </>
         }
       >
         <p className="muted">
-          <strong style={{ color: 'var(--text-strong)' }}>{pendingCancel?.name}</strong>{' '}
-          stops producing instalments from here on. The ones it already produced
-          stay — some of them are paid, and removing them would leave payments
-          with no reason behind them.
+          {t.rich('cancelModal.body', {
+            name: pendingCancel?.name ?? '',
+            strong: (chunks) => (
+              <strong style={{ color: 'var(--text-strong)' }}>{chunks}</strong>
+            ),
+          })}
         </p>
       </Modal>
     </div>

@@ -1,46 +1,50 @@
 /* ============================================================
-   Plinto — Spacing, radii & sizing tokens
-   4px base grid. Crisp, structural, generous breathing room.
+   PLINTO · SPACE & GEOMETRY
+   ------------------------------------------------------------
+   Ported from the Plinto Design System (tokens/spacing.css).
+
+   4px grid. Every corner is square: the system draws with lines,
+   and a radius would soften the only structure there is. Density is
+   medium — a 40px control, a 14px row, a 40px page margin — dense
+   enough for a ledger, open enough to read at a glance.
    ============================================================ */
 :root {
-  /* Spacing scale (4px base) */
   --space-0: 0;
-  --space-1: 0.25rem; /* 4 */
-  --space-2: 0.5rem; /* 8 */
-  --space-3: 0.75rem; /* 12 */
-  --space-4: 1rem; /* 16 */
-  --space-5: 1.25rem; /* 20 */
-  --space-6: 1.5rem; /* 24 */
-  --space-7: 2rem; /* 32 */
-  --space-8: 2.5rem; /* 40 */
-  --space-9: 3rem; /* 48 */
-  --space-10: 4rem; /* 64 */
-  --space-11: 5rem; /* 80 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-11: 80px;
+  --space-12: 120px;
 
-  /* Radii — crisp & structural, echoing the hard square logomark.
-     Lightly rounded, never soft. `pill` is reserved for the switch. */
-  --radius-xs: 2px;
-  --radius-sm: 3px;
-  --radius-md: 5px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
-  --radius-2xl: 10px;
-  --radius-pill: 999px;
+  /* Square. All of it. */
+  --radius-none: 0;
+  --radius-control: 0;
+  --radius-chip: 0;
+  --radius-card: 0;
+  --radius-pill: 0;
+  --radius-avatar: 0;
 
-  /* Control heights */
   --control-sm: 32px;
   --control-md: 40px;
   --control-lg: 48px;
+  --target-min-aa: 44px;
 
-  /* Layout */
-  --sidebar-width: 248px;
-  --topbar-height: 64px;
-  --container-max: 1200px;
+  --border-width: 1px;
+  --border-width-strong: 2px;
 
-  /* Semantic */
-  --gap-card: var(--space-5);
-  --pad-card: var(--space-6);
-  --radius-card: var(--radius-lg); /* 6 — cards, dialogs */
-  --radius-control: var(--radius-md); /* 5 — buttons, inputs */
-  --radius-chip: var(--radius-sm); /* 3 — badges, tags, status, category chips */
+  /* layout */
+  --page-margin: 40px;
+  --gutter: 32px;
+  --sidebar-w: 240px;
+  --topbar-h: 60px;
+  --pad-row: 14px;
+  --pad-block: 24px;
+  --grid-columns: 12;
 }

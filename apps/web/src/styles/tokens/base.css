@@ -1,63 +1,132 @@
 /* ============================================================
-   Plinto — base element styles & helpers
-   Light reset + sensible defaults built on the token layer.
+   PLINTO · BASE
+   ------------------------------------------------------------
+   Ported from the Plinto Design System (tokens/base.css).
+   Light reset plus the few helpers the whole system leans on.
    ============================================================ */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
-
+html {
+  -webkit-text-size-adjust: 100%;
+  color-scheme: light;
+}
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
 body {
   margin: 0;
+  background: var(--surface-page);
+  color: var(--text-body);
   font-family: var(--font-sans);
   font-size: var(--text-base);
-  line-height: var(--leading-normal);
-  color: var(--text-body);
-  background: var(--surface-page);
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-normal);
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
-
 h1,
 h2,
 h3,
 h4,
-h5 {
-  font-family: var(--font-display);
-  color: var(--text-strong);
-  font-weight: var(--weight-bold);
+h5,
+h6 {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
   line-height: var(--leading-tight);
-  margin: 0;
+  color: var(--text-strong);
 }
-
+p {
+  margin: 0;
+  max-width: var(--measure);
+  text-wrap: pretty;
+}
 a {
-  color: var(--text-link);
-  text-decoration: none;
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
 }
 a:hover {
-  text-decoration: underline;
+  color: var(--text-accent);
+  text-decoration-color: var(--text-accent);
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
 }
 
-/* Money figures — tabular, aligned */
+/* One focus treatment for the whole app: a 2px ink ring, offset so it
+   never sits on the control's own border. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-outer);
+  outline-offset: 2px;
+}
+
+/* Micro-label. The only all-caps in the system. */
+.plinto-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+}
+
+/* Figures. Tabular always — columns must align. */
 .plinto-money {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
-  letter-spacing: var(--tracking-snug);
+  letter-spacing: 0;
 }
 
-/* Eyebrow / micro label */
-.plinto-eyebrow {
-  font-size: var(--text-2xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--text-subtle);
+/* The visible grid: Swiss structure made literal. Drop it behind any
+   block to expose the column rhythm the layout is built on. */
+.plinto-grid {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--grid-line) 0 1px,
+    transparent 1px calc(100% / var(--grid-columns))
+  );
+}
+
+.plinto-rule {
+  border: 0;
+  border-top: 1px solid var(--rule-hair);
+  margin: 0;
+}
+.plinto-rule--strong {
+  border-top: 2px solid var(--rule-strong);
 }
 
 ::selection {
-  background: var(--plinto-coral-200);
-  color: var(--plinto-ink);
+  background: var(--surface-accent);
+  color: var(--text-on-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

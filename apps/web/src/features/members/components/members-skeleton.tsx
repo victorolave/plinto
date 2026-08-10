@@ -3,9 +3,13 @@
  * shimmer and mirrors a member row (avatar + name/email stack + role badge).
  */
 
+import { useTranslations } from 'next-intl'
+
 export function MembersSkeleton({ rows = 3 }: { rows?: number }) {
+  const t = useTranslations('members')
+
   return (
-    <div role="status" aria-label="Loading members">
+    <div role="status" aria-label={t('loading')}>
       {Array.from({ length: rows }).map((_, index) => (
         <div key={index} className="data-row" aria-hidden="true">
           <div

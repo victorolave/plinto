@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useErrorMessage } from '../../../lib/api/use-error-message'
 import { listAccounts } from '../../accounts/services/accounts'
 import { Transaction, listBalances, listTransactions } from '../services/transactions'
 import {
@@ -30,7 +32,7 @@ import { Amount } from '../../../components/ui/amount'
 import { Tabs } from '../../../components/ui/tabs'
 import { Drawer } from '../../../components/ui/drawer'
 import { TrendDown, ArrowSwap, Plus, Repeat, Search } from '../../../components/ui/icons'
-import { useTransactionFilters, datePresetOptions } from '../hooks/use-transaction-filters'
+import { useTransactionFilters, DATE_PRESETS } from '../hooks/use-transaction-filters'
 import type { DatePreset } from '../hooks/use-transaction-filters'
 import {
   formatOccurredAtDate,
@@ -52,6 +54,8 @@ export type {
 type ActiveDrawer = 'transaction' | 'transfer' | 'loan' | 'debt' | 'recurring' | null
 
 export function TransactionsPanel() {
+  const t = useTranslations('transactions')
+  const toErrorMessage = useErrorMessage()
   const queryClient = useQueryClient()
   const router = useRouter()
 
@@ -135,11 +139,7 @@ export function TransactionsPanel() {
     archiveRuleMutation.error ??
     restoreRuleMutation.error ??
     loadError
-  const error = activeError
-    ? activeError instanceof Error
-      ? activeError.message
-      : 'Failed to load transactions'
-    : null
+  const error = activeError ? (toErrorMessage(activeError) ?? t('loadFailed')) : null
 
   const {
     historyFilter,
@@ -215,7 +215,7 @@ export function TransactionsPanel() {
       {/* Compact balances context */}
       {loading ? <BalanceStripSkeleton /> : null}
       {!loading && balances.length > 0 ? (
-        <div className="balance-strip" aria-label="Account balances">
+        <div className="balance-strip" aria-label={t('accountBalances')}>
           {balances.map((balance) => (
             <div key={balance.accountId} className="balance-pill">
               <span className="balance-pill-name">{balance.accountName}</span>
@@ -233,9 +233,9 @@ export function TransactionsPanel() {
       <div className="tx-toolbar">
         <Tabs
           items={[
-            { id: 'all', label: 'All', count: transactions.length },
-            { id: 'income', label: 'Income', count: incomeCount },
-            { id: 'expense', label: 'Expenses', count: expenseCount },
+            { id: 'all', label: t('filter.all'), count: transactions.length },
+            { id: 'income', label: t('filter.income'), count: incomeCount },
+            { id: 'expense', label: t('filter.expense'), count: expenseCount },
           ]}
           value={historyFilter}
           onChange={setHistoryFilter}
@@ -247,7 +247,7 @@ export function TransactionsPanel() {
             onClick={() => setDrawer('transfer')}
             disabled={accounts.length < 2}
           >
-            Transfer
+            {t('transfer')}
           </Button>
           {/* Needs somewhere for the money to land; the lender itself can be
               created from inside the form. */}
@@ -257,7 +257,7 @@ export function TransactionsPanel() {
             onClick={() => setDrawer('loan')}
             disabled={accounts.length === 0}
           >
-            Loan
+            {t('loan')}
           </Button>
           <Button
             variant="secondary"
@@ -265,14 +265,14 @@ export function TransactionsPanel() {
             onClick={() => setDrawer('debt')}
             disabled={accounts.length === 0}
           >
-            Financed
+            {t('financed')}
           </Button>
           <Button
             leftIcon={<Plus size={18} />}
             onClick={openAdd}
             disabled={accounts.length === 0}
           >
-            Add transaction
+            {t('addTransaction')}
           </Button>
         </div>
       </div>
@@ -284,16 +284,16 @@ export function TransactionsPanel() {
             leftIcon={<Search size={16} />}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by description or account"
-            aria-label="Search transactions"
+            placeholder={t('searchPlaceholder')}
+            aria-label={t('searchLabel')}
           />
           <Select
             className="tx-account-filter"
             value={accountFilter}
             onChange={(event) => setAccountFilter(event.target.value)}
-            aria-label="Filter by account"
+            aria-label={t('filterByAccount')}
           >
-            <option value="">All accounts</option>
+            <option value="">{t('allAccounts')}</option>
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
                 {account.name} ({account.currency})
@@ -306,11 +306,11 @@ export function TransactionsPanel() {
               className="tx-date-preset"
               value={datePreset}
               onChange={(event) => applyPreset(event.target.value as DatePreset)}
-              aria-label="Date range preset"
+              aria-label={t('dateRangePreset')}
             >
-              {datePresetOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {DATE_PRESETS.map((value) => (
+                <option key={value} value={value}>
+                  {t(`datePreset.${value}`)}
                 </option>
               ))}
             </Select>
@@ -320,7 +320,7 @@ export function TransactionsPanel() {
               value={dateFrom}
               max={dateTo || undefined}
               onChange={(event) => setCustomFrom(event.target.value)}
-              aria-label="From date"
+              aria-label={t('fromDate')}
             />
             <span className="tx-date-sep">→</span>
             <Input
@@ -329,7 +329,7 @@ export function TransactionsPanel() {
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(event) => setCustomTo(event.target.value)}
-              aria-label="To date"
+              aria-label={t('toDate')}
             />
           </div>
         </div>
@@ -337,7 +337,10 @@ export function TransactionsPanel() {
 
       {!loading && hasMoreTransactions ? (
         <p className="muted">
-          Showing the latest {transactions.length} of {transactionsTotal} transactions.
+          {t('showingLatest', {
+            shown: transactions.length,
+            total: transactionsTotal,
+          })}
         </p>
       ) : null}
 
@@ -372,8 +375,8 @@ export function TransactionsPanel() {
       <Drawer
         open={drawer === 'transaction'}
         onClose={closeDrawer}
-        title={editingTransaction ? 'Edit transaction' : 'Add transaction'}
-        description="Logged to your household ledger"
+        title={editingTransaction ? t('editTransaction') : t('addTransaction')}
+        description={t('drawer.transactionDescription')}
       >
         <TransactionForm
           accounts={accounts}
@@ -387,8 +390,8 @@ export function TransactionsPanel() {
       <Drawer
         open={drawer === 'transfer'}
         onClose={closeDrawer}
-        title="Transfer between accounts"
-        description="Move money with explicit FX when currencies differ"
+        title={t('drawer.transferTitle')}
+        description={t('drawer.transferDescription')}
       >
         <TransferForm accounts={accounts} onSaved={handleSaved} />
       </Drawer>
@@ -396,8 +399,8 @@ export function TransactionsPanel() {
       <Drawer
         open={drawer === 'loan'}
         onClose={closeDrawer}
-        title="Record a loan"
-        description="Money you received and owe back"
+        title={t('drawer.loanTitle')}
+        description={t('drawer.loanDescription')}
       >
         <LoanForm accounts={accounts} onSaved={handleSaved} />
       </Drawer>
@@ -405,8 +408,8 @@ export function TransactionsPanel() {
       <Drawer
         open={drawer === 'debt'}
         onClose={closeDrawer}
-        title="Record a financed purchase"
-        description="Fixed installments that end on their own"
+        title={t('drawer.debtTitle')}
+        description={t('drawer.debtDescription')}
       >
         <DebtForm accounts={accounts} onSaved={handleSaved} />
       </Drawer>
@@ -415,8 +418,8 @@ export function TransactionsPanel() {
       <Drawer
         open={drawer === 'recurring'}
         onClose={closeDrawer}
-        title={editingRule ? 'Edit recurring rule' : 'New recurring rule'}
-        description="Posts automatically each month when due"
+        title={editingRule ? t('drawer.editRuleTitle') : t('drawer.newRuleTitle')}
+        description={t('drawer.ruleDescription')}
       >
         <RecurringForm
           accounts={accounts}
