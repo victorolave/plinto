@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
-import { z } from 'zod'
+import { z, ZodIssueCode } from 'zod'
 import { VALIDATION_CODE, validationParams } from '@plinto/shared'
 import { renderWithProviders } from '../../../test/render-with-providers'
-import { useValidationMessage } from '../use-validation-message'
+import { ISSUE_CODE_KEY, useValidationMessage } from '../use-validation-message'
 import type { Locale } from '../../../i18n/config'
 
 /**
@@ -77,6 +77,46 @@ describe('useValidationMessage', () => {
 
     expect(issue.code).toBe('invalid_type')
     expect(messageFor(issue)).toBe('That value is not valid')
+  })
+
+  /**
+   * Zod's built-in codes are not ours, so they cannot carry a
+   * `VALIDATION_CODE`. What they CAN have is proof the mapping is real: that
+   * each code we claim to handle is actually raised by a schema, and that it
+   * resolves to a sentence in both languages.
+   *
+   * The names are already pinned — `ISSUE_CODE_KEY` is keyed off
+   * `ZodIssueCode`, so a Zod release that renames one fails to COMPILE. This
+   * covers the other half: a release that keeps the name but stops raising it
+   * for these inputs, which no type can catch.
+   */
+  describe("Zod's own issue codes", () => {
+    const RAISES: Array<[keyof typeof ISSUE_CODE_KEY, z.ZodTypeAny, unknown]> = [
+      [ZodIssueCode.invalid_type, z.object({ a: z.string() }), { a: 1 }],
+      [ZodIssueCode.too_small, z.string().min(3), 'ab'],
+      [ZodIssueCode.too_big, z.number().max(10), 11],
+      [ZodIssueCode.invalid_string, z.string().email(), 'not-an-email'],
+      [ZodIssueCode.invalid_enum_value, z.enum(['a', 'b']), 'c'],
+    ]
+
+    it('covers every code the mapping claims to handle', () => {
+      expect(RAISES.map(([code]) => code).sort()).toEqual(
+        Object.keys(ISSUE_CODE_KEY).sort(),
+      )
+    })
+
+    it.each(RAISES)('%s is still raised, and translated', (code, schema, input) => {
+      const issue = firstIssue(schema, input)
+      expect(issue.code, `Zod no longer raises ${code} here`).toBe(code)
+
+      for (const locale of ['en', 'es'] as const) {
+        const message = messageFor(issue, locale)
+
+        expect(message, `${locale} → ${code}`).not.toBe('')
+        // Equal to Zod's own text would mean it fell through untranslated.
+        expect(message, `${locale} → ${code} fell through`).not.toBe(issue.message)
+      }
+    })
   })
 
   it('returns the raw message for a custom rule with no code', () => {
