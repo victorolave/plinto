@@ -252,6 +252,37 @@ Two further reasons they were poor answers regardless:
 > — but it still exists only to serve the placeholder, and it needs two
 > statements before it can say anything.
 
+### Correcting a statement is a first-class action, not an API affordance
+
+*Recorded after implementation.*
+
+The model says a statement is a fact the issuer declared, and the guidance
+that follows is to enter one when it arrives — do that, and its figures are
+right by construction, because everything bought before the cutoff is already
+counted in them.
+
+That guidance was very nearly the whole answer. It is not, and the reason is
+worth stating: **a household will enter a statement early anyway.** Someone who
+tracks their own spending knows roughly what the next bill holds and will
+record it before the cutoff, on their own judgement. Then they buy something
+before that cutoff, the real figure moves, and they are holding a number that
+is wrong and cannot be changed.
+
+The same is true of a mistyped zero, which needs no unusual behaviour at all.
+
+A design that stays correct only while its user keeps perfect discipline is a
+design that will be wrong, and blaming the discipline afterwards does not
+recover the number. Correction therefore belongs on the board beside the
+statement, not only in the API.
+
+The cutoff stays fixed: the period derives from it, so editing it would move
+the obligation between months. Everything else the issuer can restate, the
+household can restate too.
+
+> **Alternative rejected.** Documenting "enter it when it arrives" and leaving
+> correction to the API. It reads as a clean rule and it silently makes
+> discipline a load-bearing part of the system.
+
 ### The estimate is a view, not a row
 
 The household does need to keep sight of a line whose statement has not arrived
@@ -313,7 +344,8 @@ replaces it, and no cleanup when a line is closed mid-cycle.
 - [x] Entering a statement creates exactly one obligation, carrying the
       statement's amount due and due date.
 - [x] Correcting a statement corrects its obligation, and cannot set an amount
-      below what has already been paid against it.
+      below what has already been paid against it. Reachable from the board,
+      not only the API — see *Decisions*.
 - [x] Available credit is computed against the limit recorded at that cutoff,
       not the line's current limit.
 - [x] Available credit may be negative, and an over-limit balance is recorded

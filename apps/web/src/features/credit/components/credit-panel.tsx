@@ -52,6 +52,10 @@ export function CreditPanel() {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [statementFor, setStatementFor] = useState<CreditLine | null>(null)
+  // Correcting the line's newest statement. A mistyped figure that cannot be
+  // fixed is a figure the household is stuck with, and the advice to enter a
+  // statement only once it arrives is guidance, not a mechanism.
+  const [editing, setEditing] = useState<CreditLineWithLatest | null>(null)
   const [pendingClose, setPendingClose] = useState<CreditLineWithLatest | null>(null)
   const now = new Date()
 
@@ -220,6 +224,16 @@ export function CreditPanel() {
                       </span>
                       {row.status === 'active' ? (
                         <>
+                          {statement ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Edit ${row.name} statement`}
+                              onClick={() => setEditing(row)}
+                            >
+                              Edit
+                            </Button>
+                          ) : null}
                           <Button
                             variant="secondary"
                             size="sm"
@@ -265,6 +279,21 @@ export function CreditPanel() {
       >
         {statementFor ? (
           <StatementForm line={statementFor} onSaved={() => setStatementFor(null)} />
+        ) : null}
+      </Drawer>
+
+      <Drawer
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title={editing ? `Fix ${editing.name} statement` : 'Fix statement'}
+        description="The payment on the obligations board changes with it"
+      >
+        {editing?.latestStatement ? (
+          <StatementForm
+            line={editing}
+            statement={editing.latestStatement}
+            onSaved={() => setEditing(null)}
+          />
         ) : null}
       </Drawer>
 

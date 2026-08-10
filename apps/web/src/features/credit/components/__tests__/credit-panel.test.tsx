@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../../test/render-with-providers'
 import { money } from '../../../../test/money'
 import { CreditPanel } from '../credit-panel'
@@ -8,11 +9,16 @@ import type { CreditLineStatement, CreditLineWithLatest } from '../../services/c
 vi.mock('../../services/credit')
 vi.mock('../../../accounts/services/accounts')
 
-import { closeCreditLine, getCreditSummary } from '../../services/credit'
+import {
+  closeCreditLine,
+  getCreditSummary,
+  updateStatement,
+} from '../../services/credit'
 import { listAccounts } from '../../../accounts/services/accounts'
 
 const mockedSummary = vi.mocked(getCreditSummary)
 const mockedClose = vi.mocked(closeCreditLine)
+const mockedUpdate = vi.mocked(updateStatement)
 const mockedListAccounts = vi.mocked(listAccounts)
 
 /**
@@ -66,6 +72,7 @@ beforeEach(() => {
   mockedListAccounts.mockResolvedValue({ data: { accounts: [] } })
   mockedSummary.mockResolvedValue({ data: { creditLines: [] } })
   mockedClose.mockResolvedValue({ data: { creditLine: line({ status: 'closed' }) } })
+  mockedUpdate.mockResolvedValue({ data: { statement: statement() } })
 })
 
 describe('CreditPanel', () => {
@@ -190,5 +197,98 @@ describe('CreditPanel', () => {
     expect(
       await screen.findByText(/no cards or rotating lines yet/i),
     ).toBeInTheDocument()
+  })
+
+  /**
+   * The advice is to enter a statement when it arrives, and then its figures
+   * are right by construction. But a household that enters one early, or
+   * mistypes a zero, must not be stuck with the number: a system that stays
+   * correct only while its user keeps perfect discipline will be wrong.
+   */
+  it('offers to fix the statement already recorded', async () => {
+    mockedSummary.mockResolvedValue({ data: { creditLines: [line()] } })
+
+    renderWithProviders(<CreditPanel />)
+
+    const open = within(await screen.findByRole('list', { name: /open/i }))
+    expect(open.getByRole('button', { name: /edit addi statement/i })).toBeInTheDocument()
+  })
+
+  it('offers nothing to fix on a line that has no statement yet', async () => {
+    mockedSummary.mockResolvedValue({
+      data: { creditLines: [line({ latestStatement: null, availableMinor: null })] },
+    })
+
+    renderWithProviders(<CreditPanel />)
+
+    const open = within(await screen.findByRole('list', { name: /open/i }))
+    expect(open.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
+    expect(open.getByRole('button', { name: /add statement/i })).toBeInTheDocument()
+  })
+
+  // The cutoff decides which month the obligation belongs to, so editing it
+  // would move the obligation between months.
+  it('opens the fix drawer with the cutoff locked and the figures filled in', async () => {
+    const user = userEvent.setup()
+    mockedSummary.mockResolvedValue({ data: { creditLines: [line()] } })
+
+    renderWithProviders(<CreditPanel />)
+
+    const open = within(await screen.findByRole('list', { name: /open/i }))
+    await user.click(open.getByRole('button', { name: /edit addi statement/i }))
+
+    expect(await screen.findByLabelText(/statement date/i)).toBeDisabled()
+    // COP carries no centavos (exponent 0), so major and minor units coincide.
+    expect(screen.getByLabelText(/total owed/i)).toHaveValue(800000)
+    expect(screen.getByLabelText(/to pay this month/i)).toHaveValue(300000)
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument()
+  })
+
+  it('sends only the corrected figures, never the cutoff', async () => {
+    const user = userEvent.setup()
+    mockedSummary.mockResolvedValue({ data: { creditLines: [line()] } })
+    mockedUpdate.mockResolvedValue({
+      data: { statement: statement({ amountDueMinor: 700000 }) },
+    })
+
+    renderWithProviders(<CreditPanel />)
+
+    const open = within(await screen.findByRole('list', { name: /open/i }))
+    await user.click(open.getByRole('button', { name: /edit addi statement/i }))
+
+    const amount = await screen.findByLabelText(/to pay this month/i)
+    await user.clear(amount)
+    await user.type(amount, '700000')
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    await waitFor(() => {
+      expect(mockedUpdate).toHaveBeenCalledWith(
+        'line-addi',
+        'stmt-1',
+        expect.objectContaining({ amountDueMinor: 700000 }),
+      )
+    })
+    expect(mockedUpdate.mock.calls[0]?.[2]).not.toHaveProperty('cutoffDate')
+  })
+
+  it('refuses a payment larger than the balance before calling the server', async () => {
+    const user = userEvent.setup()
+    mockedSummary.mockResolvedValue({ data: { creditLines: [line()] } })
+
+    renderWithProviders(<CreditPanel />)
+
+    const open = within(await screen.findByRole('list', { name: /open/i }))
+    await user.click(open.getByRole('button', { name: /edit addi statement/i }))
+
+    const amount = await screen.findByLabelText(/to pay this month/i)
+    await user.clear(amount)
+    // Above the 800.000 the statement declares owed.
+    await user.type(amount, '900000')
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    expect(
+      await screen.findByText(/amount due cannot exceed the closing balance/i),
+    ).toBeInTheDocument()
+    expect(mockedUpdate).not.toHaveBeenCalled()
   })
 })

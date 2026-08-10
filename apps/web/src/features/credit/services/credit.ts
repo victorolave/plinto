@@ -83,6 +83,31 @@ export async function listStatements(
   )
 }
 
+/**
+ * Corrects a statement, and the obligation it produced with it.
+ *
+ * The cutoff is not editable: the period is derived from it, so moving it
+ * would move the obligation between months. Everything else can be fixed —
+ * a mistyped figure that cannot be corrected is a figure the household is
+ * stuck with.
+ */
+export async function updateStatement(
+  creditLineId: string,
+  statementId: string,
+  input: {
+    dueDate?: string
+    closingBalanceMinor?: number
+    amountDueMinor?: number
+  },
+): Promise<{ data: { statement: CreditLineStatement } }> {
+  return apiFetch<{ data: { statement: CreditLineStatement } }>(
+    `/credit-lines/${encodeURIComponent(creditLineId)}/statements/${encodeURIComponent(
+      statementId,
+    )}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+}
+
 export async function recordStatement(
   creditLineId: string,
   input: {
