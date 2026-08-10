@@ -42,6 +42,7 @@ model Tenant {
   obligationInstances ObligationInstance[]
   obligationPayments  ObligationPayment[]
   debtSchedules       DebtSchedule[]
+  creditLines         CreditLine[]
 
   @@map("tenants")
 }
@@ -336,6 +337,39 @@ model DebtSchedule {
   @@map("debt_schedules")
 }
 
+/// A revolving credit line: a card, or a rotating line such as ADDI. See
+/// PRD-011.
+///
+/// Deliberately NOT an `Account`. Available credit derived from an account
+/// balance only moves when every purchase is posted as a transaction, and a
+/// household that records the monthly bill rather than the purchases behind it
+/// would see its full limit reported as available every day. The declared
+/// statement is the source of truth instead, so what this row holds is only
+/// what does not change between statements.
+///
+/// It carries no cutoff day, due day or billing cycle. Those existed to project
+/// a statement that had not arrived; the projection is a view over the last
+/// statement, not a row, so nothing here needs to know whether the lender bills
+/// monthly, every fourteen days, or irregularly.
+model CreditLine {
+  id         String           @id @default(uuid())
+  tenantId   String           @map("tenant_id")
+  name       String
+  /// The ceiling as it stands today. What a past statement was measured
+  /// against lives on that statement, not here.
+  limitMinor Int              @map("limit_minor")
+  currency   String
+  status     CreditLineStatus @default(active)
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("credit_lines")
+}
+
 model Transfer {
   id                   String    @id @default(uuid())
   tenantId             String    @map("tenant_id")
@@ -423,6 +457,14 @@ enum ObligationSourceType {
 enum DebtScheduleStatus {
   active
   cancelled
+}
+
+/// Only the two states somebody decides, for the same reason
+/// `DebtScheduleStatus` has two. A line is open, or the household closed it.
+/// Whether it is paid off is derived from its last statement.
+enum CreditLineStatus {
+  active
+  closed
 }
 
 enum MembershipRole {

@@ -40,6 +40,9 @@ import {
   DebtScheduleSchema,
   CreateDebtScheduleSchema,
   UpdateDebtScheduleSchema,
+  CreditLineSchema,
+  CreateCreditLineSchema,
+  UpdateCreditLineSchema,
   DebtSummarySchema,
   TenantSchema,
   CreateTenantSchema,
@@ -142,6 +145,10 @@ const UpdateDebtScheduleSchemaRef = registry.register(
   UpdateDebtScheduleSchema,
 )
 const DebtSummarySchemaRef = registry.register('DebtSummary', DebtSummarySchema)
+
+const CreditLineSchemaRef = registry.register('CreditLine', CreditLineSchema)
+const CreateCreditLineSchemaRef = registry.register('CreateCreditLine', CreateCreditLineSchema)
+const UpdateCreditLineSchemaRef = registry.register('UpdateCreditLine', UpdateCreditLineSchema)
 
 const TenantSchemaRef = registry.register('Tenant', TenantSchema)
 const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
@@ -693,6 +700,101 @@ registry.registerPath({
   request: { params: idParam },
   responses: {
     200: dataResponse('Schedule cancelled.', z.object({ debt: DebtScheduleSchemaRef })),
+    ...errorResponses,
+  },
+})
+
+// ---------------------------------------------------------------------------
+// Credit lines
+// ---------------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/credit-lines',
+  tags: ['Credit'],
+  summary: 'List the household\'s revolving credit lines',
+  description:
+    'Cards and rotating lines such as ADDI. A credit line is deliberately not ' +
+    'an account: available credit derived from a balance only moves when every ' +
+    'purchase is posted, and a household that records the monthly bill would ' +
+    'see its full limit reported as available every day (PRD-011).',
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse(
+      'Credit lines held by the household.',
+      z.object({ creditLines: z.array(CreditLineSchemaRef) }),
+    ),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/credit-lines/{id}',
+  tags: ['Credit'],
+  summary: 'Read one credit line',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse('The credit line.', z.object({ creditLine: CreditLineSchemaRef })),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/credit-lines',
+  tags: ['Credit'],
+  summary: 'Record a revolving credit line',
+  description:
+    'Name, ceiling and currency — no cutoff day, due day or billing cycle. ' +
+    'What a line bills and when is carried by each statement, because the ' +
+    'lender decides it and can change it; some of these offer a choice between ' +
+    'monthly and biweekly billing.',
+  security: sessionCookieAuth,
+  request: {
+    body: { content: { 'application/json': { schema: CreateCreditLineSchemaRef } } },
+  },
+  responses: {
+    201: dataResponse('Credit line created.', z.object({ creditLine: CreditLineSchemaRef })),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/credit-lines/{id}',
+  tags: ['Credit'],
+  summary: 'Rename a credit line or change its ceiling',
+  description:
+    'Issuers raise and lower ceilings. Past statements are unaffected: each ' +
+    'records the limit it was measured against, so changing this never ' +
+    'restates a figure the household has already read. Currency is not ' +
+    'editable.',
+  security: sessionCookieAuth,
+  request: {
+    params: idParam,
+    body: { content: { 'application/json': { schema: UpdateCreditLineSchemaRef } } },
+  },
+  responses: {
+    200: dataResponse('Credit line updated.', z.object({ creditLine: CreditLineSchemaRef })),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/credit-lines/{id}/close',
+  tags: ['Credit'],
+  summary: 'Close a credit line',
+  description:
+    'Closed, not deleted. The statements it issued are real — some of them ' +
+    'paid — and removing what issued them would leave a household looking at ' +
+    'payments whose reason had vanished.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    200: dataResponse('Credit line closed.', z.object({ creditLine: CreditLineSchemaRef })),
     ...errorResponses,
   },
 })
