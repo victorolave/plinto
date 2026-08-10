@@ -1,7 +1,8 @@
 # PRD 011: Revolving credit and card statements
 
 ## Status
-Draft
+Partially implemented (11.1 delivered with its UI; 11.2 delivered except the
+debt summary's third figure — see *Delivery*)
 
 ## Objective
 
@@ -307,28 +308,37 @@ replaces it, and no cleanup when a line is closed mid-cycle.
 
 ## Acceptance Criteria
 
-- [ ] A credit line can be created with a limit, and does not appear among
+- [x] A credit line can be created with a limit, and does not appear among
       accounts.
-- [ ] Entering a statement creates exactly one obligation, carrying the
+- [x] Entering a statement creates exactly one obligation, carrying the
       statement's amount due and due date.
+- [x] Correcting a statement corrects its obligation, and cannot set an amount
+      below what has already been paid against it.
+- [x] Available credit is computed against the limit recorded at that cutoff,
+      not the line's current limit.
+- [x] Available credit may be negative, and an over-limit balance is recorded
+      rather than refused.
+- [x] A line with no statement in the current period still appears, showing its
+      last known figures and the cutoff they came from.
+- [x] An estimated figure is never summed into the period's payable total.
+- [x] A viewer can see lines and statements and can record neither.
+- [x] Every credit line and statement write is audited with actor and
+      correlation id.
+
+Enforced by the schema and constraints, but **not yet covered by a test** —
+the Prisma adapters for this module have none, so the atomic statement →
+obligation write is unverified:
+
 - [ ] Two statements closing in the same calendar month create two obligations.
 - [ ] Re-entering the same statement creates no duplicate obligation.
-- [ ] Correcting a statement corrects its obligation, and cannot set an amount
-      below what has already been paid against it.
-- [ ] Available credit is computed against the limit recorded at that cutoff,
-      not the line's current limit.
-- [ ] Available credit may be negative, and an over-limit balance is recorded
-      rather than refused.
 - [ ] Paying a statement links a bank transaction to the obligation and leaves
       the credit line untouched.
-- [ ] A line with no statement in the current period still appears, showing its
-      last known figures and the cutoff they came from.
-- [ ] An estimated figure is never summed into the period's payable total.
+
+Not implemented:
+
 - [ ] Revolving debt is reported per currency, apart from scheduled debt and
-      apart from lender balances.
-- [ ] A viewer can see lines and statements and can record neither.
-- [ ] Every credit line and statement write is audited with actor and
-      correlation id.
+      apart from lender balances. The credit board totals it, but
+      `GET /api/debts/summary` still returns two figures rather than three.
 
 ---
 
@@ -399,13 +409,29 @@ varies month to month — and the two can be built in either order.
 
 Two vertical slices, in order:
 
-| Slice | Outcome |
-| --- | --- |
-| 11.1 | Record a credit line and its statements; the payment appears among the month's obligations |
-| 11.2 | Available credit, revolving debt total, and the dashboard section |
+| Slice | Outcome | |
+| --- | --- | --- |
+| 11.1 | Record a credit line and its statements; the payment appears among the month's obligations | delivered |
+| 11.2 | Available credit, revolving debt total, and the dashboard section | partial |
 
 11.1 is the bulk of the work and is where `credit_line` enters
 `ObligationSourceType`.
+
+*Recorded after implementation.* Two things this table did not foresee:
+
+**11.1 shipped API-first, and that was the wrong shape.** The slice was built
+as three commits — line, statement, UI — and the first two delivered nothing a
+person could use without `curl`. The table above describes outcomes, as
+PRD-007's does, and the work should have followed suit. The UI landed in the
+same branch before the slice was called done, but the ordering cost a round
+trip and is not the precedent to copy.
+
+**11.2's third figure is still missing.** Available credit and the dashboard
+section are delivered; `revolvingOwedMinor` in the debt summary is not, because
+it makes `DebtsModule` depend on `CreditModule` and that coupling deserves its
+own commit rather than a rider on the UI. The credit board totals revolving
+debt on its own in the meantime, so the number is visible — just not beside the
+other two, which is where §6 says it belongs.
 
 ### Forward compatibility
 
