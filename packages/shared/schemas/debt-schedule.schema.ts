@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { VALIDATION_CODE, validationParams } from './validation-code'
 
 export const DebtScheduleStatusSchema = z.enum(['active', 'cancelled'])
 
@@ -48,6 +49,7 @@ export const CreateDebtScheduleSchema = z
   .refine(lastInstallmentMustBePayable, {
     message: LAST_INSTALLMENT_MESSAGE,
     path: ['installmentMinor'],
+    params: validationParams(VALIDATION_CODE.LAST_INSTALLMENT_EMPTY),
   })
 
 /**

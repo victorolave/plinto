@@ -628,14 +628,14 @@
     }
   },
   "validation": {
-    "accountsMustDiffer": "La cuenta de origen y la de destino deben ser distintas",
-    "atLeastOneField": "Hay que indicar al menos un campo",
-    "dueDateInsidePeriod": "La fecha de vencimiento debe caer dentro del período",
-    "dueWithinBalance": "El monto a pagar no puede superar el saldo del corte",
+    "ACCOUNTS_MUST_DIFFER": "La cuenta de origen y la de destino deben ser distintas",
+    "AT_LEAST_ONE_FIELD": "Hay que indicar al menos un campo",
+    "DUE_DATE_INSIDE_PERIOD": "La fecha de vencimiento debe caer dentro del período",
+    "DUE_WITHIN_BALANCE": "El monto a pagar no puede superar el saldo del corte",
+    "LAST_INSTALLMENT_EMPTY": "Las cuotas ya cubren todo el capital; la última quedaría vacía",
     "invalidEnumValue": "Elegí una de las opciones disponibles",
     "invalidString": "Ese valor no tiene un formato válido",
     "invalidType": "Ese valor no es válido",
-    "lastInstallmentEmpty": "Las cuotas ya cubren todo el capital; la última quedaría vacía",
     "tooBig": "Ese valor es demasiado grande",
     "tooSmall": "Ese valor es demasiado pequeño"
   },

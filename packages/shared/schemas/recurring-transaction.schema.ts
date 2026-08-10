@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { TransactionTypeSchema } from './transaction.schema'
+import { VALIDATION_CODE, validationParams } from './validation-code'
 
 export const RecurringTransactionFrequencySchema = z.enum(['monthly'])
 
@@ -57,6 +58,7 @@ export const UpdateRecurringTransactionRuleSchema = z
   })
   .refine((value) => Object.values(value).some((field) => field !== undefined), {
     message: 'At least one field must be provided',
+    params: validationParams(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
   })
 
 export const RecurringTransactionRuleSchema = z.object({

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { VALIDATION_CODE, validationParams } from './validation-code'
 
 export const CreditLineStatusSchema = z.enum(['active', 'closed'])
 
@@ -44,6 +45,7 @@ export const UpdateCreditLineSchema = z
   })
   .refine((value) => value.name !== undefined || value.limitMinor !== undefined, {
     message: 'Provide at least one field to update',
+    params: validationParams(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
   })
 
 export const CreditLineSchema = z.object({
@@ -89,6 +91,7 @@ export const CreateCreditLineStatementSchema = z
   .refine(dueWithinBalance, {
     message: DUE_WITHIN_BALANCE_MESSAGE,
     path: ['amountDueMinor'],
+    params: validationParams(VALIDATION_CODE.DUE_WITHIN_BALANCE),
   })
 
 /**
@@ -111,7 +114,10 @@ export const UpdateCreditLineStatementSchema = z
       value.dueDate !== undefined ||
       value.closingBalanceMinor !== undefined ||
       value.amountDueMinor !== undefined,
-    { message: 'Provide at least one field to update' },
+    {
+      message: 'Provide at least one field to update',
+      params: validationParams(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
+    },
   )
 
 export const CreditLineStatementSchema = z.object({

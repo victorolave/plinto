@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { TransactionTypeSchema } from './transaction.schema'
+import { VALIDATION_CODE, validationParams } from './validation-code'
 
 export const CategoryTypeSchema = TransactionTypeSchema
 
@@ -24,10 +25,10 @@ export const UpdateCategorySchema = z
     name: z.string().trim().min(1).optional(),
     color: z.string().trim().min(1).nullable().optional(),
   })
-  .refine(
-    (value) => Object.values(value).some((field) => field !== undefined),
-    { message: 'At least one field must be provided' },
-  )
+  .refine((value) => Object.values(value).some((field) => field !== undefined), {
+    message: 'At least one field must be provided',
+    params: validationParams(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
+  })
 
 export const ExpenseByCategoryItemSchema = z.object({
   categoryId: z.string(),
