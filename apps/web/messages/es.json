@@ -1,0 +1,685 @@
+{
+  "app": {
+    "name": "Plinto",
+    "description": "Todo lo que gasta tu familia, en un solo lugar tranquilo."
+  },
+  "common": {
+    "actions": "Acciones",
+    "add": "Agregar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "create": "Crear",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "loading": "Cargando…",
+    "retry": "Reintentar",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "tryAgain": "Intentar de nuevo"
+  },
+  "nav": {
+    "accounts": "Cuentas",
+    "categories": "Categorías",
+    "credit": "Crédito",
+    "debts": "Deudas",
+    "home": "Inicio",
+    "more": "Más",
+    "obligations": "Obligaciones",
+    "overview": "Panel",
+    "primary": "Principal",
+    "settings": "Ajustes",
+    "transactions": "Movimientos"
+  },
+  "shell": {
+    "addTransaction": "Agregar movimiento",
+    "loading": "Cargando tu hogar…",
+    "logOut": "Cerrar sesión",
+    "loggingOut": "Cerrando sesión…",
+    "yourAccount": "Tu cuenta",
+    "title": {
+      "accounts": "Cuentas",
+      "categories": "Categorías",
+      "credit": "Crédito",
+      "debts": "Deudas",
+      "obligations": "Obligaciones",
+      "overview": "Panel",
+      "settings": "Ajustes",
+      "transactions": "Movimientos"
+    },
+    "subtitle": {
+      "accounts": "Saldos por moneda",
+      "categories": "Organiza tus gastos",
+      "credit": "Tarjetas y líneas rotativas",
+      "debts": "Lo que debe el hogar en total",
+      "obligations": "Lo que debe el hogar este mes",
+      "overviewGeneric": "Tu hogar de un vistazo",
+      "overviewWelcome": "Hola de nuevo, {name}",
+      "settings": "Hogar y miembros",
+      "transactionsGeneric": "Ingresos, gastos y transferencias",
+      "transactionsTenant": "Libro de {tenant}"
+    }
+  },
+  "tenantSwitcher": {
+    "household": "Hogar",
+    "selectHousehold": "Selecciona un hogar"
+  },
+  "authLayout": {
+    "needHelp": "¿Necesitas ayuda?",
+    "pitch": "Lleva cuentas, movimientos y categorías de todos los hogares que administras — en un solo lugar.",
+    "tagline": "Las finanzas del hogar, simples.",
+    "terms": "Términos"
+  },
+  "errorPage": {
+    "eyebrow": "Error",
+    "subtitle": "Ocurrió un error inesperado. Intenta de nuevo.",
+    "title": "Algo salió mal"
+  },
+  "globalError": {
+    "title": "Error inesperado"
+  },
+  "notFound": {
+    "backToDashboard": "Volver al panel",
+    "eyebrow": "404",
+    "subtitle": "La página que buscas no existe.",
+    "title": "Página no encontrada"
+  },
+  "accounts": {
+    "accountActions": "Acciones de la cuenta",
+    "accountCount": "{count, plural, one {# cuenta} other {# cuentas}}",
+    "addAccount": "Agregar cuenta",
+    "archive": "Archivar",
+    "balance": "Saldo",
+    "createAccount": "Crear cuenta",
+    "creating": "Creando…",
+    "editAccount": "Editar cuenta",
+    "heldIn": "Disponible en {currency}",
+    "hideArchived": "Ocultar archivadas ({count})",
+    "loading": "Cargando cuentas",
+    "owed": "en deuda",
+    "restore": "Restaurar",
+    "saveChanges": "Guardar cambios",
+    "showArchived": "Ver archivadas ({count})",
+    "totalIn": "Total en {currency}",
+    "type": {
+      "bank": "Banco",
+      "cash": "Efectivo",
+      "credit": "Crédito",
+      "debt": "Deuda",
+      "savings": "Ahorros"
+    },
+    "empty": {
+      "description": "Una cuenta es donde vive tu dinero — un banco, una billetera, una tarjeta de crédito. Cada una lleva una sola moneda para que tus saldos queden siempre limpios.",
+      "title": "Empieza con tu primera cuenta"
+    },
+    "archiveModal": {
+      "archiving": "Archivando…",
+      "body": "<strong>{name}</strong> se ocultará de tus cuentas y de los formularios de movimientos. Su historial queda intacto y puedes restaurarla cuando quieras.",
+      "confirm": "Archivar cuenta",
+      "title": "¿Archivar la cuenta?"
+    },
+    "form": {
+      "currency": "Moneda",
+      "currencyFixedHint": "La moneda no se puede cambiar una vez creada la cuenta.",
+      "invalid": "Cuenta inválida",
+      "name": "Nombre de la cuenta",
+      "namePlaceholder": "ej. Cuenta familiar",
+      "type": "Tipo de cuenta"
+    }
+  },
+  "categories": {
+    "actionsFor": "Acciones de {name}",
+    "count": "{count, plural, one {# categoría} other {# categorías}}",
+    "drawerDescription": "Sirve para etiquetar ingresos y gastos",
+    "editCategory": "Editar categoría",
+    "loading": "Cargando categorías",
+    "newCategory": "Nueva categoría",
+    "noCategory": "Sin categoría",
+    "type": {
+      "expense": "Gasto",
+      "income": "Ingreso"
+    },
+    "empty": {
+      "description": "Las categorías etiquetan tus ingresos y gastos para que puedas ver a dónde va realmente el dinero.",
+      "title": "Todavía no hay categorías"
+    },
+    "deleteModal": {
+      "body": "<strong>{name}</strong> se va a eliminar. Los movimientos que la usan conservan su registro pero pierden esta etiqueta.",
+      "confirm": "Eliminar categoría",
+      "deleting": "Eliminando…",
+      "title": "¿Eliminar la categoría?"
+    },
+    "form": {
+      "clear": "Limpiar",
+      "color": "Color",
+      "colorHint": "Opcional — un marcador que se muestra junto a esta categoría.",
+      "createCategory": "Crear categoría",
+      "customColor": "Color personalizado",
+      "hexColor": "Color hexadecimal",
+      "invalid": "Categoría inválida",
+      "name": "Nombre",
+      "namePlaceholder": "ej. Mercado",
+      "presetColors": "Colores predefinidos",
+      "saveChanges": "Guardar cambios",
+      "type": "Tipo",
+      "usePreset": "Usar {color}"
+    }
+  },
+  "dashboard": {
+    "accounts": "Cuentas",
+    "acrossAllAccounts": "en todas las cuentas",
+    "allMembers": "Todos los miembros",
+    "allMembersOf": "{tenant} · todos los miembros",
+    "available": "Disponible ({currency})",
+    "currenciesSeparate": "Las monedas se muestran por separado",
+    "currencyAccounts": "cuentas en {currency}",
+    "expense": "Gasto",
+    "income": "Ingreso",
+    "loading": "Cargando tu hogar…",
+    "manage": "Gestionar",
+    "monthBalances": "{month} · saldos",
+    "noAccounts": "Todavía no hay cuentas.",
+    "noTransactions": "Todavía no hay movimientos. Agrega el primero para empezar a llevar el control.",
+    "owedAmount": "{amount} en deuda",
+    "recentActivity": "Actividad reciente",
+    "seeAll": "Ver todo",
+    "noBalances": {
+      "description": "Agrega una cuenta y registra tu primer movimiento para ver acá el saldo de tu hogar.",
+      "title": "Todavía no hay saldos"
+    }
+  },
+  "members": {
+    "actionsFor": "Acciones de {name}",
+    "dismiss": "Descartar",
+    "expiresOn": "vence el {date}",
+    "invitationSent": "Invitación enviada a {email}. Se aplicará la primera vez que inicie sesión.",
+    "invite": "Invitar",
+    "invitedAs": "Invitado como {role}",
+    "joinedOn": "se unió el {date}",
+    "joinedRightAway": "{email} ya tenía cuenta y se unió de inmediato.",
+    "leaveHousehold": "Salir del hogar",
+    "loading": "Cargando miembros",
+    "peopleCount": "{count, plural, one {# persona en este hogar} other {# personas en este hogar}}",
+    "pendingInvitations": "Invitaciones pendientes",
+    "pendingInvitationsSubtitle": "Se aplican la primera vez que cada persona inicia sesión",
+    "removeFromHousehold": "Quitar del hogar",
+    "revokeInvitation": "Revocar invitación",
+    "soleOwnerNote": "Un hogar debe conservar una persona propietaria, así que esto no se puede cambiar",
+    "thatPerson": "Esa persona",
+    "title": "Miembros del hogar",
+    "you": "tú",
+    "role": {
+      "member": "miembro",
+      "owner": "propietario",
+      "viewer": "observador"
+    },
+    "makeRole": {
+      "member": "Hacer miembro",
+      "owner": "Hacer propietario",
+      "viewer": "Hacer observador"
+    },
+    "roleHint": {
+      "member": "Puede registrar y editar movimientos de dinero",
+      "owner": "Administra el hogar y sus miembros",
+      "viewer": "Puede ver todo, no puede cambiar nada"
+    },
+    "inviteHint": {
+      "member": "Puede registrar y editar movimientos de dinero",
+      "owner": "Además puede administrar el hogar y sus miembros",
+      "viewer": "Puede ver todo, no puede cambiar nada"
+    },
+    "roleLegend": {
+      "subtitle": "Los roles los hace cumplir la API, no solo se ocultan en la interfaz",
+      "title": "Qué puede hacer cada rol"
+    },
+    "empty": {
+      "description": "Este hogar no tiene miembros, lo cual no debería ser posible — quien lo creó es su propietario. Prueba recargando.",
+      "title": "Todavía no hay miembros"
+    },
+    "inviteDrawer": {
+      "description": "Se une a este hogar con el rol que elijas",
+      "title": "Invitar a alguien"
+    },
+    "inviteForm": {
+      "email": "Correo",
+      "emailHint": "Todavía no necesita una cuenta de Plinto",
+      "emailPlaceholder": "ej. sandra@ejemplo.com",
+      "invalid": "Invitación inválida",
+      "note": "Si ese correo ya tiene una cuenta de Plinto, se une de inmediato. Si no, la invitación espera a su primer inicio de sesión y vence a los 14 días.",
+      "role": "Rol",
+      "send": "Enviar invitación",
+      "sending": "Enviando…"
+    },
+    "removeModal": {
+      "leaveBody": "Pierdes el acceso a este hogar de inmediato. Todo lo que registraste se queda — los movimientos de dinero pertenecen al hogar, no a quien los escribió. Una persona propietaria puede volver a invitarte.",
+      "leaveConfirm": "Salir del hogar",
+      "leaveTitle": "¿Salir de este hogar?",
+      "leaving": "Saliendo…",
+      "removeBody": "<strong>{name}</strong> pierde el acceso a este hogar. Todo lo que registró se queda — los movimientos de dinero pertenecen al hogar, no a quien los escribió. Puedes volver a invitarle más adelante.",
+      "removeConfirm": "Quitar miembro",
+      "removeTitle": "¿Quitar del hogar?",
+      "removing": "Quitando…"
+    },
+    "revokeModal": {
+      "body": "<strong>{email}</strong> ya no se unirá a este hogar cuando inicie sesión. Puedes volver a invitarle más adelante.",
+      "revoking": "Revocando…",
+      "title": "¿Revocar la invitación?"
+    }
+  },
+  "debts": {
+    "cancelDebtFor": "Cancelar {name}",
+    "inProgressCount": "{count, plural, =0 {Sin compras financiadas en curso} one {# compra financiada en curso} other {# compras financiadas en curso}}",
+    "installmentSummary": "{count} × {amount} · {percent}% pagado",
+    "left": "Falta",
+    "loading": "Cargando deudas",
+    "owed": "Deuda ({currency})",
+    "owedBreakdown": "{instalments} en cuotas · {loans} en préstamos y tarjetas",
+    "recordPurchase": "Registrar compra",
+    "badge": {
+      "cancelled": "cancelada",
+      "settled": "saldada"
+    },
+    "cancelModal": {
+      "body": "<strong>{name}</strong> deja de generar cuotas de acá en adelante. Las que ya generó se quedan — algunas están pagadas, y borrarlas dejaría pagos sin una razón detrás.",
+      "cancelling": "Cancelando…",
+      "confirm": "Cancelar plan",
+      "keepIt": "Mantenerlo",
+      "title": "¿Cancelar este plan?"
+    },
+    "drawer": {
+      "description": "Cuotas fijas que terminan solas",
+      "title": "Registrar una compra financiada"
+    },
+    "empty": {
+      "description": "Registra una compra que pagas en cuotas fijas y cada una aparece en el tablero de obligaciones — terminando sola después de la última.",
+      "title": "Todavía no hay nada financiado"
+    },
+    "form": {
+      "eachInstallment": "Cada cuota",
+      "firstDue": "Vencimiento de la primera cuota",
+      "howMany": "Cuántas",
+      "invalid": "Plan de cuotas inválido",
+      "lastInstallmentNote": "La última cuota va a cobrar <strong>{amount}</strong>, para que el plan sume exactamente lo que debes.",
+      "lender": "Prestamista",
+      "namePlaceholder": "ej. Nevera",
+      "needLiabilityAccount": "Primero necesitas una cuenta de deuda o crédito — es la que las cuotas van pagando.",
+      "recordPurchase": "Registrar compra",
+      "totalToRepay": "Total a pagar",
+      "totalToRepayHint": "Intereses incluidos — lo que el prestamista dice que vas a pagar en total",
+      "whatYouBought": "Qué compraste"
+    },
+    "loanForm": {
+      "amountReceived": "Monto recibido",
+      "date": "Fecha",
+      "description": "Descripción",
+      "descriptionPlaceholder": "ej. Anticipo de nómina",
+      "invalid": "Préstamo inválido",
+      "lender": "Prestamista",
+      "lenderName": "Nombre del prestamista",
+      "lenderNamePlaceholder": "ej. Lineru",
+      "needDestinationAccount": "Necesitas una cuenta donde recibir el dinero antes de registrar un préstamo.",
+      "newLender": "+ Nuevo prestamista…",
+      "notIncomeNote": "Esto no es un ingreso. El dinero llega a tu cuenta y el mismo monto aparece como deuda con el prestamista.",
+      "optional": "Opcional",
+      "receivedInto": "Recibido en",
+      "recordLoan": "Registrar préstamo",
+      "recording": "Registrando…",
+      "trackedIn": "Se lleva en {currency}"
+    },
+    "section": {
+      "finished": "Terminadas",
+      "inProgress": "En curso"
+    }
+  },
+  "obligations": {
+    "actionsFor": "Acciones de {name}",
+    "dueOn": "Vence el {date}",
+    "fromRecurringRule": "Viene de una regla recurrente",
+    "linkPayment": "Vincular un pago",
+    "loading": "Cargando obligaciones",
+    "loadingTotals": "Cargando totales del período",
+    "nextMonth": "Mes siguiente",
+    "oneOff": "Obligación puntual",
+    "outstanding": "Pendiente",
+    "paid": "Pagado",
+    "previousMonth": "Mes anterior",
+    "recordedIn": "Se registra en {period}",
+    "settled": "abonado",
+    "total": "Total",
+    "unlinkPayment": "Desvincular {reference}",
+    "status": {
+      "overdue": "Vencida",
+      "paid": "Pagada",
+      "partial": "Parcial",
+      "pending": "Pendiente"
+    },
+    "empty": {
+      "description": "Las obligaciones aparecen acá cuando tus reglas recurrentes se materializan para el mes, o puedes registrar una puntual.",
+      "title": "No hay nada que pagar en {period}"
+    },
+    "form": {
+      "amount": "Monto",
+      "currency": "Moneda",
+      "dueDate": "Fecha de vencimiento",
+      "dueDateHint": "Debe caer dentro de {period}",
+      "invalid": "Obligación inválida",
+      "name": "Nombre",
+      "namePlaceholder": "ej. Declaración de renta",
+      "recordObligation": "Registrar obligación"
+    },
+    "reconcile": {
+      "alreadySettled": "ya se abonaron {amount}",
+      "expected": "Se esperan <strong>{amount}</strong>",
+      "linking": "Vinculando…",
+      "markSettled": "Marcar como pagada",
+      "noDescription": "Sin descripción",
+      "noEligibleExpense": "No hay ningún gasto en {currency} disponible para saldar esta obligación. Registra primero el pago como movimiento.",
+      "transaction": "Movimiento",
+      "transactionHint": "Solo los gastos en la moneda de esta obligación pueden saldarla"
+    }
+  },
+  "transactions": {
+    "accountBalances": "Saldos de las cuentas",
+    "addTransaction": "Agregar movimiento",
+    "allAccounts": "Todas las cuentas",
+    "automatic": "Automático",
+    "clearFilters": "Limpiar filtros",
+    "dateRangePreset": "Rango de fechas",
+    "editTransaction": "Editar movimiento",
+    "expense": "Gasto",
+    "filterByAccount": "Filtrar por cuenta",
+    "financed": "Financiado",
+    "fromDate": "Desde",
+    "income": "Ingreso",
+    "loadFailed": "No se pudieron cargar los movimientos",
+    "loading": "Cargando movimientos",
+    "loadingRecurring": "Cargando reglas recurrentes",
+    "loan": "Préstamo",
+    "searchLabel": "Buscar movimientos",
+    "searchPlaceholder": "Busca por descripción o cuenta",
+    "showingLatest": "Mostrando los últimos {shown} de {total} movimientos.",
+    "toDate": "Hasta",
+    "transfer": "Transferir",
+    "filter": {
+      "all": "Todos",
+      "expense": "Gastos",
+      "income": "Ingresos"
+    },
+    "datePreset": {
+      "30d": "Últimos 30 días",
+      "all": "Todo el tiempo",
+      "custom": "Rango personalizado",
+      "month": "Este mes",
+      "year": "Este año"
+    },
+    "noAccounts": {
+      "description": "Agrega primero una cuenta — tus movimientos aparecerán acá cuando tengas dónde registrarlos.",
+      "title": "Todavía no hay cuentas"
+    },
+    "noTransactions": {
+      "description": "Registra el primero para empezar a construir el libro de tu hogar.",
+      "title": "Todavía no hay movimientos"
+    },
+    "noMatches": {
+      "description": "Nada coincide con tu búsqueda y tus filtros actuales.",
+      "title": "No hay movimientos que coincidan"
+    },
+    "drawer": {
+      "debtDescription": "Cuotas fijas que terminan solas",
+      "debtTitle": "Registrar una compra financiada",
+      "editRuleTitle": "Editar regla recurrente",
+      "loanDescription": "Dinero que recibiste y debes devolver",
+      "loanTitle": "Registrar un préstamo",
+      "newRuleTitle": "Nueva regla recurrente",
+      "ruleDescription": "Se registra automáticamente cada mes cuando corresponde",
+      "transactionDescription": "Queda registrado en el libro de tu hogar",
+      "transferDescription": "Mueve dinero con tasa de cambio explícita cuando las monedas difieren",
+      "transferTitle": "Transferencia entre cuentas"
+    },
+    "form": {
+      "account": "Cuenta",
+      "amount": "Monto",
+      "category": "Categoría",
+      "date": "Fecha",
+      "description": "Descripción",
+      "descriptionPlaceholder": "ej. Supermercado",
+      "invalid": "Movimiento inválido",
+      "optional": "Opcional",
+      "recordTransaction": "Registrar movimiento",
+      "saveChanges": "Guardar cambios"
+    },
+    "transferForm": {
+      "amount": "Monto",
+      "amountIn": "Monto ({currency})",
+      "conversionPreview": "{from} → {to} a una tasa de {rate}",
+      "date": "Fecha",
+      "description": "Descripción",
+      "destinationAmountIn": "Monto de destino ({currency})",
+      "destinationFallback": "destino",
+      "fee": "Comisión",
+      "feeHint": "Opcional, en {currency}",
+      "fromAccount": "Cuenta de origen",
+      "fxRate": "Tasa de cambio",
+      "fxRatePlaceholder": "ej. 4200.00",
+      "invalid": "Transferencia inválida",
+      "selectBothAccounts": "Selecciona la cuenta de origen y la de destino",
+      "sourceFallback": "origen",
+      "theSourceCurrency": "la moneda de origen",
+      "toAccount": "Cuenta de destino",
+      "transfer": "Transferir",
+      "transferring": "Transfiriendo…"
+    },
+    "recurringForm": {
+      "account": "Cuenta",
+      "amount": "Monto",
+      "createRule": "Crear regla mensual",
+      "dayOfMonth": "Día del mes",
+      "dayOfMonthHint": "1–28",
+      "invalid": "Regla recurrente inválida",
+      "name": "Nombre",
+      "saveChanges": "Guardar cambios",
+      "startDate": "Fecha de inicio",
+      "type": "Tipo"
+    },
+    "recurring": {
+      "accountFallback": "cuenta",
+      "actionsFor": "Acciones de {name}",
+      "dayAndAccount": "Día {day} · {account}",
+      "newRule": "Nueva regla",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "subtitle": "Reglas que se registran automáticamente cada mes cuando corresponde",
+      "title": "Movimientos recurrentes",
+      "status": {
+        "active": "Activa",
+        "archived": "Archivada",
+        "paused": "En pausa"
+      },
+      "empty": {
+        "description": "Automatiza el arriendo, el salario o las suscripciones — se registran solos cada mes cuando corresponde.",
+        "title": "Todavía no hay reglas recurrentes"
+      }
+    }
+  },
+  "settings": {
+    "language": {
+      "subtitle": "Aplica a este navegador. Los montos y las fechas siguen el idioma que elijas.",
+      "title": "Idioma"
+    }
+  },
+  "login": {
+    "benefitsLabel": "Qué hay adentro",
+    "continueSecurely": "Continuar de forma segura",
+    "eyebrow": "Hola de nuevo",
+    "reassurance": "Protegido por tu proveedor de identidad — nunca vemos ni guardamos tu contraseña.",
+    "subtitle": "Continúa con tu proveedor de identidad para entrar a tus hogares.",
+    "title": "Inicia sesión en Plinto",
+    "benefits": {
+      "households": {
+        "sub": "Cambia entre los hogares que administras sin volver a iniciar sesión.",
+        "title": "Todos tus hogares, una sola cuenta"
+      },
+      "ledger": {
+        "sub": "Lleva los saldos y organiza los gastos en un solo lugar claro.",
+        "title": "Cuentas, movimientos y categorías"
+      },
+      "recurring": {
+        "sub": "Define la regla una vez y deja que los movimientos mensuales se registren solos.",
+        "title": "Movimientos recurrentes en piloto automático"
+      }
+    }
+  },
+  "onboarding": {
+    "eyebrow": "Comencemos",
+    "subtitle": "Dinos tu nombre y crea tu primer hogar.",
+    "title": "Completa tu perfil",
+    "form": {
+      "baseCurrency": "Moneda base",
+      "baseCurrencyHint": "La moneda por defecto de este hogar.",
+      "continue": "Continuar",
+      "householdName": "Nombre del hogar",
+      "householdNamePlaceholder": "ej. Familia Ruiz",
+      "submitting": "Enviando…",
+      "yourName": "Tu nombre",
+      "yourNamePlaceholder": "ej. Marta Ruiz"
+    }
+  },
+  "selectTenant": {
+    "eyebrow": "Hola de nuevo",
+    "loading": "Cargando hogares…",
+    "noHouseholds": "Todavía no perteneces a ningún hogar.",
+    "subtitle": "Elige el hogar en el que quieres trabajar ahora.",
+    "title": "Elige un hogar"
+  },
+  "credit": {
+    "addCreditLine": "Agregar línea de crédito",
+    "addStatement": "Agregar corte",
+    "availableOfLimit": "{available} disponibles de {limit}",
+    "closeAction": "Cerrar",
+    "closeLineFor": "Cerrar {name}",
+    "dueOn": "vence el {day}",
+    "editLimitFor": "Editar el cupo de {name}",
+    "editStatementFor": "Editar el corte de {name}",
+    "lastPaid": "Último pago",
+    "lastStatementOn": "último corte del {day}",
+    "limitAwaitingFirstStatement": "Cupo de {limit} · esperando el primer corte",
+    "linesOpen": "{count, plural, =0 {Sin líneas de crédito abiertas} one {# línea de crédito abierta} other {# líneas de crédito abiertas}}",
+    "loading": "Cargando líneas de crédito",
+    "owedOnCredit": "Deuda en crédito ({currency})",
+    "stillAvailable": "{amount} todavía disponibles",
+    "toPay": "Por pagar",
+    "badge": {
+      "closed": "cerrada",
+      "estimated": "estimado"
+    },
+    "closeModal": {
+      "body": "<strong>{name}</strong> deja de aceptar cortes nuevos. Los que ya emitió se quedan — algunos están pagados, y borrarlos dejaría pagos sin una razón detrás.",
+      "closing": "Cerrando…",
+      "confirm": "Cerrar línea",
+      "keepIt": "Mantenerla",
+      "title": "¿Cerrar esta línea de crédito?"
+    },
+    "drawer": {
+      "addDescription": "Una tarjeta, o una línea rotativa como ADDI",
+      "addTitle": "Agregar una línea de crédito",
+      "editLineDescription": "Nombre y cupo — los cortes conservan el cupo con el que se midieron",
+      "editLineFallback": "Editar línea de crédito",
+      "editLineTitle": "Editar {name}",
+      "fixStatementDescription": "El pago en el tablero de obligaciones cambia junto con él",
+      "fixStatementFallback": "Corregir corte",
+      "fixStatementTitle": "Corregir el corte de {name}",
+      "statementDescription": "Su pago pasa directo al tablero de obligaciones",
+      "statementFallback": "Corte",
+      "statementTitle": "Corte de {name}"
+    },
+    "empty": {
+      "description": "Agrega una tarjeta o una línea como ADDI y luego registra cada corte cuando llegue. Un número al mes te da el pago, el saldo y cuánto cupo te queda.",
+      "title": "Todavía no hay tarjetas ni líneas rotativas"
+    },
+    "form": {
+      "addCreditLine": "Agregar línea de crédito",
+      "creatingNote": "Acá no se define día de corte ni de pago. Cada corte trae sus propias fechas, así que si el emisor te pasa de mensual a quincenal no hay que cambiar nada.",
+      "currency": "Moneda",
+      "currencyFixedHint": "Fija — los cortes de abajo llevan sus propios montos",
+      "editingNote": "Los cortes ya registrados conservan el cupo con el que se midieron, así que cambiar esto nunca modifica una cifra que ya leíste.",
+      "invalid": "Línea de crédito inválida",
+      "limit": "Cupo de crédito",
+      "limitHint": "Tu techo de hoy — podés cambiarlo cuando el emisor lo cambie",
+      "name": "Nombre",
+      "namePlaceholder": "ej. ADDI, Visa Bancolombia",
+      "saveChanges": "Guardar cambios"
+    },
+    "section": {
+      "closed": "Cerradas",
+      "open": "Abiertas"
+    },
+    "statementForm": {
+      "editingNote": "El pago en el tablero de obligaciones cambia junto con él. No puede quedar por debajo de lo que ya pagaste contra este corte — deshacé el pago primero si el emisor realmente lo bajó después de que pagaste.",
+      "invalid": "Corte inválido",
+      "leavesAvailable": "Deja <strong>{amount}</strong> disponibles en esta línea.",
+      "overLimit": "Eso son <strong>{amount}</strong> por encima de tu cupo — se registra tal cual, no se rechaza.",
+      "paymentDue": "Fecha de pago",
+      "saveChanges": "Guardar cambios",
+      "saveStatement": "Guardar corte",
+      "statementDate": "Fecha de corte",
+      "statementDateFixedHint": "Fija — es la que decide a qué mes pertenece",
+      "toPayThisMonth": "A pagar este mes",
+      "totalOwed": "Total adeudado",
+      "totalOwedHint": "El saldo completo del corte, no solo el pago de este mes"
+    }
+  },
+  "validation": {
+    "accountsMustDiffer": "La cuenta de origen y la de destino deben ser distintas",
+    "atLeastOneField": "Hay que indicar al menos un campo",
+    "dueDateInsidePeriod": "La fecha de vencimiento debe caer dentro del período",
+    "dueWithinBalance": "El monto a pagar no puede superar el saldo del corte",
+    "invalidEnumValue": "Elegí una de las opciones disponibles",
+    "invalidString": "Ese valor no tiene un formato válido",
+    "invalidType": "Ese valor no es válido",
+    "lastInstallmentEmpty": "Las cuotas ya cubren todo el capital; la última quedaría vacía",
+    "tooBig": "Ese valor es demasiado grande",
+    "tooSmall": "Ese valor es demasiado pequeño"
+  },
+  "apiErrors": {
+    "ACCOUNT_NOT_FOUND": "Esa cuenta ya no existe.",
+    "ALREADY_A_MEMBER": "Esa persona ya es miembro de este hogar.",
+    "CATEGORY_NOT_FOUND": "Esa categoría ya no existe.",
+    "CATEGORY_TYPE_MISMATCH": "Esa categoría no aplica a este tipo de movimiento.",
+    "CREDIT_LINE_CLOSED": "Esa línea de crédito está cerrada y ya no acepta cortes.",
+    "CREDIT_LINE_NOT_FOUND": "Esa línea de crédito ya no existe.",
+    "CREDIT_STATEMENT_BELOW_PAID": "El monto no puede quedar por debajo de lo ya pagado contra este corte.",
+    "CREDIT_STATEMENT_DUE_ABOVE_BALANCE": "El monto a pagar no puede superar el saldo del corte.",
+    "CREDIT_STATEMENT_DUE_BEFORE_CUTOFF": "La fecha de pago no puede ser anterior a la de corte.",
+    "CREDIT_STATEMENT_NOT_FOUND": "Ese corte ya no existe.",
+    "DEBT_ACCOUNT_NOT_A_LIABILITY": "Esa cuenta no es un pasivo, así que no puede cargar una deuda.",
+    "DEBT_SCHEDULE_NOT_FOUND": "Esa deuda ya no existe.",
+    "INVALID_PERIOD": "Ese período no es válido.",
+    "INVITATION_EMAIL_REQUIRED": "Hace falta un correo para enviar la invitación.",
+    "INVITATION_NOT_FOUND": "Esa invitación ya no existe.",
+    "LAST_OWNER": "Un hogar debe conservar al menos una persona propietaria.",
+    "LENDER_NOT_A_LIABILITY": "La cuenta del prestamista debe ser un pasivo.",
+    "LOAN_CURRENCY_MISMATCH": "Ambas cuentas deben usar la misma moneda.",
+    "LOAN_DESTINATION_IS_A_LIABILITY": "La cuenta de destino no puede ser un pasivo.",
+    "MEMBERSHIP_NOT_FOUND": "Esa membresía ya no existe.",
+    "OBLIGATION_CURRENCY_MISMATCH": "La moneda del pago no coincide con la de la obligación.",
+    "OBLIGATION_NOT_FOUND": "Esa obligación ya no existe.",
+    "OBLIGATION_PAYMENT_NOT_FOUND": "Ese pago ya no existe.",
+    "PROFILE_REQUIRED": "Completa tu perfil antes de continuar.",
+    "RECURRING_RULE_ARCHIVED": "Esa regla recurrente está archivada.",
+    "RECURRING_RULE_NOT_FOUND": "Esa regla recurrente ya no existe.",
+    "REPORT_INVALID_PERIOD": "Ese período de reporte no es válido.",
+    "REQUEST_FAILED": "No se pudo completar la solicitud. Intenta de nuevo.",
+    "TRANSACTION_ALREADY_RECONCILED": "Ese movimiento ya está conciliado.",
+    "TRANSACTION_NOT_AN_EXPENSE": "Acá solo se puede aplicar un gasto.",
+    "TRANSACTION_NOT_FOUND": "Ese movimiento ya no existe.",
+    "TRANSFER_FX_NOT_ALLOWED": "Una transferencia entre cuentas de la misma moneda no puede llevar tasa de cambio.",
+    "TRANSFER_FX_REQUIRED": "Una transferencia entre monedas distintas necesita una tasa de cambio.",
+    "TRANSFER_SAME_ACCOUNT": "Una transferencia necesita dos cuentas distintas.",
+    "UNAUTHORIZED": "Tu sesión terminó. Inicia sesión de nuevo.",
+    "UNKNOWN": "Algo salió mal. Intenta de nuevo.",
+    "USER_NOT_FOUND": "Esa persona ya no existe.",
+    "VALIDATION_ERROR": "Algunos datos no son válidos. Revisa los campos e intenta de nuevo."
+  },
+  "statCard": {
+    "deltaThisMonth": "{sign}{percent}% este mes"
+  }
+}
