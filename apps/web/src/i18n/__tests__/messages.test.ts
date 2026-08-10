@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { VALIDATION_CODE } from '@plinto/shared'
 import en from '../../../messages/en.json'
 import es from '../../../messages/es.json'
 import { LOCALES } from '../config'
@@ -70,6 +71,31 @@ describe('message catalogues', () => {
     for (const [locale, catalogue] of Object.entries(CATALOGUES)) {
       for (const path of flatten(catalogue)) {
         expect(read(catalogue, path), `${locale} → ${path}`).not.toBe('')
+      }
+    }
+  })
+
+  /**
+   * The guardrail this whole refactor exists for.
+   *
+   * `@plinto/shared` tags each cross-field rule with a `VALIDATION_CODE`, and
+   * the frontend translates from that code. Add a rule there without a
+   * translation here and a user hits an untranslated sentence — so this test
+   * walks the codes themselves rather than trusting anyone to remember.
+   *
+   * It reads from the shared package, not from a copied list: adding a code
+   * makes this fail on the next run, in CI, with the code named.
+   */
+  it('translates every validation code the shared schemas can raise', () => {
+    const codes = Object.values(VALIDATION_CODE)
+    expect(codes.length, 'no codes found — is the export still there?').toBeGreaterThan(0)
+
+    for (const code of codes) {
+      for (const [locale, catalogue] of Object.entries(CATALOGUES)) {
+        const message = read(catalogue, `validation.${code}`)
+
+        expect(message, `${locale} is missing validation.${code}`).toBeTypeOf('string')
+        expect(message, `${locale} → validation.${code} is empty`).not.toBe('')
       }
     }
   })

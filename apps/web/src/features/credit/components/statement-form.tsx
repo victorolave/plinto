@@ -7,6 +7,7 @@ import { useErrorMessage } from '../../../lib/api/use-error-message'
 import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import { useFormattingLocale } from '../../../i18n/formatting'
 import {
+  VALIDATION_CODE,
   CreateCreditLineStatementSchema,
   UpdateCreditLineStatementSchema,
   toMajorUnitsString,
@@ -151,9 +152,10 @@ export function StatementForm({ line, statement, onSaved }: StatementFormProps) 
     // cannot, since either field may arrive alone. Checked here so the message
     // appears beside the inputs rather than as a 422 from the server.
     if (payload.amountDueMinor > payload.closingBalanceMinor) {
-      // Same wording the shared schema raises for the create path, so both
-      // routes into this rule read identically to the user.
-      setValidationError(tValidation('dueWithinBalance'))
+      // Keyed off the same VALIDATION_CODE the shared schema raises on the
+      // create path, so both routes into this rule read identically to the
+      // user — and both move together if the wording ever changes.
+      setValidationError(tValidation(VALIDATION_CODE.DUE_WITHIN_BALANCE))
       return
     }
 

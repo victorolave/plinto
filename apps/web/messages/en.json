@@ -628,14 +628,14 @@
     }
   },
   "validation": {
-    "accountsMustDiffer": "Source and destination accounts must differ",
-    "atLeastOneField": "At least one field must be provided",
-    "dueDateInsidePeriod": "The due date must fall inside the period",
-    "dueWithinBalance": "The amount due cannot exceed the closing balance",
+    "ACCOUNTS_MUST_DIFFER": "Source and destination accounts must differ",
+    "AT_LEAST_ONE_FIELD": "At least one field must be provided",
+    "DUE_DATE_INSIDE_PERIOD": "The due date must fall inside the period",
+    "DUE_WITHIN_BALANCE": "The amount due cannot exceed the closing balance",
+    "LAST_INSTALLMENT_EMPTY": "The installments already cover the whole principal; the last one would be empty",
     "invalidEnumValue": "Pick one of the available options",
     "invalidString": "That value is not in a valid format",
     "invalidType": "That value is not valid",
-    "lastInstallmentEmpty": "The installments already cover the whole principal; the last one would be empty",
     "tooBig": "That value is too large",
     "tooSmall": "That value is too small"
   },

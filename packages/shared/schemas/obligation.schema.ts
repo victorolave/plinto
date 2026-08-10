@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { VALIDATION_CODE, validationParams } from './validation-code'
 
 /** Calendar period a set of obligations belongs to, e.g. `2026-07`. */
 export const ObligationPeriodSchema = z
@@ -75,6 +76,7 @@ export const CreateObligationSchema = z
   .refine((value) => value.dueDate.slice(0, 7) === value.period, {
     message: 'dueDate must fall inside period',
     path: ['dueDate'],
+    params: validationParams(VALIDATION_CODE.DUE_DATE_INSIDE_PERIOD),
   })
 
 /** Links an existing transaction to an obligation as (part of) its payment. */
