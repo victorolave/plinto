@@ -12,6 +12,7 @@ vi.mock('../../../accounts/services/accounts')
 import {
   closeCreditLine,
   getCreditSummary,
+  updateCreditLine,
   updateStatement,
 } from '../../services/credit'
 import { listAccounts } from '../../../accounts/services/accounts'
@@ -19,6 +20,7 @@ import { listAccounts } from '../../../accounts/services/accounts'
 const mockedSummary = vi.mocked(getCreditSummary)
 const mockedClose = vi.mocked(closeCreditLine)
 const mockedUpdate = vi.mocked(updateStatement)
+const mockedUpdateLine = vi.mocked(updateCreditLine)
 const mockedListAccounts = vi.mocked(listAccounts)
 
 /**
@@ -73,6 +75,7 @@ beforeEach(() => {
   mockedSummary.mockResolvedValue({ data: { creditLines: [] } })
   mockedClose.mockResolvedValue({ data: { creditLine: line({ status: 'closed' }) } })
   mockedUpdate.mockResolvedValue({ data: { statement: statement() } })
+  mockedUpdateLine.mockResolvedValue({ data: { creditLine: line() } })
 })
 
 describe('CreditPanel', () => {
@@ -222,7 +225,11 @@ describe('CreditPanel', () => {
     renderWithProviders(<CreditPanel />)
 
     const open = within(await screen.findByRole('list', { name: /open/i }))
-    expect(open.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
+    // Scoped to the statement edit: the line's own name is an edit affordance
+    // too, and that one is offered whether a statement exists or not.
+    expect(
+      open.queryByRole('button', { name: /edit .* statement/i }),
+    ).not.toBeInTheDocument()
     expect(open.getByRole('button', { name: /add statement/i })).toBeInTheDocument()
   })
 
@@ -269,6 +276,48 @@ describe('CreditPanel', () => {
       )
     })
     expect(mockedUpdate.mock.calls[0]?.[2]).not.toHaveProperty('cutoffDate')
+  })
+
+  /**
+   * A ceiling set from memory, or moved by the issuer, has to be correctable.
+   * Same reasoning as correcting a statement: a number nobody can fix is a
+   * number its owner is stuck with.
+   */
+  it('moves a line’s ceiling from its name, without touching the currency', async () => {
+    const user = userEvent.setup()
+    mockedSummary.mockResolvedValue({ data: { creditLines: [line()] } })
+
+    renderWithProviders(<CreditPanel />)
+
+    const open = within(await screen.findByRole('list', { name: /open/i }))
+    await user.click(open.getByRole('button', { name: /edit addi limit/i }))
+
+    const limit = await screen.findByLabelText(/credit limit/i)
+    expect(limit).toHaveValue(1200000)
+    expect(screen.getByLabelText(/currency/i)).toBeDisabled()
+
+    await user.clear(limit)
+    await user.type(limit, '2000000')
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    await waitFor(() => {
+      expect(mockedUpdateLine).toHaveBeenCalledWith('line-addi', {
+        name: 'ADDI',
+        limitMinor: 2000000,
+      })
+    })
+    expect(mockedUpdateLine.mock.calls[0]?.[1]).not.toHaveProperty('currency')
+  })
+
+  it('offers no ceiling edit on a closed line', async () => {
+    mockedSummary.mockResolvedValue({
+      data: { creditLines: [line({ status: 'closed' })] },
+    })
+
+    renderWithProviders(<CreditPanel />)
+
+    const closed = within(await screen.findByRole('list', { name: /closed/i }))
+    expect(closed.queryByRole('button', { name: /limit/i })).not.toBeInTheDocument()
   })
 
   it('refuses a payment larger than the balance before calling the server', async () => {
