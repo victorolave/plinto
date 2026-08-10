@@ -29,6 +29,7 @@ const TITLES: Record<
   transactions: ['Transactions', ({ tenant }) => (tenant ? `${tenant} ledger` : 'Income, expenses and transfers')],
   obligations: ['Obligations', () => 'What the household owes this month'],
   debts: ['Debts', () => 'What the household owes in total'],
+  credit: ['Credit', () => 'Cards and rotating lines'],
   categories: ['Categories', () => 'Organize your spending'],
   settings: ['Settings', () => 'Household & members'],
 }

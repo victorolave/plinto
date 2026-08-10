@@ -190,9 +190,10 @@ differed.
 Credit cards are a different model: a limit, a statement cycle, a minimum
 payment, and a balance that grows with use rather than shrinking on a schedule.
 
-They belong in a later PRD. `AccountType.credit` already exists, so a card can
-be held today as an account with a negative balance — partial, and not made
-worse by waiting.
+They belong in a later PRD — **PRD-011**, which models them as a credit line and
+the statements it issues. `AccountType.credit` already exists, so a card can be
+held today as an account with a negative balance — partial, and not made worse
+by waiting.
 
 > **Alternative rejected.** Covering both here. Roughly doubles the work and
 > couples two models that share a word and little else.
@@ -345,7 +346,10 @@ it simply came due a slice earlier than the plan expected.
 
 ### Forward compatibility
 
-- **Revolving credit** adds a separate schedule shape; nothing here changes.
+- **Revolving credit** (PRD-011) turned out not to be a schedule shape at all:
+  it is a credit line plus the statements it issues, and an obligation keyed on
+  the statement rather than on the period. Nothing here changes, as predicted —
+  though the prediction had the wrong shape in mind.
 - **PRD-010 (spreadsheet import)** loads the `ADDI` sheet into debt schedules.
   It depends on this PRD, and on amounts already being stored at the currency's
   real minor unit — importing before either would load four fifths of seven

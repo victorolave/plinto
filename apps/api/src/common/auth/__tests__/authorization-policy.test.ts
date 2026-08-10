@@ -62,4 +62,27 @@ describe('AuthorizationPolicy', () => {
       },
     )
   })
+
+  describe('revolving credit', () => {
+    it.each(['owner', 'member'] as const)(
+      'allows %s to record credit lines and their statements',
+      (role) => {
+        expect(AuthorizationPolicy.hasPermission(role, 'credit:write')).toBe(true)
+      },
+    )
+
+    // Same line as obligations and debts: a viewer sees what the household
+    // owes on a card, and cannot record a statement against it.
+    it('lets a viewer read credit lines without writing them', () => {
+      expect(AuthorizationPolicy.hasPermission('viewer', 'credit:read')).toBe(true)
+      expect(AuthorizationPolicy.hasPermission('viewer', 'credit:write')).toBe(false)
+    })
+
+    it.each(['owner', 'member', 'viewer'] as const)(
+      'allows %s to read credit lines',
+      (role) => {
+        expect(AuthorizationPolicy.hasPermission(role, 'credit:read')).toBe(true)
+      },
+    )
+  })
 })

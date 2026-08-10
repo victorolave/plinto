@@ -14,6 +14,7 @@ export const ObligationSourceTypeSchema = z.enum([
   'recurring_rule',
   'manual',
   'debt_schedule',
+  'credit_line',
 ])
 
 /**
@@ -39,6 +40,8 @@ export const ObligationInstanceSchema = z.object({
   sourceType: ObligationSourceTypeSchema,
   /** Set if and only if `sourceType` is `debt_schedule`. */
   debtScheduleId: z.string().nullable().optional(),
+  /** Set if and only if `sourceType` is `credit_line`. */
+  creditLineStatementId: z.string().nullable().optional(),
   recurringRuleId: z.string().nullable(),
   period: ObligationPeriodSchema,
   dueDate: z.string(),

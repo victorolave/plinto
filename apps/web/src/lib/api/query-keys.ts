@@ -33,4 +33,12 @@ export const queryKeys = {
   // payments, so reconciling one invalidates this too.
   debts: ['debts'] as const,
   debtSummary: ['debts', 'summary'] as const,
+  // Revolving credit. `creditSummary` carries each line's latest statement, so
+  // recording one invalidates it as well as the line list.
+  creditLines: ['credit-lines'] as const,
+  creditSummary: ['credit-lines', 'summary'] as const,
+  // Keyed by line: two lines are distinct result sets, and a household with
+  // four cards must not serve one card's statements for another.
+  creditStatements: (creditLineId: string) =>
+    ['credit-lines', creditLineId, 'statements'] as const,
 } as const

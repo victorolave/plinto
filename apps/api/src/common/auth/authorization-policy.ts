@@ -25,6 +25,12 @@ export type Permission =
   // viewer sees the debt, an owner and a member record and settle it.
   | 'debt:read'
   | 'debt:write'
+  // Revolving credit: cards and rotating lines, and the statements they issue.
+  // Separate from `debt:*` because a credit line is not an account and not a
+  // schedule, so a household could plausibly want one visible and not the
+  // other. Granted on the same lines for now.
+  | 'credit:read'
+  | 'credit:write'
 
 // Map roles to allowed permissions
 const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
@@ -47,6 +53,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'obligation:write',
     'debt:read',
     'debt:write',
+    'credit:read',
+    'credit:write',
   ],
   member: [
     'tenant:select',
@@ -63,6 +71,8 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'obligation:write',
     'debt:read',
     'debt:write',
+    'credit:read',
+    'credit:write',
   ],
   viewer: [
     'tenant:select',
@@ -73,6 +83,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'category:read',
     'obligation:read',
     'debt:read',
+    'credit:read',
   ],
 }
 

@@ -20,6 +20,7 @@ import { ObligationsModule } from './modules/obligations/obligations.module'
 import { CategoriesModule } from './modules/categories/categories.module'
 import { ReportsModule } from './modules/reports/reports.module'
 import { DebtsModule } from './modules/debts/debts.module'
+import { CreditModule } from './modules/credit/credit.module'
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { DebtsModule } from './modules/debts/debts.module'
     CategoriesModule,
     ReportsModule,
     DebtsModule,
+    CreditModule,
   ],
 })
 export class AppModule {}

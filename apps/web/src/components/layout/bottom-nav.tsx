@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   TrendDown,
+  Card,
   Home,
   Wallet,
   List,
@@ -42,6 +43,7 @@ const SECONDARY: BarEntry[] = [
 const MORE_SECTIONS: BarEntry[] = [
   { id: 'obligations', label: 'Obligations', icon: Target },
   { id: 'debts', label: 'Debts', icon: TrendDown },
+  { id: 'credit', label: 'Credit', icon: Card },
   { id: 'categories', label: 'Categories', icon: Tag },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
