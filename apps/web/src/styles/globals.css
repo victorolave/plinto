@@ -46,6 +46,30 @@
 .link:hover {
   text-decoration: underline;
 }
+/*
+ * A button that reads as the text around it. For an edit affordance that
+ * belongs on a label rather than beside it — the name of a thing is where a
+ * person reaches to rename it, and a fourth button in a crowded row is not.
+ * Inherits type so the surrounding class (.account-name and friends) keeps
+ * deciding how it looks.
+ */
+.link-button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: inherit;
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+.link-button:focus-visible {
+  outline: 2px solid var(--text-brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs, 2px);
+}
 .eyebrow {
   font-size: var(--text-2xs);
   font-weight: var(--weight-semibold);

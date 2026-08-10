@@ -56,6 +56,9 @@ export function CreditPanel() {
   // fixed is a figure the household is stuck with, and the advice to enter a
   // statement only once it arrives is guidance, not a mechanism.
   const [editing, setEditing] = useState<CreditLineWithLatest | null>(null)
+  // Moving a ceiling. Issuers change limits, and a line set up with a working
+  // figure needs to be correctable once the real one is to hand.
+  const [editingLine, setEditingLine] = useState<CreditLine | null>(null)
   const [pendingClose, setPendingClose] = useState<CreditLineWithLatest | null>(null)
   const now = new Date()
 
@@ -177,7 +180,18 @@ export function CreditPanel() {
                       style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}
                     >
                       <span className="account-name">
-                        {row.name}{' '}
+                        {row.status === 'active' ? (
+                          <button
+                            type="button"
+                            className="link-button"
+                            aria-label={`Edit ${row.name} limit`}
+                            onClick={() => setEditingLine(row)}
+                          >
+                            {row.name}
+                          </button>
+                        ) : (
+                          row.name
+                        )}{' '}
                         {row.status === 'closed' ? (
                           <Badge tone="neutral">closed</Badge>
                         ) : stale ? (
@@ -279,6 +293,21 @@ export function CreditPanel() {
       >
         {statementFor ? (
           <StatementForm line={statementFor} onSaved={() => setStatementFor(null)} />
+        ) : null}
+      </Drawer>
+
+      <Drawer
+        open={editingLine !== null}
+        onClose={() => setEditingLine(null)}
+        title={editingLine ? `Edit ${editingLine.name}` : 'Edit credit line'}
+        description="Name and ceiling — statements keep the limit they were measured against"
+      >
+        {editingLine ? (
+          <CreditLineForm
+            currencies={currencies.length > 0 ? currencies : [editingLine.currency]}
+            line={editingLine}
+            onSaved={() => setEditingLine(null)}
+          />
         ) : null}
       </Drawer>
 

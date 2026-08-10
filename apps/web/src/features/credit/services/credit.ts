@@ -66,6 +66,25 @@ export async function createCreditLine(input: {
   })
 }
 
+/**
+ * Renames a line or moves its ceiling.
+ *
+ * Issuers raise and lower limits, and a household setting one up may not have
+ * the real figure to hand. Past statements are unaffected — each records the
+ * limit it was measured against — so this never restates a figure already
+ * read. Currency is not editable: the statements below carry their own
+ * amounts.
+ */
+export async function updateCreditLine(
+  id: string,
+  input: { name?: string; limitMinor?: number },
+): Promise<{ data: { creditLine: CreditLine } }> {
+  return apiFetch<{ data: { creditLine: CreditLine } }>(
+    `/credit-lines/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+}
+
 export async function closeCreditLine(
   id: string,
 ): Promise<{ data: { creditLine: CreditLine } }> {
