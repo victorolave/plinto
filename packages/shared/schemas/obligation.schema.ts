@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { VALIDATION_CODE, validationParams } from './validation-code'
+import { VALIDATION_CODE, validationIssue } from './validation-code'
 
 /** Calendar period a set of obligations belongs to, e.g. `2026-07`. */
 export const ObligationPeriodSchema = z
@@ -73,11 +73,10 @@ export const CreateObligationSchema = z
   // An obligation whose due date falls outside its own period would be
   // invisible in the month that reports it and unaccounted for in the month it
   // is actually due.
-  .refine((value) => value.dueDate.slice(0, 7) === value.period, {
-    message: 'dueDate must fall inside period',
-    path: ['dueDate'],
-    params: validationParams(VALIDATION_CODE.DUE_DATE_INSIDE_PERIOD),
-  })
+  .refine(
+    (value) => value.dueDate.slice(0, 7) === value.period,
+    validationIssue(VALIDATION_CODE.DUE_DATE_INSIDE_PERIOD, ['dueDate']),
+  )
 
 /** Links an existing transaction to an obligation as (part of) its payment. */
 export const ReconcileObligationSchema = z.object({

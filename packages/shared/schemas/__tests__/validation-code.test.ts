@@ -12,6 +12,7 @@ import {
   UpdateRecurringTransactionRuleSchema,
   UpdateTransactionSchema,
   VALIDATION_CODE,
+  VALIDATION_MESSAGE,
   validationCodeOf,
   isValidationCode,
 } from '../../index'
@@ -107,16 +108,34 @@ describe('validation codes are attached to every refinement', () => {
   })
 })
 
-describe('the English messages did not move', () => {
+describe('one code, one English message', () => {
   /**
-   * The code is additive: the API returns these sentences to clients that are
-   * not this app, so the wording is part of a contract that must not shift
-   * under a refactor that was only ever about the frontend.
+   * The API returns these sentences to clients that have no catalogue, so the
+   * wording is a contract — and it must be the SAME wording everywhere a rule
+   * applies. It was not: four schemas said "At least one field must be
+   * provided" while two said "Provide at least one field to update" for the
+   * identical rule, because the sentence was a string literal copied to six
+   * call sites.
+   *
+   * `VALIDATION_MESSAGE` is the single source now, and this asserts that every
+   * schema actually reads from it rather than reintroducing a literal.
    */
   it.each([
-    [UpdateAccountSchema, {}, 'At least one field must be provided'],
-    [UpdateCreditLineSchema, {}, 'Provide at least one field to update'],
+    ['UpdateAccountSchema', UpdateAccountSchema, {}, VALIDATION_CODE.AT_LEAST_ONE_FIELD],
     [
+      'UpdateCreditLineSchema',
+      UpdateCreditLineSchema,
+      {},
+      VALIDATION_CODE.AT_LEAST_ONE_FIELD,
+    ],
+    [
+      'UpdateCreditLineStatementSchema',
+      UpdateCreditLineStatementSchema,
+      {},
+      VALIDATION_CODE.AT_LEAST_ONE_FIELD,
+    ],
+    [
+      'CreateObligationSchema',
       CreateObligationSchema,
       {
         name: 'Rent',
@@ -125,10 +144,26 @@ describe('the English messages did not move', () => {
         expectedAmountMinor: 100000,
         currency: 'COP',
       },
-      'dueDate must fall inside period',
+      VALIDATION_CODE.DUE_DATE_INSIDE_PERIOD,
     ],
-  ])('keeps its message', (schema, input, expected) => {
-    expect(firstIssue(schema, input).message).toBe(expected)
+  ])('%s carries the canonical message for its code', (_name, schema, input, code) => {
+    expect(firstIssue(schema, input).message).toBe(VALIDATION_MESSAGE[code])
+  })
+
+  it('gives the same sentence to every schema sharing a code', () => {
+    const messages = [UpdateAccountSchema, UpdateCreditLineSchema, UpdateCategorySchema]
+      .map((schema) => firstIssue(schema, {}).message)
+      .filter((message, index, all) => all.indexOf(message) === index)
+
+    // Exactly one distinct sentence — the divergence this replaced.
+    expect(messages).toEqual([VALIDATION_MESSAGE[VALIDATION_CODE.AT_LEAST_ONE_FIELD]])
+  })
+
+  it('declares a non-empty message for every code', () => {
+    for (const code of Object.values(VALIDATION_CODE)) {
+      expect(VALIDATION_MESSAGE[code], code).toBeTypeOf('string')
+      expect(VALIDATION_MESSAGE[code], code).not.toBe('')
+    }
   })
 })
 

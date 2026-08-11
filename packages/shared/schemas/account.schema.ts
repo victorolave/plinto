@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { VALIDATION_CODE, validationParams } from './validation-code'
+import { VALIDATION_CODE, validationIssue } from './validation-code'
 
 export const AccountTypeSchema = z.enum(['cash', 'bank', 'credit', 'savings', 'debt'])
 
@@ -45,10 +45,10 @@ export const UpdateAccountSchema = z
     name: z.string().trim().min(1).optional(),
     type: AccountTypeSchema.optional(),
   })
-  .refine((value) => Object.values(value).some((field) => field !== undefined), {
-    message: 'At least one field must be provided',
-    params: validationParams(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
-  })
+  .refine(
+    (value) => Object.values(value).some((field) => field !== undefined),
+    validationIssue(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
+  )
 
 export type AccountTypeDto = z.infer<typeof AccountTypeSchema>
 export type AccountDto = z.infer<typeof AccountSchema>
