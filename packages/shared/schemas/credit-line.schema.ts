@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { VALIDATION_CODE, validationParams } from './validation-code'
+import { VALIDATION_CODE, validationIssue } from './validation-code'
 
 export const CreditLineStatusSchema = z.enum(['active', 'closed'])
 
@@ -43,10 +43,10 @@ export const UpdateCreditLineSchema = z
     name: z.string().trim().min(1).max(120).optional(),
     limitMinor: z.number().int().nonnegative().optional(),
   })
-  .refine((value) => value.name !== undefined || value.limitMinor !== undefined, {
-    message: 'Provide at least one field to update',
-    params: validationParams(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
-  })
+  .refine(
+    (value) => value.name !== undefined || value.limitMinor !== undefined,
+    validationIssue(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
+  )
 
 export const CreditLineSchema = z.object({
   id: z.string(),
@@ -83,16 +83,13 @@ const dueWithinBalance = (value: {
   amountDueMinor: number
 }) => value.amountDueMinor <= value.closingBalanceMinor
 
-const DUE_WITHIN_BALANCE_MESSAGE =
-  'The amount due cannot exceed the closing balance'
 
 export const CreateCreditLineStatementSchema = z
   .object(statementShape)
-  .refine(dueWithinBalance, {
-    message: DUE_WITHIN_BALANCE_MESSAGE,
-    path: ['amountDueMinor'],
-    params: validationParams(VALIDATION_CODE.DUE_WITHIN_BALANCE),
-  })
+  .refine(
+    dueWithinBalance,
+    validationIssue(VALIDATION_CODE.DUE_WITHIN_BALANCE, ['amountDueMinor']),
+  )
 
 /**
  * A statement and the obligation it produced are one fact recorded once, not a
@@ -114,10 +111,7 @@ export const UpdateCreditLineStatementSchema = z
       value.dueDate !== undefined ||
       value.closingBalanceMinor !== undefined ||
       value.amountDueMinor !== undefined,
-    {
-      message: 'Provide at least one field to update',
-      params: validationParams(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
-    },
+    validationIssue(VALIDATION_CODE.AT_LEAST_ONE_FIELD),
   )
 
 export const CreditLineStatementSchema = z.object({

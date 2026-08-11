@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { VALIDATION_CODE, validationParams } from './validation-code'
+import { VALIDATION_CODE, validationIssue } from './validation-code'
 
 export const DebtScheduleStatusSchema = z.enum(['active', 'cancelled'])
 
@@ -41,16 +41,13 @@ const lastInstallmentMustBePayable = (value: {
   installmentCount: number
 }) => value.principalMinor - value.installmentMinor * (value.installmentCount - 1) > 0
 
-const LAST_INSTALLMENT_MESSAGE =
-  'The installments already cover the whole principal; the last one would be empty'
 
 export const CreateDebtScheduleSchema = z
   .object(scheduleShape)
-  .refine(lastInstallmentMustBePayable, {
-    message: LAST_INSTALLMENT_MESSAGE,
-    path: ['installmentMinor'],
-    params: validationParams(VALIDATION_CODE.LAST_INSTALLMENT_EMPTY),
-  })
+  .refine(
+    lastInstallmentMustBePayable,
+    validationIssue(VALIDATION_CODE.LAST_INSTALLMENT_EMPTY, ['installmentMinor']),
+  )
 
 /**
  * Only the name is editable, deliberately.

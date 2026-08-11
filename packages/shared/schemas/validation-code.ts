@@ -35,6 +35,50 @@ export const VALIDATION_CODE = {
 
 export type ValidationCode = (typeof VALIDATION_CODE)[keyof typeof VALIDATION_CODE]
 
+/**
+ * The English sentence each code carries.
+ *
+ * This is the API's wording — what non-browser clients read — so it lives in
+ * one place rather than as a string literal repeated at each call site. It was
+ * repeated before, and it drifted exactly as you would expect: four schemas
+ * said "At least one field must be provided" while two said "Provide at least
+ * one field to update" for the identical rule. Nobody decided that; it is just
+ * what happens to copied prose.
+ *
+ * The frontend never reads this — it translates from the code. This exists for
+ * clients that have no catalogue.
+ */
+export const VALIDATION_MESSAGE: Record<ValidationCode, string> = {
+  [VALIDATION_CODE.AT_LEAST_ONE_FIELD]: 'At least one field must be provided',
+  [VALIDATION_CODE.ACCOUNTS_MUST_DIFFER]: 'Source and destination accounts must differ',
+  [VALIDATION_CODE.DUE_DATE_INSIDE_PERIOD]: 'dueDate must fall inside period',
+  [VALIDATION_CODE.DUE_WITHIN_BALANCE]: 'The amount due cannot exceed the closing balance',
+  [VALIDATION_CODE.LAST_INSTALLMENT_EMPTY]:
+    'The installments already cover the whole principal; the last one would be empty',
+}
+
+/**
+ * Everything a `.refine()` needs for one of our rules, in a single call.
+ *
+ * Passing the message and the params separately left three ways to get it
+ * wrong: a message that no longer matched its code, a code with no message,
+ * and a refinement that forgot `params` entirely and fell back to untranslated
+ * English. One argument removes all three.
+ *
+ *     .refine(check, validationIssue(VALIDATION_CODE.AT_LEAST_ONE_FIELD))
+ *     .refine(check, validationIssue(VALIDATION_CODE.DUE_WITHIN_BALANCE, ['amountDueMinor']))
+ */
+export function validationIssue(
+  code: ValidationCode,
+  path?: (string | number)[],
+): { message: string; params: { code: ValidationCode }; path?: (string | number)[] } {
+  return {
+    message: VALIDATION_MESSAGE[code],
+    params: validationParams(code),
+    ...(path ? { path } : {}),
+  }
+}
+
 const CODES = new Set<string>(Object.values(VALIDATION_CODE))
 
 export function isValidationCode(value: unknown): value is ValidationCode {
