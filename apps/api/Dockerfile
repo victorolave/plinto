@@ -91,6 +91,19 @@ RUN npm install --global prisma@${PRISMA_VERSION} \
 
 COPY --from=builder /app/out/api ./
 
+# The client generated during the build stage was written against that
+# stage's node_modules layout, which still had the `prisma` devDependency
+# present. `pnpm deploy --prod` then prunes devDependencies, which reshapes
+# pnpm's content-addressable store keys (they're peer-qualified — e.g.
+# `@prisma+client@5.22.0_prisma@5.22.0` — and removing the peer changes
+# which key `@prisma/client` resolves through) and leaves the copied bundle
+# pointing at a client that was never actually generated for it, failing at
+# boot with "@prisma/client did not initialize yet". Regenerating here,
+# against the final prod-only layout and using the CLI just installed above,
+# is what makes the two agree. `prisma generate` only reads the schema — it
+# never connects to DATABASE_URL — so this needs no database at build time.
+RUN prisma generate
+
 # Non-root runtime user. The deploy step above already ran as root (needed
 # for the global npm install and to own /app before handing it off).
 RUN addgroup --system --gid 1001 plinto \
