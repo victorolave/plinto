@@ -45,5 +45,8 @@ Thumbs.db
 # Package manager local store
 .pnpm-store/
 
+# Database dumps written by deploy/backup.sh (deploy/restore.sh consumes them)
+backups/
+
 # Registro local de una carga puntual viva (scripts/import-spreadsheet)
 manifest.json

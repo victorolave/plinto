@@ -21,13 +21,25 @@ coverage
 .vscode
 .DS_Store
 
-# Local scratch/dev-only files that never belong in an image
+# Local scratch/dev-only files that never belong in an image. A bare pattern
+# (no leading **/) only matches at the build context ROOT in dockerignore
+# syntax — unlike .gitignore, it is NOT implicitly recursive — so both forms
+# are listed, the same way node_modules/dist/build/coverage/.turbo are above.
+# Without the **/ form, a developer's own apps/api/.env or apps/web/.env
+# (real local secrets, never committed — see .gitignore) would silently ride
+# along into `COPY . .` and end up baked into the shipped image.
 *.log
+**/*.log
 *.env
+**/*.env
 *.env.*
+**/*.env.*
 !deploy/self-host.env.example
 .claude
 .agents
+
+# Database dumps written by deploy/backup.sh — never part of an image build
+backups/
 
 # Docs and CI are irrelevant to the image build and just slow the context copy
 docs
