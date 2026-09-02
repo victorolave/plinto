@@ -25,6 +25,8 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   { path: '/api/tenants', method: 'post' },
   { path: '/api/tenants/active', method: 'get' },
   { path: '/api/tenants/active', method: 'post' },
+  { path: '/api/tenants/demo', method: 'post' },
+  { path: '/api/tenants/{id}', method: 'delete' },
   // Auth / Users (UsersController, SessionsController)
   { path: '/api/me', method: 'get' },
   { path: '/api/me', method: 'patch' },

@@ -27,6 +27,10 @@ model Tenant {
   id           String       @id @default(uuid())
   name         String
   baseCurrency String       @default("COP") @map("base_currency")
+  /// A separate, throwaway household filled with invented Colombian sample
+  /// data so a person can see Plinto working without touching their real
+  /// data. Created and deleted on demand; never mixed with a real tenant.
+  isDemo       Boolean      @default(false) @map("is_demo")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 

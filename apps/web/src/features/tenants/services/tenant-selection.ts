@@ -3,6 +3,7 @@ import { apiFetch } from '../../../lib/api/client'
 export interface TenantSummary {
   id: string
   name: string
+  isDemo: boolean
 }
 
 export async function listTenants(): Promise<{ data: { tenants: TenantSummary[] } }> {

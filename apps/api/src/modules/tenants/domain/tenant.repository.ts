@@ -13,4 +13,7 @@ export abstract class TenantRepository {
   abstract findById(id: string): Promise<Tenant | null>
 
   abstract listByUserId(userId: string): Promise<Tenant[]>
+
+  /** The example household this user owns, if they already have one. */
+  abstract findDemoTenantForOwner(userId: string): Promise<Tenant | null>
 }

@@ -397,6 +397,47 @@
 .tenant-switcher-option.is-active {
   background: var(--chrome-hover);
 }
+/* "ejemplo" badge next to a demo household's name — a label, not a warning,
+   so it never borrows the brand red. */
+.tenant-switcher-demo-badge {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 1px var(--space-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-chip);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-tight);
+  color: inherit;
+  vertical-align: middle;
+}
+
+/* ============================================================
+   Demo household banner
+   ------------------------------------------------------------
+   Slim and persistent above the page content whenever the active household
+   is the example one — informational, not an error, so it uses the inset
+   surface and ink text rather than red.
+   ============================================================ */
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-5);
+  background: var(--surface-inset);
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+.demo-banner-link {
+  color: var(--text-strong);
+  text-decoration: underline;
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
 
 /* ============================================================
    Card

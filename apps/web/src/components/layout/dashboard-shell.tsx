@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Image from 'next/image'
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { apiFetch } from '../../lib/api/client'
@@ -111,6 +112,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     onboardingTourSeenAt: meQuery.data?.data?.user?.onboardingTourSeenAt,
   }
   const tenants = tenantsQuery.data ?? []
+  const activeTenant = tenants.find((tenant) => tenant.id === activeTenantId) ?? null
 
   const handleSelectTenant = async (tenantId: string) => {
     try {
@@ -132,7 +134,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   }
 
   const firstName = (user.name ?? '').trim().split(/\s+/)[0] ?? ''
-  const activeTenantName = tenants.find((tenant) => tenant.id === activeTenantId)?.name ?? ''
+  const activeTenantName = activeTenant?.name ?? ''
   const title = t(`title.${section}`)
   const resolvedSubtitle = SUBTITLE[section]({ name: firstName, tenant: activeTenantName })
   const subtitle = t(resolvedSubtitle.key, resolvedSubtitle.values)
@@ -173,6 +175,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <Sidebar />
           <div className="app-main">
             <TopBar title={title} subtitle={subtitle} onAdd={goToAdd} />
+            {activeTenant?.isDemo ? (
+              <div className="demo-banner" role="status">
+                <span>{t('demoBanner.text')}</span>
+                <Link href={SECTION_HREF.settings} className="demo-banner-link">
+                  {t('demoBanner.link')}
+                </Link>
+              </div>
+            ) : null}
             <div className="app-scroll">{children}</div>
           </div>
 

@@ -32,4 +32,13 @@ export class PrismaTenantRepository extends TenantRepository {
     })
     return memberships.map((membership) => membership.tenant)
   }
+
+  async findDemoTenantForOwner(userId: string): Promise<Tenant | null> {
+    return this.prisma.tenant.findFirst({
+      where: {
+        isDemo: true,
+        memberships: { some: { userId, role: 'owner' } },
+      },
+    })
+  }
 }

@@ -7,6 +7,7 @@ import { ChevronDown, Check } from '../ui/icons'
 export interface TenantOption {
   id: string
   name: string
+  isDemo: boolean
 }
 
 export interface TenantSwitcherProps {
@@ -49,6 +50,9 @@ export function TenantSwitcher({ tenants, activeTenantId, onSelect }: TenantSwit
         <span className="tenant-switcher-label">
           <span className="tenant-switcher-name">
             {active?.name ?? t('selectHousehold')}
+            {active?.isDemo ? (
+              <span className="tenant-switcher-demo-badge">{t('demoBadge')}</span>
+            ) : null}
           </span>
           <span className="tenant-switcher-role">{t('household')}</span>
         </span>
@@ -76,6 +80,9 @@ export function TenantSwitcher({ tenants, activeTenantId, onSelect }: TenantSwit
                 </span>
                 <span className="tenant-switcher-name" style={{ flex: 1, minWidth: 0 }}>
                   {tenant.name}
+                  {tenant.isDemo ? (
+                    <span className="tenant-switcher-demo-badge">{t('demoBadge')}</span>
+                  ) : null}
                 </span>
                 {isActive ? <Check size={15} /> : null}
               </button>

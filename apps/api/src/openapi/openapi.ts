@@ -50,6 +50,7 @@ import {
   TenantSchema,
   CreateTenantSchema,
   SelectTenantSchema,
+  CreateDemoHouseholdSchema,
   UpdateProfileSchema,
   ErrorResponseSchema,
 } from '@plinto/shared'
@@ -168,6 +169,10 @@ const UpdateCreditLineStatementSchemaRef = registry.register(
 const TenantSchemaRef = registry.register('Tenant', TenantSchema)
 const CreateTenantSchemaRef = registry.register('CreateTenant', CreateTenantSchema)
 const SelectTenantSchemaRef = registry.register('SelectTenant', SelectTenantSchema)
+const CreateDemoHouseholdSchemaRef = registry.register(
+  'CreateDemoHousehold',
+  CreateDemoHouseholdSchema,
+)
 const UpdateProfileSchemaRef = registry.register('UpdateProfile', UpdateProfileSchema)
 
 const ErrorResponseSchemaRef = registry.register('ErrorResponse', ErrorResponseSchema)
@@ -255,6 +260,10 @@ const CreateTenantResultSchema = z
     membership: MembershipSchemaRef,
   })
   .openapi('CreateTenantResult')
+
+const CreateDemoHouseholdResultSchema = z
+  .object({ tenant: TenantSchemaRef })
+  .openapi('CreateDemoHouseholdResult')
 
 const ActiveTenantResultSchema = z
   .object({ activeTenantId: z.string().nullable() })
@@ -1479,6 +1488,42 @@ registry.registerPath({
   },
   responses: {
     200: dataResponse('Active tenant updated.', ActiveTenantResultSchema),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/tenants/demo',
+  tags: ['Tenants'],
+  summary: 'Create an example household for the authenticated user and switch to it',
+  description:
+    'A separate, clearly-labelled tenant filled with invented Colombian sample data — ' +
+    'never real data. Refused with 409 DEMO_TENANT_EXISTS when the user already owns ' +
+    'one. On success, the active tenant is switched to the new example household.',
+  security: sessionCookieAuth,
+  request: {
+    body: { content: { 'application/json': { schema: CreateDemoHouseholdSchemaRef } } },
+  },
+  responses: {
+    201: dataResponse('Example household created.', CreateDemoHouseholdResultSchema),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/tenants/{id}',
+  tags: ['Tenants'],
+  summary: 'Delete the example household named by id',
+  description:
+    'Allowed only when the tenant is the example household (`isDemo`) and the caller ' +
+    'is its owner. Refused with 409 TENANT_NOT_DEMO for any other tenant, regardless ' +
+    'of the caller — a real household is never deletable through this endpoint.',
+  security: sessionCookieAuth,
+  request: { params: idParam },
+  responses: {
+    204: { description: 'Example household deleted.' },
     ...errorResponses,
   },
 })

@@ -133,7 +133,8 @@ export interface FirstStepsCardProps {
 export function FirstStepsCard({ onVisibilityChange }: FirstStepsCardProps = {}) {
   const t = useTranslations('dashboard.firstSteps')
   const router = useRouter()
-  const { activeTenantId } = useDashboard()
+  const { activeTenantId, tenants } = useDashboard()
+  const isDemoTenant = tenants.find((tenant) => tenant.id === activeTenantId)?.isDemo ?? false
 
   const storageKey = storageKeyFor(activeTenantId)
   // Read synchronously on mount, not in an effect: an effect runs after the
@@ -144,28 +145,28 @@ export function FirstStepsCard({ onVisibilityChange }: FirstStepsCardProps = {})
   const accountsQuery = useQuery({
     queryKey: queryKeys.accounts(),
     queryFn: async () => (await listAccounts()).data.accounts,
-    enabled: !hidden,
+    enabled: !hidden && !isDemoTenant,
   })
   const transactionsQuery = useQuery({
     queryKey: queryKeys.transactionsTotal,
     queryFn: () => listTransactions({ pageSize: 1 }),
-    enabled: !hidden,
+    enabled: !hidden && !isDemoTenant,
   })
   const period = currentPeriod()
   const obligationsQuery = useQuery({
     queryKey: queryKeys.obligations(period),
     queryFn: async () => (await listObligations(period)).data.obligations,
-    enabled: !hidden,
+    enabled: !hidden && !isDemoTenant,
   })
   const creditQuery = useQuery({
     queryKey: queryKeys.creditLines,
     queryFn: async () => (await listCreditLines()).data.creditLines,
-    enabled: !hidden,
+    enabled: !hidden && !isDemoTenant,
   })
   const membersQuery = useQuery({
     queryKey: queryKeys.members,
     queryFn: async () => (await listMembers()).data.members,
-    enabled: !hidden,
+    enabled: !hidden && !isDemoTenant,
   })
 
   const queries = [
@@ -225,18 +226,23 @@ export function FirstStepsCard({ onVisibilityChange }: FirstStepsCardProps = {})
   }, [])
 
   // Mirrors the render logic below 1:1, so a consumer of the status never
-  // disagrees with what the card is actually showing.
+  // disagrees with what the card is actually showing. A demo tenant disables
+  // every query above, so `loading`/`allDone` alone would never settle to
+  // 'hidden' on their own — `isDemoTenant` is checked explicitly so the tour
+  // autostart doesn't wait out its full grace period for a card that will
+  // never render in this tenant.
   useEffect(() => {
-    if (hidden || hasError || allDone) {
+    if (hidden || hasError || allDone || isDemoTenant) {
       setFirstStepsStatus('hidden')
     } else if (loading) {
       setFirstStepsStatus('loading')
     } else {
       setFirstStepsStatus('visible')
     }
-  }, [hidden, hasError, allDone, loading])
+  }, [hidden, hasError, allDone, loading, isDemoTenant])
 
-  if (hidden || hasError) return null
+  if (hidden || hasError || isDemoTenant) return null
+
   if (loading) return <FirstStepsSkeleton label={t('title')} />
   if (allDone) return null
 

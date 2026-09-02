@@ -6,6 +6,7 @@ const makePrisma = () => ({
   tenant: {
     create: vi.fn(),
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
   },
   membership: {
     findMany: vi.fn(),
@@ -16,6 +17,7 @@ const makeTenant = (overrides = {}) => ({
   id: 'tenant-1',
   name: 'Acme Inc',
   baseCurrency: 'USD',
+  isDemo: false,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
@@ -95,6 +97,28 @@ describe('PrismaTenantRepository', () => {
       const result = await repository.listByUserId('user-1')
 
       expect(result).toEqual([])
+    })
+  })
+
+  describe('findDemoTenantForOwner', () => {
+    it('looks up an isDemo tenant owned by the user', async () => {
+      const tenant = makeTenant({ isDemo: true })
+      prisma.tenant.findFirst.mockResolvedValue(tenant)
+
+      const result = await repository.findDemoTenantForOwner('user-1')
+
+      expect(prisma.tenant.findFirst).toHaveBeenCalledWith({
+        where: { isDemo: true, memberships: { some: { userId: 'user-1', role: 'owner' } } },
+      })
+      expect(result).toBe(tenant)
+    })
+
+    it('returns null when the user owns no demo tenant', async () => {
+      prisma.tenant.findFirst.mockResolvedValue(null)
+
+      const result = await repository.findDemoTenantForOwner('user-1')
+
+      expect(result).toBeNull()
     })
   })
 })

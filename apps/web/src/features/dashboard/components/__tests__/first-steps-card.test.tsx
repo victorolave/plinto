@@ -15,7 +15,7 @@ vi.mock('../../../obligations/services/obligations')
 vi.mock('../../../credit/services/credit')
 vi.mock('../../../members/services/members')
 vi.mock('../../../../components/layout/dashboard-context', () => ({
-  useDashboard: () => ({ activeTenantId: 'tenant-1' }),
+  useDashboard: vi.fn(() => ({ activeTenantId: 'tenant-1', tenants: [] })),
 }))
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -26,12 +26,14 @@ import { listTransactions } from '../../../transactions/services/transactions'
 import { listObligations } from '../../../obligations/services/obligations'
 import { listCreditLines } from '../../../credit/services/credit'
 import { listMembers } from '../../../members/services/members'
+import { useDashboard } from '../../../../components/layout/dashboard-context'
 
 const mockedListAccounts = vi.mocked(listAccounts)
 const mockedListTransactions = vi.mocked(listTransactions)
 const mockedListObligations = vi.mocked(listObligations)
 const mockedListCreditLines = vi.mocked(listCreditLines)
 const mockedListMembers = vi.mocked(listMembers)
+const mockedUseDashboard = vi.mocked(useDashboard)
 
 const account: Account = {
   id: 'acc-1',
@@ -100,6 +102,7 @@ const pending = <T,>(): Promise<T> => new Promise<T>(() => {})
 beforeEach(() => {
   vi.clearAllMocks()
   window.localStorage.clear()
+  mockedUseDashboard.mockReturnValue({ activeTenantId: 'tenant-1', tenants: [] } as any)
 })
 
 describe('FirstStepsCard', () => {
@@ -253,6 +256,34 @@ describe('FirstStepsCard', () => {
     // initializer, so not one of these five services should fire — not even
     // once, and not eventually.
     window.localStorage.setItem('plinto.dashboard.firstSteps.hidden.tenant-1', '1')
+    mockAllResolved()
+
+    renderWithProviders(<FirstStepsCard />)
+
+    expect(mockedListAccounts).not.toHaveBeenCalled()
+    expect(mockedListTransactions).not.toHaveBeenCalled()
+    expect(mockedListObligations).not.toHaveBeenCalled()
+    expect(mockedListCreditLines).not.toHaveBeenCalled()
+    expect(mockedListMembers).not.toHaveBeenCalled()
+  })
+
+  it('renders nothing in a demo household, even with steps left to complete', () => {
+    mockedUseDashboard.mockReturnValue({
+      activeTenantId: 'tenant-1',
+      tenants: [{ id: 'tenant-1', name: 'Hogar de ejemplo', isDemo: true }],
+    } as any)
+    mockAllResolved()
+
+    renderWithProviders(<FirstStepsCard />)
+
+    expect(screen.queryByText('First steps')).not.toBeInTheDocument()
+  })
+
+  it('never calls any of its services in a demo household', () => {
+    mockedUseDashboard.mockReturnValue({
+      activeTenantId: 'tenant-1',
+      tenants: [{ id: 'tenant-1', name: 'Hogar de ejemplo', isDemo: true }],
+    } as any)
     mockAllResolved()
 
     renderWithProviders(<FirstStepsCard />)
