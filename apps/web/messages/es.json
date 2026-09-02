@@ -501,6 +501,14 @@
     }
   },
   "settings": {
+    "export": {
+      "title": "Exporta tus datos",
+      "subtitle": "Descarga todo el hogar o solo tus movimientos. Los datos son tuyos.",
+      "jsonButton": "Exportar hogar completo (JSON)",
+      "csvButton": "Exportar movimientos (CSV)",
+      "pending": "Preparando descarga…",
+      "minorUnitsNote": "Los montos del JSON están en unidades mínimas de cada moneda (por ejemplo, centavos); revisa el bloque \"money\" del archivo para saber cuántos decimales usa cada una."
+    },
     "language": {
       "subtitle": "Aplica a este navegador. Los montos y las fechas siguen el idioma que elijas.",
       "title": "Idioma"

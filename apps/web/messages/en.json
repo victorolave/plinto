@@ -501,6 +501,14 @@
     }
   },
   "settings": {
+    "export": {
+      "title": "Export your data",
+      "subtitle": "Download the whole household or just your transactions. Your data is yours.",
+      "jsonButton": "Export whole household (JSON)",
+      "csvButton": "Export transactions (CSV)",
+      "pending": "Preparing download…",
+      "minorUnitsNote": "Amounts in the JSON are in each currency's minor units (e.g. cents); check the file's \"money\" block for how many decimals each one uses."
+    },
     "language": {
       "subtitle": "Applies to this browser. Amounts and dates follow the language you pick.",
       "title": "Language"

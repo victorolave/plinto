@@ -85,4 +85,15 @@ describe('AuthorizationPolicy', () => {
       },
     )
   })
+
+  describe('household export', () => {
+    // A full data dump — audit history and other members' emails included —
+    // is owner-only, unlike every read permission above that a viewer also
+    // holds.
+    it('restricts tenant:export to the owner', () => {
+      expect(AuthorizationPolicy.hasPermission('owner', 'tenant:export')).toBe(true)
+      expect(AuthorizationPolicy.hasPermission('member', 'tenant:export')).toBe(false)
+      expect(AuthorizationPolicy.hasPermission('viewer', 'tenant:export')).toBe(false)
+    })
+  })
 })

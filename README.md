@@ -16,6 +16,7 @@
 - [What does Plinto do?](#-what-does-plinto-do)
 - [Getting Started](#-getting-started)
 - [Self-Hosting](#-self-hosting)
+- [Your data is yours](#-your-data-is-yours)
 - [Contributing](#-contributing)
 - [Code of Conduct](#-code-of-conduct)
 
@@ -73,6 +74,18 @@ web + api + postgres, per [ADR 0005](docs/adr/0005-deployment-distribution-nginx
 See **[docs/delivery/self-host.md](docs/delivery/self-host.md)** for the full
 guide, including the OIDC provider setup and a gotcha around cookies on
 plain HTTP.
+
+---
+
+## 🔐 Your data is yours
+
+- **In-app export.** The household owner can download everything from
+  **Settings** — the whole household as one JSON file, or just the
+  transaction ledger as CSV. No support ticket, no waiting.
+- **Backup and restore.** Self-hosters get two scripts,
+  `deploy/backup.sh` and `deploy/restore.sh`, that wrap Postgres's own
+  `pg_dump`/`pg_restore`. See
+  **[docs/delivery/self-host.md](docs/delivery/self-host.md#backup-and-restore)**.
 
 ---
 

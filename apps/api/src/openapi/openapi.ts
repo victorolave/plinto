@@ -1373,6 +1373,53 @@ registry.registerPath({
 })
 
 // ---------------------------------------------------------------------------
+// Export ("your data is yours")
+// ---------------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/export/household',
+  tags: ['Export'],
+  summary: 'Download the whole household as a versioned JSON bundle',
+  description:
+    'Every tenant-scoped table (members, accounts, transactions, obligations, ' +
+    'audit history, ...) as one attachment, parent-first and deterministically ' +
+    'ordered. Owner only (tenant:export). Amounts stay in integer minor units; ' +
+    'see the `money.currencies` block in the response for how many decimal ' +
+    'places each currency present uses.',
+  security: sessionCookieAuth,
+  responses: {
+    200: {
+      description:
+        'application/json attachment (Content-Disposition sets the filename). ' +
+        'Body shape is not the usual `{ data: ... }` envelope — it is the raw ' +
+        'export bundle, described here only as an opaque string.',
+      content: { 'application/json': { schema: z.string() } },
+    },
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/export/transactions.csv',
+  tags: ['Export'],
+  summary: 'Download the transaction ledger as CSV',
+  description:
+    'RFC 4180 CSV with a UTF-8 BOM (so Excel opens accented text correctly) ' +
+    'and CRLF line endings. Amounts are rendered in major units using each ' +
+    "row's own currency exponent. Owner only (tenant:export).",
+  security: sessionCookieAuth,
+  responses: {
+    200: {
+      description: 'text/csv attachment (Content-Disposition sets the filename).',
+      content: { 'text/csv': { schema: z.string() } },
+    },
+    ...errorResponses,
+  },
+})
+
+// ---------------------------------------------------------------------------
 // Tenants
 // ---------------------------------------------------------------------------
 

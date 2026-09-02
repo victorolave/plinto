@@ -69,6 +69,9 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   { path: '/api/obligations/{id}/payments', method: 'post' },
   { path: '/api/obligations/{id}/payments/{transactionId}', method: 'delete' },
   { path: '/api/internal/obligations/generate', method: 'post' },
+  // Export (ExportController)
+  { path: '/api/export/household', method: 'get' },
+  { path: '/api/export/transactions.csv', method: 'get' },
 ]
 
 describe('buildOpenApiDocument', () => {
