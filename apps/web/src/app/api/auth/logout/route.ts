@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { resolveApiBase } from '../../../../lib/auth/server-session'
+import { isSecureCookie } from '../../../../lib/auth/cookie-options'
 
 export async function POST() {
   const apiBaseConfigured = process.env.NEXT_PUBLIC_API_BASE_URL
@@ -31,7 +32,7 @@ export async function POST() {
   const response = NextResponse.json({ success: true })
   const clearedCookie = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureCookie(),
     sameSite: 'lax' as const,
     maxAge: 0,
     path: '/',

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getOidcClient } from '../../../lib/auth/oidc-client'
 import { createPlintoJwt, JWT_TTL_SECONDS } from '../../../lib/auth/jwt'
+import { isSecureCookie } from '../../../lib/auth/cookie-options'
 
 const STATE_COOKIE = 'plinto_oidc_state'
 const VERIFIER_COOKIE = 'plinto_oidc_verifier'
@@ -111,7 +112,7 @@ export async function GET(request: Request) {
     // session's idle expiry on activity, so this is just the hard max age.
     response.cookies.set('plinto_session', jwtToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureCookie(),
       sameSite: 'lax',
       path: '/',
       maxAge: JWT_TTL_SECONDS,
@@ -121,7 +122,7 @@ export async function GET(request: Request) {
     if (refreshToken) {
       response.cookies.set('plinto_refresh_token', refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecureCookie(),
         sameSite: 'lax',
         path: '/',
         maxAge: 60 * 60 * 24 * 30, // 30 days
