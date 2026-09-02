@@ -15,6 +15,7 @@
 - [Why Plinto?](#-why-plinto)
 - [What does Plinto do?](#-what-does-plinto-do)
 - [Getting Started](#-getting-started)
+- [Self-Hosting](#-self-hosting)
 - [Contributing](#-contributing)
 - [Code of Conduct](#-code-of-conduct)
 
@@ -62,6 +63,16 @@ Beyond basic financial tracking, Plinto is designed as a supportive tool that he
 > Plinto is still in its early days, so there is currently no setup or onboarding process available. At this stage, the project is focused on defining its direction, ideas, and foundations—before any code is ready to run without complaints.
 
 This section will be updated as soon as Plinto becomes something you can actually install, configure, and use without guessing. Until then, consider this documentation a preview of what's coming, rather than a set of instructions you can follow today.
+
+---
+
+## 🏠 Self-Hosting
+
+Plinto ships as Docker images with a self-host `docker-compose.yml` (nginx +
+web + api + postgres, per [ADR 0005](docs/adr/0005-deployment-distribution-nginx.md)).
+See **[docs/delivery/self-host.md](docs/delivery/self-host.md)** for the full
+guide, including the OIDC provider setup and a gotcha around cookies on
+plain HTTP.
 
 ---
 

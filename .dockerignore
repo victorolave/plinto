@@ -1,0 +1,35 @@
+# Build artifacts are regenerated inside the image; shipping the host's copies
+# would both bloat the build context and risk a macOS/Linux native-binary
+# mismatch (e.g. Prisma engines) leaking into the container.
+node_modules
+**/node_modules
+dist
+**/dist
+.next
+**/.next
+build
+**/build
+coverage
+**/coverage
+.turbo
+**/.turbo
+*.tsbuildinfo
+
+# VCS and editor noise
+.git
+.gitignore
+.vscode
+.DS_Store
+
+# Local scratch/dev-only files that never belong in an image
+*.log
+*.env
+*.env.*
+!deploy/self-host.env.example
+.claude
+.agents
+
+# Docs and CI are irrelevant to the image build and just slow the context copy
+docs
+.github
+README.md

@@ -1,9 +1,36 @@
 # ADR 0005: Distribution and Deployment (SaaS and Self-Host) with Nginx
 
-- **Status**: Accepted
+- **Status**: Accepted — Implemented (2026-09-02)
 - **Date**: 2025-12-30
 - **Deciders**: Plinto Maintainer(s)
 - **Context**: Deployment, distribution, and system operation
+
+## Implementation Notes (2026-09-02)
+
+The decisions below are implemented:
+
+- Production `Dockerfile`s for both images (`apps/api/Dockerfile`,
+  `apps/web/Dockerfile`), and `docker-compose.yml` wiring nginx, web, api,
+  postgres, and a one-shot `migrate` service that runs `prisma migrate
+  deploy` before `api` starts.
+- `deploy/nginx/default.conf` routes `/` to web and `/api/` to api under one
+  origin, forwarding `Host`, `X-Real-IP`, `X-Forwarded-For`,
+  `X-Forwarded-Proto`, and `X-Request-Id`.
+- `GET /api/health` implemented (checks database connectivity), used by both
+  the container `HEALTHCHECK` and the troubleshooting guide.
+- `COOKIE_SECURE` implemented as an explicit override (defaults to
+  `NODE_ENV === 'production'` when unset) — see
+  `apps/web/src/lib/auth/cookie-options.ts`.
+- `COOKIE_DOMAIN` and `COOKIE_SAMESITE` are **not** implemented: serving web
+  and api under a single origin via nginx (this ADR's own §3) makes them
+  unnecessary — there is only one origin for the cookie to be scoped to, and
+  `SameSite=Lax` is hardcoded rather than configurable.
+- TLS termination is delegated to a proxy placed in front of this stack by
+  default (a managed load balancer, Caddy, Traefik, ...); `deploy/nginx/default.conf`
+  ships a commented block for operators who want this nginx to terminate TLS
+  itself instead.
+
+See `docs/delivery/self-host.md` for the operator-facing guide.
 
 ## Context
 
