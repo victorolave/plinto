@@ -21,6 +21,8 @@ import { CategoriesModule } from './modules/categories/categories.module'
 import { ReportsModule } from './modules/reports/reports.module'
 import { DebtsModule } from './modules/debts/debts.module'
 import { CreditModule } from './modules/credit/credit.module'
+import { JobsModule } from './modules/jobs/jobs.module'
+import { HealthModule } from './modules/health/health.module'
 
 @Module({
   imports: [
@@ -51,6 +53,8 @@ import { CreditModule } from './modules/credit/credit.module'
     ReportsModule,
     DebtsModule,
     CreditModule,
+    JobsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

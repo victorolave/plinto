@@ -220,13 +220,22 @@ describe('GET /callback', () => {
 
   // ---------- API errors ----------
 
-  it('redirects to /login instead of throwing when NEXT_PUBLIC_API_BASE_URL is not set', async () => {
+  it('falls back to the default API base and completes the flow when NEXT_PUBLIC_API_BASE_URL is not set', async () => {
+    // resolveApiBase() (lib/api/api-base.ts) always resolves to something —
+    // it has a localhost:3001 default — so a missing NEXT_PUBLIC_API_BASE_URL
+    // alone is no longer a "missing API configuration" error, unlike a
+    // missing INTERNAL_API_KEY below (which has no such default).
     vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
     vi.stubEnv('INTERNAL_API_KEY', 'key')
+    const redirectResp = makeMockRedirectResponse('/dashboard')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
 
-    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+    await GET(makeRequest())
 
-    expect(response._redirectUrl).toBe('/login')
+    expect(globalFetch).toHaveBeenCalledWith(
+      'http://localhost:3001/api/auth/session',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 
   it('redirects to /login instead of throwing when INTERNAL_API_KEY is not set', async () => {
@@ -236,6 +245,42 @@ describe('GET /callback', () => {
     const response = await GET(makeRequest()) as unknown as MockRedirectResponse
 
     expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when neither API_INTERNAL_URL nor NEXT_PUBLIC_API_BASE_URL is set in production', async () => {
+    // resolveApiBase() always resolves to something (a localhost:3001
+    // default), so this can no longer be caught by "apiBase is falsy" — a
+    // deployed (production) instance with neither var set is misconfigured
+    // and must fail here, not silently talk to localhost:3001.
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('API_INTERNAL_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
+    vi.stubEnv('INTERNAL_API_KEY', 'key')
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+    expect(globalFetch).not.toHaveBeenCalled()
+
+    // Restore for subsequent tests in this file — vi.stubEnv persists across
+    // tests unless explicitly reset, and nothing else here re-stubs NODE_ENV.
+    vi.stubEnv('NODE_ENV', 'test')
+  })
+
+  it('does not require API_INTERNAL_URL or NEXT_PUBLIC_API_BASE_URL outside production (local dev default)', async () => {
+    vi.stubEnv('NODE_ENV', 'test')
+    vi.stubEnv('API_INTERNAL_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
+    vi.stubEnv('INTERNAL_API_KEY', 'key')
+    const redirectResp = makeMockRedirectResponse('/dashboard')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(globalFetch).toHaveBeenCalledWith(
+      'http://localhost:3001/api/auth/session',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 
   // ---------- unhandled exceptions (fix under test) ----------

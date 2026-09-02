@@ -1,16 +1,24 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { resolveApiBase } from '../../../../lib/auth/server-session'
+import { resolveApiBase } from '../../../../lib/api/api-base'
+import { isSecureCookie } from '../../../../lib/auth/cookie-options'
 
-export async function POST() {
-  const apiBaseConfigured = process.env.NEXT_PUBLIC_API_BASE_URL
+export async function POST(request: Request) {
+  // Either source counts as "configured" — resolveApiBase() itself always
+  // resolves to something (it has a localhost:3001 default), so this checks
+  // for explicit configuration rather than resolveApiBase()'s return value,
+  // to preserve skipping the call in an environment where neither is set.
+  const apiBaseConfigured = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL
   const internalKey = process.env.INTERNAL_API_KEY
   const sessionCookie = cookies().get('plinto_session')?.value
 
   // Always try to revoke the session on the API if we have the necessary info
   if (apiBaseConfigured && internalKey && sessionCookie) {
     try {
-      const apiUrl = `${resolveApiBase()}/auth/logout`
+      // Anchored to this request's own origin when the configured base is
+      // relative — the same reverse-proxied-self-host case the callback
+      // route handles.
+      const apiUrl = `${resolveApiBase({ requestUrl: request.url })}/auth/logout`
 
       await fetch(apiUrl, {
         method: 'POST',
@@ -31,7 +39,7 @@ export async function POST() {
   const response = NextResponse.json({ success: true })
   const clearedCookie = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureCookie(),
     sameSite: 'lax' as const,
     maxAge: 0,
     path: '/',

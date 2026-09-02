@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { generators } from 'openid-client'
 import { getOidcClient } from '../../../../lib/auth/oidc-client'
+import { isSecureCookie } from '../../../../lib/auth/cookie-options'
 
 const STATE_COOKIE = 'plinto_oidc_state'
 const VERIFIER_COOKIE = 'plinto_oidc_verifier'
@@ -40,7 +41,7 @@ export async function GET() {
   // 10 minutes should be enough for the OAuth flow
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureCookie(),
     sameSite: 'lax' as const,
     path: '/',
     maxAge: 60 * 10, // 10 minutes

@@ -1,17 +1,24 @@
 name: Scheduled jobs
 
-# The obligations engine has no in-process scheduler, and that is deliberate:
-# ADR 0006 places these operations behind system endpoints guarded by
-# INTERNAL_API_KEY so they can be driven from outside the API. This workflow is
-# that driver. Without it the engine never runs — rules never post their
-# transactions and no period is ever materialized.
+# FALLBACK DRIVER (see ADR 0006 amendment, 2026-09-02): the API can now run the
+# obligations engine itself via an in-process scheduler
+# (apps/api/src/modules/jobs/), enabled per instance with
+# JOBS_SCHEDULER_ENABLED=true. This workflow exists for deployments that leave
+# that scheduler off — most notably self-host installs with no guaranteed
+# external scheduler — and is redundant (safe to disable) once
+# JOBS_SCHEDULER_ENABLED=true on an instance. Without either driver running,
+# the engine never runs — rules never post their transactions and no period is
+# ever materialized.
 #
 # Timing is best-effort by design. GitHub delays scheduled runs under load, and
-# disables them entirely after 60 days without repository activity. Neither is a
-# correctness problem here: both endpoints are idempotent (see the uniqueness
-# guarantees below), so a late run, a double run, or a manual catch-up all
-# converge to the same state. It IS an availability problem — if the repository
-# goes quiet, check that this workflow is still enabled.
+# disables them entirely after 60 days without repository activity — precisely
+# the failure mode the in-process scheduler avoids for self-host. Neither delay
+# nor disablement is a correctness problem here: both endpoints are idempotent
+# (see the uniqueness guarantees below), so a late run, a double run, or a
+# manual catch-up all converge to the same state, and this workflow overlapping
+# a concurrently-running in-process scheduler is equally safe. It IS an
+# availability problem if this is your only driver — if the repository goes
+# quiet, check that this workflow is still enabled.
 on:
   schedule:
     # 11:00 UTC = 06:00 in Bogotá (UTC-5, no DST). Early enough that a period is

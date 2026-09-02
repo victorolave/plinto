@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getOidcClient } from '../../../lib/auth/oidc-client'
 import { createPlintoJwt, JWT_TTL_SECONDS } from '../../../lib/auth/jwt'
+import { isSecureCookie } from '../../../lib/auth/cookie-options'
+import { resolveApiBase } from '../../../lib/api/api-base'
 
 const STATE_COOKIE = 'plinto_oidc_state'
 const VERIFIER_COOKIE = 'plinto_oidc_verifier'
@@ -48,11 +50,21 @@ export async function GET(request: Request) {
     const refreshToken = tokenSet.refresh_token
 
     const claims = tokenSet.claims()
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL
     const internalKey = process.env.INTERNAL_API_KEY
+    const apiBaseConfigured = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL
 
     stage = 'config_check'
-    if (!apiBase || !internalKey) {
+    if (!internalKey) {
+      throw new Error('Missing API configuration')
+    }
+    // resolveApiBase() always resolves to something — it has a
+    // localhost:3001 default, which is exactly what local development
+    // needs — but a deployed instance with neither API_INTERNAL_URL nor
+    // NEXT_PUBLIC_API_BASE_URL set is misconfigured, not "running locally",
+    // and silently talking to localhost:3001 would fail confusingly later
+    // instead of here. Fail fast here, exactly like the pre-existing
+    // internalKey check above.
+    if (!apiBaseConfigured && process.env.NODE_ENV === 'production') {
       throw new Error('Missing API configuration')
     }
 
@@ -60,10 +72,12 @@ export async function GET(request: Request) {
       return redirectTo('/login')
     }
 
-    // Build an absolute session URL when apiBase is configured as a relative path.
-    const sessionUrl = apiBase.startsWith('http')
-      ? `${apiBase}/auth/session`
-      : new URL(`${apiBase}/auth/session`, request.url).toString()
+    // resolveApiBase() prefers API_INTERNAL_URL, falls back to
+    // NEXT_PUBLIC_API_BASE_URL, and anchors a relative value to this
+    // request's own origin (or to http://localhost:3001 with no request) —
+    // the same resolution the logout route uses for its own server-side
+    // call to the API.
+    const sessionUrl = `${resolveApiBase({ requestUrl: request.url })}/auth/session`
 
     stage = 'session_fetch'
     const sessionResponse = await fetch(sessionUrl, {
@@ -111,7 +125,7 @@ export async function GET(request: Request) {
     // session's idle expiry on activity, so this is just the hard max age.
     response.cookies.set('plinto_session', jwtToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureCookie(),
       sameSite: 'lax',
       path: '/',
       maxAge: JWT_TTL_SECONDS,
@@ -121,7 +135,7 @@ export async function GET(request: Request) {
     if (refreshToken) {
       response.cookies.set('plinto_refresh_token', refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecureCookie(),
         sameSite: 'lax',
         path: '/',
         maxAge: 60 * 60 * 24 * 30, // 30 days
