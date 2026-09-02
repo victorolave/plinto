@@ -61,6 +61,23 @@ describe('buildTransactionsCsv', () => {
     expect(csv).toContain('"Dijo ""gracias"""')
   })
 
+  it('neutralises a description that a spreadsheet would run as a formula', () => {
+    const csv = buildTransactionsCsv([buildRow({ description: "=cmd|'/c calc'!A0" })])
+    expect(csv).toContain("'=cmd|'/c calc'!A0")
+    expect(csv).not.toContain(',=cmd')
+  })
+
+  it('neutralises leading + and @ but leaves negative numbers alone', () => {
+    const csv = buildTransactionsCsv([
+      buildRow({ description: '+57 300 123 4567' }),
+      buildRow({ description: '@usuario' }),
+      buildRow({ description: '-1234.56' }),
+    ])
+    expect(csv).toContain("'+57 300 123 4567")
+    expect(csv).toContain("'@usuario")
+    expect(csv).toContain(',-1234.56,')
+  })
+
   it('quotes a field containing a newline', () => {
     const csv = buildTransactionsCsv([buildRow({ description: 'Línea 1\nLínea 2' })])
     expect(csv).toContain('"Línea 1\nLínea 2"')

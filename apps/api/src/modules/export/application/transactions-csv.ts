@@ -23,8 +23,23 @@ const HEADER = [
  * expects for a plain value.
  */
 function csvField(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`
+  const neutralised = neutraliseFormula(value)
+  if (/[",\n\r]/.test(neutralised)) {
+    return `"${neutralised.replace(/"/g, '""')}"`
+  }
+  return neutralised
+}
+
+/**
+ * Defuses CSV injection. Spreadsheets treat a cell starting with `=`, `+`,
+ * `-`, `@`, a tab or a carriage return as a formula, so a transaction
+ * described as `=cmd|'/c calc'!A0` would execute on open. A leading
+ * apostrophe makes the cell literal text. Plain numbers are left alone so a
+ * negative amount still parses as a number.
+ */
+function neutraliseFormula(value: string): string {
+  if (/^[=+\-@\t\r]/.test(value) && !/^-?\d+(\.\d+)?$/.test(value)) {
+    return `'${value}`
   }
   return value
 }
