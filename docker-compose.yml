@@ -1,0 +1,99 @@
+# Self-host deployment (ADR 0005). Five-command happy path:
+#
+#   cp deploy/self-host.env.example .env
+#   <edit .env — see deploy/self-host.env.example for what to fill in>
+#   docker compose up -d --build
+#   # wait for `docker compose ps` to show api/web/nginx healthy
+#   open http://localhost:8080
+#
+# Only nginx publishes a port to the host: web and api are reached exclusively
+# through it, which is what keeps cookies (SameSite=Lax, no explicit domain)
+# working — the browser only ever talks to one origin.
+#
+# Each service reads `${PLINTO_ENV_FILE:-.env}` rather than a hardcoded
+# `.env`, so the same compose file can be pointed at a different env file
+# (e.g. for a smoke test against deploy/self-host.env.example) without a
+# throwaway copy:
+#
+#   PLINTO_ENV_FILE=deploy/self-host.env.example docker compose up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file: ${PLINTO_ENV_FILE:-.env}
+    volumes:
+      - plinto-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # Runs `prisma migrate deploy` once and exits. The api service will not
+  # start until this exits 0 (see its depends_on below) — migrations are
+  # always applied before the API accepts traffic, never implicitly.
+  migrate:
+    image: plinto-api:${PLINTO_VERSION:-local}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: ${PLINTO_ENV_FILE:-.env}
+    command: ["prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: plinto-api:${PLINTO_VERSION:-local}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: ${PLINTO_ENV_FILE:-.env}
+    environment:
+      # Exactly one api replica should run the in-process scheduler (see
+      # apps/api/src/config/configuration.ts) — self-host is single-replica
+      # by design, so this is the one instance that owns it. Still
+      # overridable from the env file for the rare case an operator wants it
+      # off (e.g. a read-only standby).
+      JOBS_SCHEDULER_ENABLED: ${JOBS_SCHEDULER_ENABLED:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  web:
+    image: plinto-web:${PLINTO_VERSION:-local}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    env_file: ${PLINTO_ENV_FILE:-.env}
+    environment:
+      # Server-side calls (route handlers, server components) reach the api
+      # container directly over the compose network — see
+      # apps/web/src/lib/api/api-base.ts. The browser never sees this
+      # address; it always calls same-origin /api, which nginx proxies to
+      # this same api service (see deploy/nginx/default.conf).
+      API_INTERNAL_URL: http://api:3000/api
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${PLINTO_HTTP_PORT:-8080}:80"
+    depends_on:
+      - web
+      - api
+    restart: unless-stopped
+
+volumes:
+  plinto-postgres-data:
