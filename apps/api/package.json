@@ -1,6 +1,7 @@
 {
   "name": "@plinto/api",
   "private": true,
+  "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",

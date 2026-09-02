@@ -1,6 +1,7 @@
 {
   "name": "plinto",
   "private": true,
+  "license": "AGPL-3.0-only",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "predev": "pnpm --filter @plinto/shared build",

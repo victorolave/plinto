@@ -81,4 +81,8 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
 
 ## 📝 License
 
-This project is open-source. See the [LICENSE](LICENSE) file for more details.
+Copyright (c) 2025 Victor Olave.
+
+Plinto is free software, released under the **GNU Affero General Public License v3.0** (AGPL-3.0-only). You may run, study, modify and redistribute it, including as a hosted service, provided that anyone who interacts with a modified version over a network can obtain its complete source code under the same license. See the [LICENSE](LICENSE) file for the full text.
+
+The name **Plinto** and its logo are trademarks of the author and are **not** covered by the license. Forks and hosted deployments must not present themselves as Plinto or use the logo without permission.
