@@ -18,10 +18,21 @@
 ARG NODE_IMAGE=node:22-bookworm-slim
 
 ##############################################################################
+# base — shared setup for both the build and runtime stages
+##############################################################################
+FROM ${NODE_IMAGE} AS base
+
+# Non-root runtime user, created once here so the runtime stage below only
+# needs to COPY --chown into it rather than re-creating the user and
+# chown -R'ing the whole tree as a separate layer.
+RUN addgroup --system --gid 1001 plinto \
+    && adduser --system --uid 1001 --ingroup plinto plinto
+
+##############################################################################
 # builder — installs the full workspace and builds @plinto/web and its
 # workspace dependency (@plinto/shared) via Turborepo
 ##############################################################################
-FROM ${NODE_IMAGE} AS builder
+FROM base AS builder
 WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
@@ -59,7 +70,7 @@ RUN pnpm turbo build --filter=@plinto/web...
 ##############################################################################
 # runtime — minimal image that only runs the standalone Next.js server
 ##############################################################################
-FROM ${NODE_IMAGE} AS runtime
+FROM base AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
@@ -70,14 +81,10 @@ ENV PORT=3000
 # entrypoint and this app's own files live under apps/web/... inside
 # .next/standalone rather than at its root — verified by inspecting a local
 # build: apps/web/.next/standalone/apps/web/server.js.
-COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --chown=plinto:plinto --from=builder /app/apps/web/.next/standalone ./
+COPY --chown=plinto:plinto --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+COPY --chown=plinto:plinto --from=builder /app/apps/web/public ./apps/web/public
 
-# Non-root runtime user.
-RUN addgroup --system --gid 1001 plinto \
-    && adduser --system --uid 1001 --ingroup plinto plinto \
-    && chown -R plinto:plinto /app
 USER plinto
 
 EXPOSE 3000

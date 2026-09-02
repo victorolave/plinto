@@ -30,6 +30,12 @@ RUN apt-get update \
 # honor that pin instead of whatever pnpm a bare `npm install -g pnpm` gives.
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
+# Non-root runtime user, created once here so the runtime stage below only
+# needs to COPY --chown into it rather than re-creating the user and
+# chown -R'ing the whole tree as a separate layer.
+RUN addgroup --system --gid 1001 plinto \
+    && adduser --system --uid 1001 --ingroup plinto plinto
+
 ##############################################################################
 # builder — installs the full workspace and builds @plinto/api and its
 # workspace dependency (@plinto/shared) via Turborepo
@@ -89,7 +95,7 @@ ARG PRISMA_VERSION=5.22.0
 RUN npm install --global prisma@${PRISMA_VERSION} \
     && npm cache clean --force
 
-COPY --from=builder /app/out/api ./
+COPY --chown=plinto:plinto --from=builder /app/out/api ./
 
 # The client generated during the build stage was written against that
 # stage's node_modules layout, which still had the `prisma` devDependency
@@ -104,11 +110,6 @@ COPY --from=builder /app/out/api ./
 # never connects to DATABASE_URL — so this needs no database at build time.
 RUN prisma generate
 
-# Non-root runtime user. The deploy step above already ran as root (needed
-# for the global npm install and to own /app before handing it off).
-RUN addgroup --system --gid 1001 plinto \
-    && adduser --system --uid 1001 --ingroup plinto plinto \
-    && chown -R plinto:plinto /app
 USER plinto
 
 EXPOSE 3000

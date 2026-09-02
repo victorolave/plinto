@@ -10,17 +10,41 @@
 # through it, which is what keeps cookies (SameSite=Lax, no explicit domain)
 # working — the browser only ever talks to one origin.
 #
-# Each service reads `${PLINTO_ENV_FILE:-.env}` rather than a hardcoded
-# `.env`, so the same compose file can be pointed at a different env file
-# (e.g. for a smoke test against deploy/self-host.env.example) without a
-# throwaway copy:
+# TWO DIFFERENT SUBSTITUTION MECHANISMS ARE IN PLAY, and they read from
+# different places:
 #
-#   PLINTO_ENV_FILE=deploy/self-host.env.example docker compose up -d --build
+#   - `${VAR}` used directly below (postgres's own POSTGRES_USER/PASSWORD/DB,
+#     migrate's DATABASE_URL, PLINTO_HTTP_PORT, PLINTO_VERSION, ...) is
+#     resolved by Compose ITSELF while parsing this file, from a file named
+#     exactly `.env` in this directory, or from whatever `--env-file` points
+#     at. It is never read from an `env_file:` line below.
+#   - `env_file: ${PLINTO_ENV_FILE:-.env}` on api/web/migrate injects that
+#     file's contents as *container* environment variables. The path itself
+#     is one of the `${VAR}` substitutions above, so it also comes from
+#     `.env`/`--env-file`, not from the file it names.
+#
+# Consequence: for a normal deployment, name your file `.env` (the quick path
+# above does this) and both mechanisms agree automatically — no flags needed.
+# To point at a different file (e.g. running the stack directly against
+# deploy/self-host.env.example, as the smoke test does), pass it via BOTH a
+# shell-exported PLINTO_ENV_FILE (so `env_file:` below resolves to it) AND
+# `--env-file` (so Compose's own `${VAR}` substitution reads from it too):
+#
+#   PLINTO_ENV_FILE=deploy/self-host.env.example \
+#     docker compose --env-file deploy/self-host.env.example up -d --build
+#
+# See docs/delivery/self-host.md for the full explanation.
 
 services:
   postgres:
     image: postgres:16-alpine
-    env_file: ${PLINTO_ENV_FILE:-.env}
+    # Deliberately NOT `env_file:` here (see the note above): postgres's own
+    # bootstrap only needs these three, scoped explicitly via Compose's own
+    # `${VAR}` substitution rather than handing it the whole shared file.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - plinto-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -39,7 +63,11 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    env_file: ${PLINTO_ENV_FILE:-.env}
+    # `prisma migrate deploy` reads only DATABASE_URL (see schema.prisma),
+    # so it gets exactly that instead of the whole shared env file — same
+    # reasoning as postgres above.
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
     command: ["prisma", "migrate", "deploy"]
     depends_on:
       postgres:
@@ -81,7 +109,7 @@ services:
       API_INTERNAL_URL: http://api:3000/api
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   nginx:
@@ -91,8 +119,10 @@ services:
     ports:
       - "${PLINTO_HTTP_PORT:-8080}:80"
     depends_on:
-      - web
-      - api
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

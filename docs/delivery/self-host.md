@@ -40,6 +40,16 @@ docker compose ps          # wait until api, web, postgres show "healthy"
 
 Open `http://localhost:8080` (or whatever `PLINTO_PUBLIC_URL` you set).
 
+**Why the file must be named `.env`:** `docker-compose.yml` reads several
+values (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL`,
+...) directly via Compose's own variable substitution, which only ever looks
+at a file literally named `.env` in this directory — or at whatever file you
+pass with `docker compose --env-file <path>`. Naming your copy anything else
+(without also passing `--env-file`) means postgres starts with empty
+credentials. If you do want a differently-named or differently-located file,
+use `docker compose --env-file path/to/your-file up -d --build` instead of
+the plain `docker compose up`.
+
 ## OIDC setup
 
 Register Plinto as a client application with your OIDC provider. The one
