@@ -127,3 +127,38 @@ jobs:
             --exit-code
         env:
           DATABASE_URL: postgresql://plinto:plinto@localhost:5432/shadow
+
+  docker-build:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+
+    # Builds both self-host images (ADR 0005) on every push, without pushing
+    # them anywhere — this is a build-health check for the Dockerfiles, not a
+    # release step. It runs alongside `verify` and `schema-drift` rather than
+    # depending on them, so a Dockerfile regression is reported as fast as a
+    # source regression is.
+    strategy:
+      matrix:
+        include:
+          - image: plinto-api
+            dockerfile: apps/api/Dockerfile
+          - image: plinto-web
+            dockerfile: apps/web/Dockerfile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Cached via the GitHub Actions cache backend (scoped per matrix entry
+      # by cache-to/from's own key derivation) so a source-only change
+      # doesn't re-download the whole pnpm store on every run.
+      - name: Build ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: ${{ matrix.image }}:ci
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
