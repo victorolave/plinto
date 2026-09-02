@@ -18,12 +18,14 @@ import {
   Plus,
   Menu,
   X,
+  HelpCircle,
   type IconProps,
 } from '../ui/icons'
 import { Avatar } from '../ui/avatar'
 import { TenantSwitcher } from './tenant-switcher'
 import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
 import { useDashboard } from './dashboard-context'
+import { useProductTour } from '../../features/onboarding/tour/product-tour-context'
 
 interface BarEntry {
   id: DashboardSection
@@ -34,15 +36,22 @@ interface BarEntry {
    */
   labelKey: string
   icon: ComponentType<IconProps>
+  /**
+   * Tour anchor. Accounts/transactions intentionally reuse the same
+   * `data-tour` value as their sidebar counterpart — the sidebar collapses
+   * under 900px, so only one of the two matching elements is ever actually
+   * rendered at a time, and tour-steps.ts picks whichever is visible.
+   */
+  dataTour?: string
 }
 
 /** Sections shown directly in the bottom bar (flanking the central add button). */
 const PRIMARY: BarEntry[] = [
   { id: 'overview', labelKey: 'home', icon: Home },
-  { id: 'accounts', labelKey: 'accounts', icon: Wallet },
+  { id: 'accounts', labelKey: 'accounts', icon: Wallet, dataTour: 'nav-accounts' },
 ]
 const SECONDARY: BarEntry[] = [
-  { id: 'transactions', labelKey: 'transactions', icon: List },
+  { id: 'transactions', labelKey: 'transactions', icon: List, dataTour: 'nav-transactions' },
 ]
 
 /** Sections that live inside the "More" sheet (everything not in the bar). */
@@ -67,6 +76,7 @@ function BarLink({ entry, active }: { entry: BarEntry; active: DashboardSection 
       href={SECTION_HREF[entry.id]}
       className={`bottom-nav-item ${isActive ? 'is-active' : ''}`.trim()}
       aria-current={isActive ? 'page' : undefined}
+      data-tour={entry.dataTour}
     >
       <Icon size={21} stroke={isActive ? 2.3 : 2} />
       <span>{t(entry.labelKey)}</span>
@@ -85,6 +95,7 @@ export function BottomNav({ onAdd }: BottomNavProps) {
   const tCommon = useTranslations('common')
   const [moreOpen, setMoreOpen] = useState(false)
   const active = sectionFromPath(usePathname() ?? '')
+  const { start } = useProductTour()
 
   // Lock the scrollable shell (.app-scroll) while the sheet is open — locking
   // body is a no-op here since body never scrolls, and on iOS touch would bleed
@@ -195,6 +206,19 @@ export function BottomNav({ onAdd }: BottomNavProps) {
                   </Link>
                 )
               })}
+
+              <button
+                type="button"
+                className="more-sheet-item"
+                data-tour="help-more-item"
+                onClick={() => {
+                  setMoreOpen(false)
+                  start()
+                }}
+              >
+                <HelpCircle size={20} />
+                {tShell('help')}
+              </button>
             </div>
 
             <button

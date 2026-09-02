@@ -28,6 +28,7 @@ const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
   // Auth / Users (UsersController, SessionsController)
   { path: '/api/me', method: 'get' },
   { path: '/api/me', method: 'patch' },
+  { path: '/api/me/onboarding-tour/seen', method: 'post' },
   { path: '/api/auth/session', method: 'post' },
   { path: '/api/auth/logout', method: 'post' },
   // Members (MembersController)

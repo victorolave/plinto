@@ -36,7 +36,7 @@ export function TenantSwitcher({ tenants, activeTenantId, onSelect }: TenantSwit
   }, [open])
 
   return (
-    <div className="tenant-switcher" ref={ref}>
+    <div className="tenant-switcher" ref={ref} data-tour="tenant-switcher">
       <button
         type="button"
         className="tenant-switcher-trigger"

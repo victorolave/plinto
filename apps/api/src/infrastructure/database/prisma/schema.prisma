@@ -8,12 +8,13 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  idpSub    String   @unique @map("idp_sub")
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                    String    @id @default(uuid())
+  idpSub                String    @unique @map("idp_sub")
+  email                 String    @unique
+  name                  String?
+  onboardingTourSeenAt  DateTime? @map("onboarding_tour_seen_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   memberships Membership[]
   sessions    Session[]

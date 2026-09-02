@@ -32,6 +32,7 @@
   },
   "shell": {
     "addTransaction": "Agregar movimiento",
+    "help": "Ayuda",
     "loading": "Cargando tu hogar…",
     "logOut": "Cerrar sesión",
     "loggingOut": "Cerrando sesión…",
@@ -62,6 +63,55 @@
   "tenantSwitcher": {
     "household": "Hogar",
     "selectHousehold": "Selecciona un hogar"
+  },
+  "tour": {
+    "buttons": {
+      "done": "Listo",
+      "next": "Siguiente",
+      "prev": "Atrás"
+    },
+    "steps": {
+      "accounts": {
+        "description": "Aquí vive tu dinero: banco, efectivo, ahorros o billetera digital. Los préstamos que pagas en cuotas también son una cuenta, de tipo deuda.",
+        "title": "Cuentas"
+      },
+      "categories": {
+        "description": "Son opcionales y te muestran en qué se va el dinero. Úsalas si quieres ver tus gastos organizados por tipo.",
+        "title": "Categorías"
+      },
+      "credit": {
+        "description": "Las tarjetas y los créditos rotativos no son cuentas: tienen un cupo. Cada corte que registras se convierte en una obligación con su propia fecha límite.",
+        "title": "Crédito"
+      },
+      "debts": {
+        "description": "Son compras financiadas en cuotas fijas. Cada mes, Plinto genera una obligación por la cuota que corresponde.",
+        "title": "Deudas"
+      },
+      "firstSteps": {
+        "description": "Esta lista te guía por las tareas iniciales de tu hogar. Complétala a tu propio ritmo desde aquí.",
+        "title": "Primeros pasos"
+      },
+      "help": {
+        "description": "Puedes repetir este recorrido cuando quieras desde aquí. En Ajustes encuentras miembros, exportación y el idioma.",
+        "title": "¿Necesitas ayuda?"
+      },
+      "household": {
+        "description": "Un hogar es compartido: quien lo administra es el propietario, quien registra movimientos es miembro y quien solo consulta es visor. Puedes pertenecer a varios hogares y cambiar entre ellos aquí.",
+        "title": "Tu hogar"
+      },
+      "obligations": {
+        "description": "Aquí ves lo que debes pagar este mes. El estado —pendiente, pagada o vencida— se calcula solo al conciliar tus pagos; nunca lo cambias a mano.",
+        "title": "Obligaciones"
+      },
+      "transactions": {
+        "description": "Cada ingreso o gasto que registras sale de una cuenta. Las transferencias mueven dinero entre tus cuentas (no son gastos) y los recurrentes se repiten cada mes hasta volverse obligaciones.",
+        "title": "Movimientos"
+      },
+      "welcome": {
+        "description": "Este recorrido te muestra cómo usar Plinto y los conceptos detrás de sus datos. Toma un minuto y te ahorra confusiones después.",
+        "title": "Plinto te dice qué debes, qué tienes y qué viene"
+      }
+    }
   },
   "authLayout": {
     "needHelp": "¿Necesitas ayuda?",

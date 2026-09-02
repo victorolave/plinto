@@ -1,0 +1,140 @@
+/* ============================================================
+   PLINTO · PRODUCT TOUR (driver.js overrides)
+   ------------------------------------------------------------
+   driver.js ships its own visual language — rounded corners, a
+   generic sans stack, grey buttons. This file re-skins its stock
+   classes with Plinto tokens so the tour reads as part of the
+   product rather than a bolted-on library: square corners, the
+   ink/white surface pair, and the brand red reserved for the step
+   indicator only (never the buttons).
+
+   Only visual properties are touched here — position/layout
+   properties (position, top, left, display) are left alone because
+   driver.js's own JS depends on controlling them for placement.
+   ============================================================ */
+
+.driver-popover {
+  font-family: var(--font-sans);
+  color: var(--text-strong);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-overlay);
+  padding: var(--space-5);
+  min-width: 280px;
+  max-width: 360px;
+  z-index: 1000;
+}
+
+.driver-popover-title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+  color: var(--text-strong);
+}
+
+.driver-popover-description {
+  margin-top: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.driver-popover-footer {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* The one place the brand red shows up in the tour: which step you're on. */
+.driver-popover-progress-text {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--red-500);
+}
+
+.driver-popover-navigation-btns {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.driver-popover-navigation-btns button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-sm);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-strong);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  cursor: pointer;
+  text-shadow: none;
+  transition: background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.driver-popover-navigation-btns button:hover {
+  background: var(--surface-hover);
+}
+
+/* Primary action (Next / Done) — same look as the app's `.btn`. */
+.driver-popover-navigation-btns .driver-popover-next-btn,
+.driver-popover-navigation-btns .driver-popover-done-btn {
+  background: var(--action-primary);
+  border-color: var(--action-primary);
+  color: var(--action-primary-text);
+}
+
+.driver-popover-navigation-btns .driver-popover-next-btn:hover,
+.driver-popover-navigation-btns .driver-popover-done-btn:hover {
+  background: var(--action-primary-hover);
+  border-color: var(--action-primary-hover);
+}
+
+.driver-popover-navigation-btns .driver-popover-btn-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.driver-popover-close-btn {
+  color: var(--text-muted);
+}
+
+.driver-popover-close-btn:hover,
+.driver-popover-close-btn:focus-visible {
+  color: var(--text-strong);
+}
+
+.driver-popover-arrow {
+  border-color: var(--surface-card);
+}
+.driver-popover-arrow-side-left {
+  border-right-color: var(--surface-card);
+}
+.driver-popover-arrow-side-right {
+  border-left-color: var(--surface-card);
+}
+.driver-popover-arrow-side-top {
+  border-bottom-color: var(--surface-card);
+}
+.driver-popover-arrow-side-bottom {
+  border-top-color: var(--surface-card);
+}
+
+/* Already ~10000 by default (driver.js sets it inline) — pinned here,
+   above --z-dropdown (300), so it never depends on that inline value. */
+.driver-overlay {
+  z-index: 1000 !important;
+}

@@ -137,6 +137,13 @@ export const ArrowSwap = (p: IconProps) =>
 
 export const Check = (p: IconProps) => svg(p, [<path key="0" d="M20 6 9 17l-5-5" />])
 
+export const HelpCircle = (p: IconProps) =>
+  svg(p, [
+    <circle key="0" cx="12" cy="12" r="9" />,
+    <path key="1" d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2-2.4 3.4" />,
+    <circle key="2" cx="12" cy="17" r="0.6" fill="currentColor" />,
+  ])
+
 export const ChevronRight = (p: IconProps) =>
   svg(p, [<path key="0" d="M9 6l6 6-6 6" />])
 

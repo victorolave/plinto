@@ -1516,6 +1516,22 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'post',
+  path: '/api/me/onboarding-tour/seen',
+  tags: ['Auth'],
+  summary: 'Record that the authenticated user has seen the product tour',
+  description:
+    'Idempotent: the timestamp is stamped only the first time. Replaying the ' +
+    'tour later from the help button must not change it — this endpoint marks ' +
+    'a first login, not "last seen".',
+  security: sessionCookieAuth,
+  responses: {
+    200: dataResponse('Tour marked as seen (or already was).', UserSchemaRef),
+    ...errorResponses,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
   path: '/api/auth/session',
   tags: ['Auth'],
   summary: 'Create a session for an identity-provider-authenticated user (internal/system endpoint)',

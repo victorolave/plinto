@@ -26,4 +26,11 @@ export abstract class UserRepository {
   }): Promise<User>
 
   abstract updateName(id: string, name: string): Promise<User>
+
+  /**
+   * Stamps `onboardingTourSeenAt` with now. Callers are responsible for the
+   * idempotency check (only call this when the field is still null) — this
+   * adapter unconditionally overwrites it.
+   */
+  abstract markOnboardingTourSeen(id: string): Promise<User>
 }
