@@ -185,6 +185,18 @@
     "noBalances": {
       "description": "To know what you have, start by telling us where your money is: create your first account.",
       "title": "Plinto tells you what you owe, what you have, and what's coming"
+    },
+    "firstSteps": {
+      "title": "First steps",
+      "subtitle": "Five things and Plinto starts telling you what you owe, what you have, and what's coming.",
+      "hide": "Hide",
+      "steps": {
+        "accounts": "Tell Plinto where your money is",
+        "transactions": "Record your first transaction",
+        "obligations": "Note what you owe this month",
+        "credit": "Add a card or revolving credit line",
+        "members": "Invite whoever shares the expenses"
+      }
     }
   },
   "members": {

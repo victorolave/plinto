@@ -15,6 +15,11 @@ export const queryKeys = {
   // cache entry from either page silently serve the other page's smaller/larger
   // result set.
   recentTransactions: ['transactions', 'recent'] as const,
+  // The first-steps checklist only needs the total count (pageSize: 1), not the
+  // rows — a dedicated key so it neither serves nor is served by
+  // `transactions()`'s own cache entry, which carries actual rows at whatever
+  // page size its caller asked for.
+  transactionsTotal: ['transactions', 'first-steps-total'] as const,
   recurringRules: ['recurring-rules'] as const,
   // Keyed by period: the board switches months, and each month is a distinct
   // result set that must not serve another month's cache entry.

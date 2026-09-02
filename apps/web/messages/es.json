@@ -185,6 +185,18 @@
     "noBalances": {
       "description": "Para saber qué tienes, empieza por decirle dónde está tu dinero: crea tu primera cuenta.",
       "title": "Plinto te dice qué debes, qué tienes y qué viene"
+    },
+    "firstSteps": {
+      "title": "Primeros pasos",
+      "subtitle": "Cinco cosas y Plinto empieza a decirte qué debes, qué tienes y qué viene.",
+      "hide": "Ocultar",
+      "steps": {
+        "accounts": "Dile a Plinto dónde está tu dinero",
+        "transactions": "Registra tu primer movimiento",
+        "obligations": "Anota lo que debes este mes",
+        "credit": "Agrega una tarjeta o crédito rotativo",
+        "members": "Invita a quien comparte los gastos"
+      }
     }
   },
   "members": {

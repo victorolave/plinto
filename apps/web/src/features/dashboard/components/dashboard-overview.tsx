@@ -29,6 +29,7 @@ import {
   accountTypeIcon,
 } from '../../../components/ui/icons'
 import { DashboardSkeleton } from './dashboard-skeleton'
+import { FirstStepsCard } from './first-steps-card'
 import { SECTION_HREF } from '../../../components/layout/dashboard-nav'
 import { useDashboard } from '../../../components/layout/dashboard-context'
 
@@ -155,6 +156,8 @@ export function DashboardOverview() {
         <DashboardSkeleton />
       ) : (
         <>
+          <FirstStepsCard />
+
           {totals.length > 0 ? (
             <div className="stat-grid">
               {totals.map((total, index) => (
