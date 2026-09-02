@@ -49,17 +49,24 @@ export interface UseProductTourResult {
 }
 
 /**
- * Owns one driver.js instance per consumer. `start()` (re)builds the step
- * list from the current DOM/viewport and drives it; the instance is
- * destroyed on unmount so it never survives the component going away
- * mid-tour.
+ * Owns the single driver.js instance for the whole app. Not meant to be
+ * called directly by components — `ProductTourProvider` calls this once and
+ * shares the result via context (see product-tour-context.tsx) so the
+ * sidebar's help button, the mobile more-sheet's help item, and the
+ * auto-start effect all drive the same instance instead of racing three
+ * separate driver.js instances.
+ *
+ * `start()` (re)builds the step list from the current DOM/viewport and
+ * drives it, and is a no-op while a run is already active (see the
+ * `isActive()` guard below); the instance is destroyed on unmount so it
+ * never survives the provider going away mid-tour.
  *
  * Every time the tour ends — finished, closed early, or torn down by
  * unmount — it is marked seen on the server exactly once per run (see
  * `markTourSeen`), and the cached `/me` response is patched optimistically
  * so nothing needs a refetch before it stops looking like a first login.
  */
-export function useProductTour(): UseProductTourResult {
+export function useProductTourController(): UseProductTourResult {
   const t = useTranslations('tour')
   const queryClient = useQueryClient()
   const isMobile = useIsMobile()

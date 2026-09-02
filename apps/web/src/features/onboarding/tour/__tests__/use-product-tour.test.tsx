@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { driver } from 'driver.js'
-import { useProductTour } from '../use-product-tour'
+import { useProductTourController } from '../use-product-tour'
 import { markTourSeen } from '../onboarding-tour.service'
 import { queryKeys } from '../../../../lib/api/query-keys'
 
@@ -51,7 +51,7 @@ describe('useProductTour', () => {
   })
 
   it('drives the tour when start is called', () => {
-    const { result } = renderHook(() => useProductTour(), {
+    const { result } = renderHook(() => useProductTourController(), {
       wrapper: wrapperFor(new QueryClient()),
     })
 
@@ -64,7 +64,7 @@ describe('useProductTour', () => {
 
   it('does not start a second instance while one is already active', () => {
     isActive.mockReturnValue(true)
-    const { result } = renderHook(() => useProductTour(), {
+    const { result } = renderHook(() => useProductTourController(), {
       wrapper: wrapperFor(new QueryClient()),
     })
 
@@ -79,7 +79,7 @@ describe('useProductTour', () => {
   })
 
   it('marks the tour seen exactly once per run when destroyed', async () => {
-    const { result } = renderHook(() => useProductTour(), {
+    const { result } = renderHook(() => useProductTourController(), {
       wrapper: wrapperFor(new QueryClient()),
     })
 
@@ -98,7 +98,7 @@ describe('useProductTour', () => {
   })
 
   it('marks the tour seen again on a subsequent run', async () => {
-    const { result } = renderHook(() => useProductTour(), {
+    const { result } = renderHook(() => useProductTourController(), {
       wrapper: wrapperFor(new QueryClient()),
     })
 
@@ -127,7 +127,7 @@ describe('useProductTour', () => {
     queryClient.setQueryData(queryKeys.me, {
       data: { user: { name: 'Alice', onboardingTourSeenAt: null } },
     })
-    const { result } = renderHook(() => useProductTour(), {
+    const { result } = renderHook(() => useProductTourController(), {
       wrapper: wrapperFor(queryClient),
     })
 
@@ -146,7 +146,7 @@ describe('useProductTour', () => {
 
   it('destroys the driver instance on unmount', () => {
     isActive.mockReturnValue(true)
-    const { result, unmount } = renderHook(() => useProductTour(), {
+    const { result, unmount } = renderHook(() => useProductTourController(), {
       wrapper: wrapperFor(new QueryClient()),
     })
 

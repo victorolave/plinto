@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
@@ -21,6 +21,45 @@ interface Step {
   id: 'accounts' | 'transactions' | 'obligations' | 'credit' | 'members'
   done: boolean
   href: string
+}
+
+export type FirstStepsStatus = 'loading' | 'visible' | 'hidden'
+
+/**
+ * Module-level store for whether the first-steps card currently has real
+ * content to show. `ProductTourAutostart` (dashboard-shell.tsx's tree, not a
+ * parent/child of this card — it lives deep inside a route's page content)
+ * reads this to know when it's safe to include the `firstSteps` tour step,
+ * instead of racing the card's own five queries and finding the anchor
+ * missing on almost every real first login.
+ *
+ * A plain module singleton rather than React context: the two components
+ * don't share a common ancestor closer than the whole app, and the value is
+ * genuinely global (there is only ever one first-steps card mounted at a
+ * time — see the tenant-switch-reloads-the-page note on `FirstStepsCard`).
+ */
+let firstStepsStatus: FirstStepsStatus = 'loading'
+const firstStepsStatusListeners = new Set<() => void>()
+
+function setFirstStepsStatus(next: FirstStepsStatus) {
+  if (firstStepsStatus === next) return
+  firstStepsStatus = next
+  firstStepsStatusListeners.forEach((listener) => listener())
+}
+
+function subscribeFirstStepsStatus(listener: () => void): () => void {
+  firstStepsStatusListeners.add(listener)
+  return () => firstStepsStatusListeners.delete(listener)
+}
+
+/** Current first-steps readiness: `'loading'` until its queries settle, then
+ * `'visible'` (it has content) or `'hidden'` (dismissed/errored/all done). */
+export function useFirstStepsStatus(): FirstStepsStatus {
+  return useSyncExternalStore(
+    subscribeFirstStepsStatus,
+    () => firstStepsStatus,
+    () => 'loading',
+  )
 }
 
 /** localStorage key a household's dismissal is remembered under. */
@@ -176,6 +215,26 @@ export function FirstStepsCard({ onVisibilityChange }: FirstStepsCardProps = {})
   useEffect(() => {
     onVisibilityChange?.(visible)
   }, [visible, onVisibilityChange])
+
+  // Reset on every mount (not just the first ever): a household can leave
+  // `/dashboard` and come back, remounting this card with fresh queries —
+  // the tour's autostart effect must see a fresh 'loading' each time, not a
+  // stale 'visible'/'hidden' left over from a previous mount.
+  useEffect(() => {
+    setFirstStepsStatus('loading')
+  }, [])
+
+  // Mirrors the render logic below 1:1, so a consumer of the status never
+  // disagrees with what the card is actually showing.
+  useEffect(() => {
+    if (hidden || hasError || allDone) {
+      setFirstStepsStatus('hidden')
+    } else if (loading) {
+      setFirstStepsStatus('loading')
+    } else {
+      setFirstStepsStatus('visible')
+    }
+  }, [hidden, hasError, allDone, loading])
 
   if (hidden || hasError) return null
   if (loading) return <FirstStepsSkeleton label={t('title')} />

@@ -21,7 +21,7 @@ vi.mock('../dashboard-context', () => ({
   }),
 }))
 
-vi.mock('../../../features/onboarding/tour/use-product-tour', () => ({
+vi.mock('../../../features/onboarding/tour/product-tour-context', () => ({
   useProductTour: () => ({ start, isRunning: false }),
 }))
 

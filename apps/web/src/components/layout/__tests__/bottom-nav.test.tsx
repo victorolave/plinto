@@ -21,11 +21,18 @@ vi.mock('../dashboard-context', () => ({
   }),
 }))
 
-vi.mock('../../../features/onboarding/tour/use-product-tour', () => ({
+vi.mock('../../../features/onboarding/tour/product-tour-context', () => ({
   useProductTour: () => ({ start, isRunning: false }),
 }))
 
 describe('BottomNav', () => {
+  it('tags the always-visible accounts/transactions bar links with the sidebar\'s data-tour anchors', () => {
+    renderWithProviders(<BottomNav onAdd={vi.fn()} />)
+
+    expect(document.querySelector('[data-tour="nav-accounts"]')).not.toBeNull()
+    expect(document.querySelector('[data-tour="nav-transactions"]')).not.toBeNull()
+  })
+
   it('starts the product tour and closes the sheet from the help item', async () => {
     renderWithProviders(<BottomNav onAdd={vi.fn()} />)
     const user = userEvent.setup()

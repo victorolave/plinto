@@ -14,6 +14,7 @@ import { TopBar } from './top-bar'
 import { DashboardProvider } from './dashboard-context'
 import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
 import { ProductTourAutostart } from '../../features/onboarding/tour/product-tour-autostart'
+import { ProductTourProvider } from '../../features/onboarding/tour/product-tour-context'
 
 interface MeResponse {
   data: {
@@ -167,20 +168,22 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         loggingOut,
       }}
     >
-      <div className="app-shell">
-        <Sidebar />
-        <div className="app-main">
-          <TopBar title={title} subtitle={subtitle} onAdd={goToAdd} />
-          <div className="app-scroll">{children}</div>
+      <ProductTourProvider>
+        <div className="app-shell">
+          <Sidebar />
+          <div className="app-main">
+            <TopBar title={title} subtitle={subtitle} onAdd={goToAdd} />
+            <div className="app-scroll">{children}</div>
+          </div>
+
+          <BottomNav onAdd={goToAdd} />
         </div>
 
-        <BottomNav onAdd={goToAdd} />
-      </div>
-
-      <ProductTourAutostart
-        onboardingTourSeenAt={user.onboardingTourSeenAt}
-        ready={!booting}
-      />
+        <ProductTourAutostart
+          onboardingTourSeenAt={user.onboardingTourSeenAt}
+          ready={!booting}
+        />
+      </ProductTourProvider>
     </DashboardProvider>
   )
 }

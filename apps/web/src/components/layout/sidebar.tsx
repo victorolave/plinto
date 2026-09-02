@@ -18,7 +18,7 @@ import {
   HelpCircle,
   type IconProps,
 } from '../ui/icons'
-import { useProductTour } from '../../features/onboarding/tour/use-product-tour'
+import { useProductTour } from '../../features/onboarding/tour/product-tour-context'
 import { Avatar } from '../ui/avatar'
 import { IconButton } from '../ui/button'
 import { TenantSwitcher } from './tenant-switcher'
