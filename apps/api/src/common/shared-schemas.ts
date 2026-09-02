@@ -25,4 +25,5 @@ export {
   CreateCategorySchema,
   UpdateCategorySchema,
   PaginationQuerySchema,
+  CreateDemoHouseholdSchema,
 } from '@plinto/shared'

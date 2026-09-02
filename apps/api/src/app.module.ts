@@ -24,6 +24,7 @@ import { CreditModule } from './modules/credit/credit.module'
 import { JobsModule } from './modules/jobs/jobs.module'
 import { HealthModule } from './modules/health/health.module'
 import { ExportModule } from './modules/export/export.module'
+import { DemoModule } from './modules/demo/demo.module'
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { ExportModule } from './modules/export/export.module'
     JobsModule,
     HealthModule,
     ExportModule,
+    DemoModule,
   ],
 })
 export class AppModule {}
