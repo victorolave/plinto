@@ -66,6 +66,9 @@ For example, if `PLINTO_PUBLIC_URL=https://plinto.example.com`, register
 value the provider redirects to and the value Plinto expects have to be
 identical, or the login callback fails.
 
+For step-by-step console instructions (Google, Auth0) and OIDC
+troubleshooting, see [`docs/delivery/oidc-providers.md`](./oidc-providers.md).
+
 ## The `COOKIE_SECURE` gotcha
 
 **Symptom:** you log in, the provider redirects back, and you land on
