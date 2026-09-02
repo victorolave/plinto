@@ -302,6 +302,37 @@ const internalKeyAuth = [{ internalApiKey: [] }]
 const idParam = z.object({ id: z.string().min(1) })
 
 // ---------------------------------------------------------------------------
+// Health
+// ---------------------------------------------------------------------------
+
+const HealthResultSchema = z
+  .object({
+    status: z.enum(['ok', 'error']),
+    checks: z.object({ database: z.enum(['up', 'down']) }),
+  })
+  .openapi('HealthResult')
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/health',
+  tags: ['Health'],
+  summary: 'Container/orchestrator health check',
+  description:
+    'Unauthenticated. Returns 200 with `database: "up"` when the database is ' +
+    'reachable, or 503 with `database: "down"` otherwise (ADR 0005 §7).',
+  responses: {
+    200: {
+      description: 'The API and its database are healthy.',
+      content: { 'application/json': { schema: HealthResultSchema } },
+    },
+    503: {
+      description: 'The database is unreachable.',
+      content: { 'application/json': { schema: HealthResultSchema } },
+    },
+  },
+})
+
+// ---------------------------------------------------------------------------
 // Accounts
 // ---------------------------------------------------------------------------
 

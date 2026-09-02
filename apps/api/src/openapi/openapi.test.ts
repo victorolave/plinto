@@ -6,6 +6,8 @@ import { buildOpenApiDocument } from './openapi'
 // method added/renamed without a matching openapi.ts registration — fails
 // this test instead of silently shipping an incomplete spec.
 const EXPECTED_PATHS: Array<{ path: string; method: string }> = [
+  // Health (HealthController)
+  { path: '/api/health', method: 'get' },
   // Accounts (AccountsController)
   { path: '/api/accounts', method: 'get' },
   { path: '/api/accounts', method: 'post' },
