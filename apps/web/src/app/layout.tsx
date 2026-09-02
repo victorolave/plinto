@@ -28,8 +28,11 @@ const dmMono = DM_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('app')
   return {
-    title: t('name'),
+    // Sections set their own title; the template hangs the product name off
+    // it so a tab reads "Cuentas · Plinto", never a bare "Cuentas".
+    title: { default: t('name'), template: `%s · ${t('name')}` },
     description: t('description'),
+    applicationName: t('name'),
   }
 }
 

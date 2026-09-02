@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { OnboardingForm } from '../../../features/auth/components/onboarding-form'
@@ -16,6 +17,11 @@ async function redirectIfOnboarded() {
   if (user.name && memberships.length > 0) {
     redirect(activeTenantId ? '/dashboard' : '/select-tenant')
   }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('onboarding')
+  return { title: t('title') }
 }
 
 export default async function OnboardingPage() {

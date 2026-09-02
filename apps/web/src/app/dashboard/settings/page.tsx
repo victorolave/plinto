@@ -1,5 +1,8 @@
 import { MembersPanel } from '../../../features/members/components/members-panel'
 import { LanguageSelector } from '../../../features/settings/components/language-selector'
+import { sectionMetadata } from '../../../lib/section-metadata'
+
+export const generateMetadata = sectionMetadata('settings')
 
 export default function SettingsPage() {
   return (

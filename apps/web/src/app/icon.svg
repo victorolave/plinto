@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- The Plinto mark: the horizontal logo's square, reduced to what survives
+       at 16px — ink ground, the P, and the red foot. -->
+  <rect width="64" height="64" fill="#0a0a0a"/>
+  <path fill="#ffffff" fill-rule="evenodd"
+        d="M11 9h24a16 16 0 0 1 0 32H22v23H11z M22 19v12h13a6 6 0 0 0 0-12z"/>
+  <rect x="0" y="43" width="11" height="9" fill="#ffffff"/>
+  <rect x="0" y="52" width="11" height="12" fill="#e8492c"/>
+</svg>

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { AuthLayout } from '../../../components/layout/auth-layout'
@@ -21,6 +22,11 @@ async function redirectIfAuthenticated() {
     redirect('/dashboard')
   }
   redirect('/select-tenant')
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('login')
+  return { title: { absolute: t('title') } }
 }
 
 export default async function LoginPage() {
