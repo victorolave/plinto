@@ -4,6 +4,10 @@ import { resolveApiBase } from '../api-base'
 describe('resolveApiBase', () => {
   beforeEach(() => {
     vi.unstubAllEnvs()
+    // CI exports NEXT_PUBLIC_API_BASE_URL for `next build`, so "unset" has to
+    // be forced here or the default-fallback case silently tests CI's value.
+    vi.stubEnv('API_INTERNAL_URL', undefined)
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', undefined)
   })
 
   it('prefers API_INTERNAL_URL over NEXT_PUBLIC_API_BASE_URL when both are set', () => {
