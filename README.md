@@ -73,7 +73,8 @@ Plinto ships as Docker images with a self-host `docker-compose.yml` (nginx +
 web + api + postgres, per [ADR 0005](docs/adr/0005-deployment-distribution-nginx.md)).
 See **[docs/delivery/self-host.md](docs/delivery/self-host.md)** for the full
 guide, including the OIDC provider setup and a gotcha around cookies on
-plain HTTP.
+plain HTTP. Setting up Google or Auth0 specifically? See
+[docs/delivery/oidc-providers.md](docs/delivery/oidc-providers.md).
 
 ---
 
