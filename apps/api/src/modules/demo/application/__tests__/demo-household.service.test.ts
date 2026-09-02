@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ForbiddenException, NotFoundException } from '@nestjs/common'
 import { DemoHouseholdService } from '../demo-household.service'
+import { DemoTenantAlreadyExistsError } from '../../domain/demo-household.repository'
 import type { DemoHouseholdRepository } from '../../domain/demo-household.repository'
 import type { TenantRepository } from '../../../tenants/domain/tenant.repository'
 import type { MembershipRepository } from '../../../memberships/domain/membership.repository'
@@ -71,6 +72,24 @@ describe('DemoHouseholdService', () => {
         response: expect.objectContaining({ code: 'DEMO_TENANT_EXISTS' }),
       })
       expect(demoHouseholdRepository.createDemoHousehold).not.toHaveBeenCalled()
+    })
+
+    it('rejects with DEMO_TENANT_EXISTS when the repository loses the race under its advisory lock — the second caller', async () => {
+      // The fast-path check passed (no demo tenant yet from this service's own
+      // point of view), but the repository's transaction-scoped re-check under
+      // the advisory lock found one a concurrent caller committed first.
+      tenantRepository.findDemoTenantForOwner.mockResolvedValue(null)
+      demoHouseholdRepository.createDemoHousehold.mockRejectedValue(
+        new DemoTenantAlreadyExistsError('user-1'),
+      )
+
+      await expect(
+        service.createForUser({ userId: 'user-1', correlationId: 'req-1', now: NOW }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'DEMO_TENANT_EXISTS' }),
+      })
+      expect(sessionService.setActiveTenant).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
     })
 
     it('creates the household once, defaults to es and "Hogar de ejemplo"', async () => {

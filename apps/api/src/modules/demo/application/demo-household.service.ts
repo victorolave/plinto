@@ -12,11 +12,21 @@ import { SessionService } from '../../sessions/application/session.service'
 import { Tenant } from '../../tenants/domain/tenant.entity'
 import { TenantRepository } from '../../tenants/domain/tenant.repository'
 import { DemoLocale } from '../domain/demo-household-dataset'
-import { DemoHouseholdRepository } from '../domain/demo-household.repository'
+import {
+  DemoHouseholdRepository,
+  DemoTenantAlreadyExistsError,
+} from '../domain/demo-household.repository'
 
 const DEMO_TENANT_NAME: Record<DemoLocale, string> = {
   es: 'Hogar de ejemplo',
   en: 'Example household',
+}
+
+function demoTenantExistsConflict(): ConflictException {
+  return new ConflictException({
+    code: 'DEMO_TENANT_EXISTS',
+    message: 'You already have an example household. Delete it before creating a new one.',
+  })
 }
 
 /**
@@ -44,6 +54,16 @@ export class DemoHouseholdService {
    *
    * One demo household per user at a time: asking twice without deleting the
    * first is a conflict, not a second household.
+   *
+   * The check here is a fast path only — it lets the common case (no demo
+   * tenant yet) skip the expensive dataset build and transaction below
+   * without a round trip. The authoritative check is the one
+   * `createDemoHousehold` runs under its own advisory lock, inside the same
+   * transaction as the create: two requests racing each other can both pass
+   * this fast path, but only one of them can win the lock and see "still
+   * none" before it creates its tenant — the other sees the winner's row and
+   * throws {@link DemoTenantAlreadyExistsError}, caught below and mapped to
+   * the same 409 this fast path returns.
    */
   async createForUser(params: {
     userId: string
@@ -53,21 +73,28 @@ export class DemoHouseholdService {
   }): Promise<Tenant> {
     const existing = await this.tenantRepository.findDemoTenantForOwner(params.userId)
     if (existing) {
-      throw new ConflictException({
-        code: 'DEMO_TENANT_EXISTS',
-        message: 'You already have an example household. Delete it before creating a new one.',
-      })
+      throw demoTenantExistsConflict()
     }
 
     const locale = params.locale ?? 'es'
     const now = params.now ?? new Date()
 
-    const { tenant } = await this.demoHouseholdRepository.createDemoHousehold({
-      ownerUserId: params.userId,
-      tenantName: DEMO_TENANT_NAME[locale],
-      locale,
-      now,
-    })
+    let created: Awaited<ReturnType<DemoHouseholdRepository['createDemoHousehold']>>
+    try {
+      created = await this.demoHouseholdRepository.createDemoHousehold({
+        ownerUserId: params.userId,
+        tenantName: DEMO_TENANT_NAME[locale],
+        locale,
+        now,
+      })
+    } catch (error) {
+      if (error instanceof DemoTenantAlreadyExistsError) {
+        throw demoTenantExistsConflict()
+      }
+      throw error
+    }
+
+    const { tenant } = created
 
     await this.sessionService.setActiveTenant(params.userId, tenant.id)
 

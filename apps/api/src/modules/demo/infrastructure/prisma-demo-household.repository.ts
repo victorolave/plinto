@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import { Membership } from '../../memberships/domain/membership.entity'
 import { Tenant } from '../../tenants/domain/tenant.entity'
-import { DemoHouseholdRepository } from '../domain/demo-household.repository'
+import { DemoHouseholdRepository, DemoTenantAlreadyExistsError } from '../domain/demo-household.repository'
 import {
   DemoLocale,
   buildDemoHouseholdDataset,
@@ -39,6 +39,31 @@ export class PrismaDemoHouseholdRepository extends DemoHouseholdRepository {
 
     return this.prisma.$transaction(
       async (tx) => {
+        // Serialises every concurrent call for this user: `pg_advisory_xact_lock`
+        // blocks until it can take the lock, and being `_xact_` it releases
+        // automatically on commit or rollback — nothing to unlock by hand, and
+        // no lock survives a crashed connection. `hashtext` turns the user id
+        // into the bigint key the function wants; two different users hashing
+        // to the same key would only serialise them against each other too,
+        // which is a harmless false contention, not a correctness bug.
+        //
+        // The existence check right after is what actually matters: without
+        // the lock, two requests could both pass this check before either
+        // commits its `tenant.create` and both would end up creating a demo
+        // tenant. With it, the second request only runs this check once the
+        // first has committed (or rolled back), so it always sees the truth.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${params.ownerUserId}))`
+
+        const existingDemoTenant = await tx.tenant.findFirst({
+          where: {
+            isDemo: true,
+            memberships: { some: { userId: params.ownerUserId, role: 'owner' } },
+          },
+        })
+        if (existingDemoTenant) {
+          throw new DemoTenantAlreadyExistsError(params.ownerUserId)
+        }
+
         const tenant = await tx.tenant.create({
           data: { name: params.tenantName, baseCurrency: dataset.currency, isDemo: true },
         })

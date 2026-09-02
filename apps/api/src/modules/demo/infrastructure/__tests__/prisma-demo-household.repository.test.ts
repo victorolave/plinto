@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PrismaDemoHouseholdRepository } from '../prisma-demo-household.repository'
 import { buildDemoHouseholdDataset } from '../../domain/demo-household-dataset'
+import { DemoTenantAlreadyExistsError } from '../../domain/demo-household.repository'
 import type { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service'
 
 const NOW = new Date(Date.UTC(2026, 8, 2, 12, 0, 0))
 
 function makeTxMock() {
   return {
-    tenant: { create: vi.fn(), delete: vi.fn() },
+    $executeRaw: vi.fn().mockResolvedValue(undefined),
+    tenant: { create: vi.fn(), delete: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) },
     membership: { create: vi.fn(), deleteMany: vi.fn() },
     account: { create: vi.fn(), deleteMany: vi.fn() },
     category: { create: vi.fn(), deleteMany: vi.fn() },
@@ -77,6 +79,56 @@ describe('PrismaDemoHouseholdRepository', () => {
       })
       expect(result.tenant.id).toBe('tenant-1')
       expect(result.membership.userId).toBe('user-1')
+    })
+
+    it('takes the per-user advisory lock before re-checking for an existing demo tenant', async () => {
+      await repository.createDemoHousehold({
+        ownerUserId: 'user-1',
+        tenantName: 'Hogar de ejemplo',
+        locale: 'es',
+        now: NOW,
+      })
+
+      expect(txMock.$executeRaw).toHaveBeenCalledTimes(1)
+      expect(txMock.tenant.findFirst).toHaveBeenCalledTimes(1)
+      expect(txMock.tenant.findFirst).toHaveBeenCalledWith({
+        where: { isDemo: true, memberships: { some: { userId: 'user-1', role: 'owner' } } },
+      })
+
+      const lockOrder = txMock.$executeRaw.mock.invocationCallOrder[0]
+      const checkOrder = txMock.tenant.findFirst.mock.invocationCallOrder[0]
+      const createOrder = txMock.tenant.create.mock.invocationCallOrder[0]
+      expect(lockOrder).toBeLessThan(checkOrder)
+      expect(checkOrder).toBeLessThan(createOrder)
+    })
+
+    it('throws DemoTenantAlreadyExistsError and never creates a tenant when the re-check under the lock finds one — the race loser', async () => {
+      // Simulates two concurrent callers: this one's fast-path check (outside
+      // the transaction, in the service) passed, but by the time it wins the
+      // advisory lock inside the transaction, the other caller has already
+      // committed its own demo tenant for the same user.
+      txMock.tenant.findFirst.mockResolvedValue({
+        id: 'tenant-existing',
+        name: 'Hogar de ejemplo',
+        baseCurrency: 'COP',
+        isDemo: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+
+      await expect(
+        repository.createDemoHousehold({
+          ownerUserId: 'user-1',
+          tenantName: 'Hogar de ejemplo',
+          locale: 'es',
+          now: NOW,
+        }),
+      ).rejects.toBeInstanceOf(DemoTenantAlreadyExistsError)
+
+      expect(txMock.$executeRaw).toHaveBeenCalledTimes(1)
+      expect(txMock.tenant.create).not.toHaveBeenCalled()
+      expect(txMock.membership.create).not.toHaveBeenCalled()
+      expect(txMock.account.create).not.toHaveBeenCalled()
     })
 
     it('writes every row the dataset builder produced, matching its counts', async () => {
