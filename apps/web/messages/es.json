@@ -32,6 +32,10 @@
   },
   "shell": {
     "addTransaction": "Agregar movimiento",
+    "demoBanner": {
+      "link": "Ir a Ajustes",
+      "text": "Estás en el hogar de ejemplo. Estos datos son inventados."
+    },
     "help": "Ayuda",
     "loading": "Cargando tu hogar…",
     "logOut": "Cerrar sesión",
@@ -61,6 +65,7 @@
     }
   },
   "tenantSwitcher": {
+    "demoBadge": "ejemplo",
     "household": "Hogar",
     "selectHousehold": "Selecciona un hogar"
   },
@@ -563,6 +568,21 @@
     }
   },
   "settings": {
+    "demo": {
+      "title": "Hogar de ejemplo",
+      "subtitle": "Un hogar aparte con datos inventados para que veas Plinto funcionando. No toca tu información.",
+      "existingSubtitle": "Ya tienes un hogar de ejemplo.",
+      "createButton": "Crear hogar de ejemplo",
+      "creating": "Creando…",
+      "goToButton": "Ir al hogar de ejemplo",
+      "deleteButton": "Eliminar hogar de ejemplo",
+      "deleteModal": {
+        "title": "Eliminar hogar de ejemplo",
+        "body": "Esto borra el hogar de ejemplo y todos sus datos inventados. No afecta tu información real.",
+        "confirm": "Eliminar",
+        "deleting": "Eliminando…"
+      }
+    },
     "export": {
       "title": "Exporta tus datos",
       "subtitle": "Descarga todo el hogar o solo tus movimientos. Los datos son tuyos.",

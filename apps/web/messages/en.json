@@ -32,6 +32,10 @@
   },
   "shell": {
     "addTransaction": "Add transaction",
+    "demoBanner": {
+      "link": "Go to Settings",
+      "text": "You're in the example household. This data is invented."
+    },
     "help": "Help",
     "loading": "Loading your household…",
     "logOut": "Log out",
@@ -61,6 +65,7 @@
     }
   },
   "tenantSwitcher": {
+    "demoBadge": "example",
     "household": "Household",
     "selectHousehold": "Select household"
   },
@@ -563,6 +568,21 @@
     }
   },
   "settings": {
+    "demo": {
+      "title": "Example household",
+      "subtitle": "A separate household with invented data so you can see Plinto in action. It never touches your real information.",
+      "existingSubtitle": "You already have an example household.",
+      "createButton": "Create example household",
+      "creating": "Creating…",
+      "goToButton": "Go to the example household",
+      "deleteButton": "Delete example household",
+      "deleteModal": {
+        "title": "Delete example household",
+        "body": "This deletes the example household and all its invented data. It does not affect your real information.",
+        "confirm": "Delete",
+        "deleting": "Deleting…"
+      }
+    },
     "export": {
       "title": "Export your data",
       "subtitle": "Download the whole household or just your transactions. Your data is yours.",
