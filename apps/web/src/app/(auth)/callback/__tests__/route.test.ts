@@ -247,6 +247,42 @@ describe('GET /callback', () => {
     expect(response._redirectUrl).toBe('/login')
   })
 
+  it('redirects to /login when neither API_INTERNAL_URL nor NEXT_PUBLIC_API_BASE_URL is set in production', async () => {
+    // resolveApiBase() always resolves to something (a localhost:3001
+    // default), so this can no longer be caught by "apiBase is falsy" — a
+    // deployed (production) instance with neither var set is misconfigured
+    // and must fail here, not silently talk to localhost:3001.
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('API_INTERNAL_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
+    vi.stubEnv('INTERNAL_API_KEY', 'key')
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+    expect(globalFetch).not.toHaveBeenCalled()
+
+    // Restore for subsequent tests in this file — vi.stubEnv persists across
+    // tests unless explicitly reset, and nothing else here re-stubs NODE_ENV.
+    vi.stubEnv('NODE_ENV', 'test')
+  })
+
+  it('does not require API_INTERNAL_URL or NEXT_PUBLIC_API_BASE_URL outside production (local dev default)', async () => {
+    vi.stubEnv('NODE_ENV', 'test')
+    vi.stubEnv('API_INTERNAL_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
+    vi.stubEnv('INTERNAL_API_KEY', 'key')
+    const redirectResp = makeMockRedirectResponse('/dashboard')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(globalFetch).toHaveBeenCalledWith(
+      'http://localhost:3001/api/auth/session',
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
   // ---------- unhandled exceptions (fix under test) ----------
   //
   // Every one of these used to escape as a raw Next.js 500. They must now

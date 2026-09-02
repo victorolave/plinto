@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { resolveApiBase } from '../../../../lib/api/api-base'
 import { isSecureCookie } from '../../../../lib/auth/cookie-options'
 
-export async function POST() {
+export async function POST(request: Request) {
   // Either source counts as "configured" — resolveApiBase() itself always
   // resolves to something (it has a localhost:3001 default), so this checks
   // for explicit configuration rather than resolveApiBase()'s return value,
@@ -15,7 +15,10 @@ export async function POST() {
   // Always try to revoke the session on the API if we have the necessary info
   if (apiBaseConfigured && internalKey && sessionCookie) {
     try {
-      const apiUrl = `${resolveApiBase()}/auth/logout`
+      // Anchored to this request's own origin when the configured base is
+      // relative — the same reverse-proxied-self-host case the callback
+      // route handles.
+      const apiUrl = `${resolveApiBase({ requestUrl: request.url })}/auth/logout`
 
       await fetch(apiUrl, {
         method: 'POST',

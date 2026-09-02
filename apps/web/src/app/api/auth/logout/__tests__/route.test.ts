@@ -68,6 +68,12 @@ function makeMockResponse(body: unknown, status = 200) {
   }
 }
 
+const BASE_URL = 'http://localhost:3000'
+
+function makeRequest(url = `${BASE_URL}/api/auth/logout`) {
+  return new Request(url, { method: 'POST' })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 
@@ -85,7 +91,7 @@ describe('POST /api/auth/logout', () => {
     const mockResp = makeMockResponse({ success: true })
     mockNextResponseJson.mockReturnValue(mockResp as any)
 
-    const response = await POST()
+    const response = await POST(makeRequest())
 
     expect(mockNextResponseJson).toHaveBeenCalledWith({ success: true })
     expect(response._status).toBe(200)
@@ -97,7 +103,7 @@ describe('POST /api/auth/logout', () => {
     mockNextResponseJson.mockReturnValue(mockResp as any)
     mockCookiesGet.mockReturnValue({ value: 'my-session-value' })
 
-    await POST()
+    await POST(makeRequest())
 
     expect(globalFetch).toHaveBeenCalledWith(
       'http://localhost:3001/auth/logout',
@@ -115,7 +121,7 @@ describe('POST /api/auth/logout', () => {
     const mockResp = makeMockResponse({ success: true })
     mockNextResponseJson.mockReturnValue(mockResp as any)
 
-    await POST()
+    await POST(makeRequest())
 
     expect(globalFetch).toHaveBeenCalledWith(
       expect.any(String),
@@ -132,7 +138,7 @@ describe('POST /api/auth/logout', () => {
     const mockResp = makeMockResponse({ success: true })
     mockNextResponseJson.mockReturnValue(mockResp as any)
 
-    await POST()
+    await POST(makeRequest())
 
     expect(globalFetch).not.toHaveBeenCalled()
   })
@@ -142,7 +148,7 @@ describe('POST /api/auth/logout', () => {
     const mockResp = makeMockResponse({ success: true })
     mockNextResponseJson.mockReturnValue(mockResp as any)
 
-    await POST()
+    await POST(makeRequest())
 
     expect(globalFetch).not.toHaveBeenCalled()
   })
@@ -152,7 +158,7 @@ describe('POST /api/auth/logout', () => {
     mockNextResponseJson.mockReturnValue(mockResp as any)
     mockCookiesGet.mockReturnValue(undefined)
 
-    await POST()
+    await POST(makeRequest())
 
     expect(globalFetch).not.toHaveBeenCalled()
   })
@@ -163,7 +169,7 @@ describe('POST /api/auth/logout', () => {
     mockNextResponseJson.mockReturnValue(mockResp as any)
 
     // Should not throw
-    const response = await POST()
+    const response = await POST(makeRequest())
 
     expect(response._status).toBe(200)
   })
@@ -172,7 +178,7 @@ describe('POST /api/auth/logout', () => {
     const mockResp = makeMockResponse({ success: true })
     mockNextResponseJson.mockReturnValue(mockResp as any)
 
-    await POST()
+    await POST(makeRequest())
 
     const sessionSet = mockResp.cookies._store['plinto_session']
     expect(sessionSet).toBeDefined()
@@ -184,7 +190,7 @@ describe('POST /api/auth/logout', () => {
     const mockResp = makeMockResponse({ success: true })
     mockNextResponseJson.mockReturnValue(mockResp as any)
 
-    await POST()
+    await POST(makeRequest())
 
     const sessionSet = mockResp.cookies._store['plinto_session']
     expect(sessionSet.options.httpOnly).toBe(true)
@@ -202,7 +208,7 @@ describe('POST /api/auth/logout', () => {
     const mockResp = makeMockResponse({ success: true })
     mockNextResponseJson.mockReturnValue(mockResp as any)
 
-    await POST()
+    await POST(makeRequest())
 
     // This assertion currently fails: plinto_refresh_token is never set/deleted
     const refreshCleared =
@@ -211,15 +217,15 @@ describe('POST /api/auth/logout', () => {
     expect(refreshCleared).toBe(true)
   })
 
-  it('prefixes the API URL with http://localhost:3001 when apiBase is a relative path', async () => {
+  it('anchors a relative apiBase to this request\'s own origin (reverse-proxied self-host)', async () => {
     vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '/api/v1')
     const mockResp = makeMockResponse({ success: true })
     mockNextResponseJson.mockReturnValue(mockResp as any)
 
-    await POST()
+    await POST(makeRequest(`${BASE_URL}/api/auth/logout`))
 
     expect(globalFetch).toHaveBeenCalledWith(
-      'http://localhost:3001/api/v1/auth/logout',
+      `${BASE_URL}/api/v1/auth/logout`,
       expect.anything(),
     )
   })

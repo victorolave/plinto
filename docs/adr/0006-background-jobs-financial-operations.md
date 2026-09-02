@@ -95,6 +95,18 @@ generation and recurring execution specifically.
   scheduler off, and is redundant (safe to disable) once
   `JOBS_SCHEDULER_ENABLED=true` on an instance.
 
+### Configuration
+
+All four variables are optional; an unset one takes the default below (see
+`env.validation.ts` / `configuration.ts`).
+
+| Variable                  | Default          | Meaning                                                        |
+| -------------------------- | ---------------- | ---------------------------------------------------------------- |
+| `JOBS_SCHEDULER_ENABLED`   | `false`          | `true` to run the engine from this instance's in-process scheduler. |
+| `JOBS_CRON`                | `0 6 * * *`      | Cron expression for the tick, evaluated in `JOBS_TIMEZONE`.     |
+| `JOBS_TIMEZONE`            | `America/Bogota` | Timezone the cron expression is evaluated in.                  |
+| `JOBS_HORIZON_MONTHS`      | `3` (range 1–12) | Months ahead to materialize obligations on each tick.           |
+
 ### Why this doesn't contradict the original decision
 
 The original rejection of "system cron" was about **portability and
