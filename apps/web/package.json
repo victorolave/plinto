@@ -13,6 +13,7 @@
   "dependencies": {
     "@plinto/shared": "workspace:*",
     "@tanstack/react-query": "^5.101.2",
+    "driver.js": "^1.8.0",
     "jsonwebtoken": "^9.0.3",
     "next": "^14.2.0",
     "next-intl": "^4.13.6",

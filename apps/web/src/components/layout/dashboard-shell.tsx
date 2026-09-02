@@ -13,11 +13,12 @@ import { BottomNav } from './bottom-nav'
 import { TopBar } from './top-bar'
 import { DashboardProvider } from './dashboard-context'
 import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
+import { ProductTourAutostart } from '../../features/onboarding/tour/product-tour-autostart'
 
 interface MeResponse {
   data: {
     activeTenantId: string | null
-    user: { name?: string; email?: string }
+    user: { name?: string; email?: string; onboardingTourSeenAt?: string | null }
   }
 }
 
@@ -106,6 +107,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const user = {
     name: meQuery.data?.data?.user?.name,
     email: meQuery.data?.data?.user?.email,
+    onboardingTourSeenAt: meQuery.data?.data?.user?.onboardingTourSeenAt,
   }
   const tenants = tenantsQuery.data ?? []
 
@@ -174,6 +176,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
         <BottomNav onAdd={goToAdd} />
       </div>
+
+      <ProductTourAutostart
+        onboardingTourSeenAt={user.onboardingTourSeenAt}
+        ready={!booting}
+      />
     </DashboardProvider>
   )
 }

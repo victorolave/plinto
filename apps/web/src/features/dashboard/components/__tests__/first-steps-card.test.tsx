@@ -148,6 +148,15 @@ describe('FirstStepsCard', () => {
     expect(screen.getByText('Invite whoever shares the expenses')).toBeInTheDocument()
   })
 
+  it('tags its root with data-tour so the product tour can anchor to it', async () => {
+    mockAllResolved({ members: 1 })
+
+    renderWithProviders(<FirstStepsCard />)
+
+    expect(await screen.findByText('First steps')).toBeInTheDocument()
+    expect(document.querySelector('[data-tour="first-steps"]')).not.toBeNull()
+  })
+
   it('checks off only the steps that are actually complete', async () => {
     mockAllResolved({ accounts: 1, transactionsTotal: 3, members: 1 })
 

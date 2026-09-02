@@ -32,6 +32,7 @@
   },
   "shell": {
     "addTransaction": "Add transaction",
+    "help": "Help",
     "loading": "Loading your household…",
     "logOut": "Log out",
     "loggingOut": "Logging out…",
@@ -62,6 +63,55 @@
   "tenantSwitcher": {
     "household": "Household",
     "selectHousehold": "Select household"
+  },
+  "tour": {
+    "buttons": {
+      "done": "Done",
+      "next": "Next",
+      "prev": "Back"
+    },
+    "steps": {
+      "accounts": {
+        "description": "This is where your money lives: bank, cash, savings, or a digital wallet. Loans you pay in installments are an account too, of type debt.",
+        "title": "Accounts"
+      },
+      "categories": {
+        "description": "Optional, and they show you where your money goes. Use them if you want your expenses organized by type.",
+        "title": "Categories"
+      },
+      "credit": {
+        "description": "Cards and revolving credit aren't accounts: they have a limit. Each statement you record becomes an obligation with its own due date.",
+        "title": "Credit"
+      },
+      "debts": {
+        "description": "These are purchases financed in fixed installments. Each month, Plinto generates one obligation for the installment due.",
+        "title": "Debts"
+      },
+      "firstSteps": {
+        "description": "This checklist walks you through your household's first tasks. Work through it at your own pace from here.",
+        "title": "First steps"
+      },
+      "help": {
+        "description": "You can replay this tour anytime from here. Settings holds members, export, and language.",
+        "title": "Need help?"
+      },
+      "household": {
+        "description": "A household is shared: whoever manages it is the owner, whoever logs entries is a member, and whoever only looks is a viewer. You can belong to more than one household and switch between them here.",
+        "title": "Your household"
+      },
+      "obligations": {
+        "description": "This is what you owe this month. Its status — pending, paid, or overdue — is only ever calculated from the payments you reconcile; you never set it by hand.",
+        "title": "Obligations"
+      },
+      "transactions": {
+        "description": "Every income or expense you log comes out of an account. Transfers move money between your accounts (not expenses), and recurring ones repeat monthly until they become obligations.",
+        "title": "Transactions"
+      },
+      "welcome": {
+        "description": "This tour shows you how to use Plinto and the ideas behind its data. It takes a minute and saves you confusion later.",
+        "title": "Plinto tells you what you owe, what you have, and what's coming"
+      }
+    }
   },
   "authLayout": {
     "needHelp": "Need help?",

@@ -192,7 +192,7 @@ export function FirstStepsCard({ onVisibilityChange }: FirstStepsCardProps = {})
   }
 
   return (
-    <Card>
+    <Card data-tour="first-steps">
       <CardHeader
         title={t('title')}
         subtitle={t('subtitle')}

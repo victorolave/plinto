@@ -15,8 +15,10 @@ import {
   Target,
   Settings,
   LogOut,
+  HelpCircle,
   type IconProps,
 } from '../ui/icons'
+import { useProductTour } from '../../features/onboarding/tour/use-product-tour'
 import { Avatar } from '../ui/avatar'
 import { IconButton } from '../ui/button'
 import { TenantSwitcher } from './tenant-switcher'
@@ -52,6 +54,7 @@ function NavItem({ entry, active }: { entry: NavEntry; active: DashboardSection 
       href={SECTION_HREF[entry.id]}
       className={`nav-item ${isActive ? 'is-active' : ''}`.trim()}
       aria-current={isActive ? 'page' : undefined}
+      data-tour={`nav-${entry.id}`}
     >
       <span className="nav-item-marker" />
       <Icon size={19} stroke={isActive ? 2.2 : 2} />
@@ -69,6 +72,7 @@ export function Sidebar() {
   const t = useTranslations('nav')
   const tShell = useTranslations('shell')
   const active = sectionFromPath(usePathname() ?? '')
+  const { start } = useProductTour()
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -101,6 +105,7 @@ export function Sidebar() {
           href={SECTION_HREF.settings}
           className={`nav-item ${active === 'settings' ? 'is-active' : ''}`.trim()}
           aria-current={active === 'settings' ? 'page' : undefined}
+          data-tour="nav-settings"
         >
           <span className="nav-item-marker" />
           <Settings size={19} />
@@ -113,6 +118,20 @@ export function Sidebar() {
             <div className="sidebar-user-name">{user.name}</div>
             {user.email ? <div className="sidebar-user-email">{user.email}</div> : null}
           </div>
+          <IconButton
+            label={tShell('help')}
+            onClick={start}
+            data-tour="help-button"
+            style={{
+              width: 28,
+              height: 28,
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--chrome-text-subtle)',
+            }}
+          >
+            <HelpCircle size={16} />
+          </IconButton>
           <IconButton
             label={tShell('logOut')}
             onClick={onLogout}
