@@ -95,6 +95,17 @@ export function RecurringSection({
             icon={<Repeat size={24} />}
             title={t('empty.title')}
             description={t('empty.description')}
+            action={
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<Plus size={16} />}
+                onClick={onAdd}
+                disabled={accounts.length === 0}
+              >
+                {t('newRule')}
+              </Button>
+            }
           />
         ) : null}
         {liveRules.map((rule) => {

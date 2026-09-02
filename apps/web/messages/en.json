@@ -108,7 +108,7 @@
       "savings": "Savings"
     },
     "empty": {
-      "description": "An account is where your money lives — a bank, a wallet, a credit card. Each one tracks a single currency so your balances always stay clean.",
+      "description": "An account is where your money comes from or goes to: your bank, Nequi, cash, a savings account. Instalment loans are accounts too, of type debt. Create your first one to start seeing what you have.",
       "title": "Start with your first account"
     },
     "archiveModal": {
@@ -139,7 +139,7 @@
       "income": "Income"
     },
     "empty": {
-      "description": "Categories label your income and expenses so you can see where the money actually goes.",
+      "description": "Categories tell you where the money goes. They are optional, but with them your reports actually say something.",
       "title": "No categories yet"
     },
     "deleteModal": {
@@ -178,13 +178,13 @@
     "manage": "Manage",
     "monthBalances": "{month} · balances",
     "noAccounts": "No accounts yet.",
-    "noTransactions": "No transactions yet. Add your first one to start tracking.",
+    "noTransactions": "No transactions yet. Every income or expense is recorded from an account, and Plinto uses them to calculate your balances.",
     "owedAmount": "{amount} owed",
     "recentActivity": "Recent activity",
     "seeAll": "See all",
     "noBalances": {
-      "description": "Add an account and record your first transaction to see your household balance here.",
-      "title": "No balances yet"
+      "description": "To know what you have, start by telling us where your money is: create your first account.",
+      "title": "Plinto tells you what you owe, what you have, and what's coming"
     }
   },
   "members": {
@@ -232,7 +232,7 @@
       "title": "What each role can do"
     },
     "empty": {
-      "description": "This household has no members, which should not be possible — whoever created it is its owner. Try reloading.",
+      "description": "Plinto belongs to the household, not to one person. Invite whoever shares the expenses: the owner manages, members record transactions, and viewers only look.",
       "title": "No members yet"
     },
     "inviteDrawer": {
@@ -290,7 +290,7 @@
       "title": "Record a financed purchase"
     },
     "empty": {
-      "description": "Record a purchase paid in fixed instalments and each one shows up on the obligations board — ending on its own after the last.",
+      "description": "A debt is a loan with fixed instalments: principal, instalment amount and number of instalments. Each instalment shows up as an obligation for its month.",
       "title": "Nothing financed yet"
     },
     "form": {
@@ -353,7 +353,7 @@
       "pending": "Pending"
     },
     "empty": {
-      "description": "Obligations appear here once your recurring rules are materialized for the month, or you can record a one-off.",
+      "description": "An obligation is something you must pay this month: rent, utilities, instalments, cards. Plinto tells you what is pending, what you paid and what is overdue. Its status comes from the payments you link, not something you mark by hand.",
       "title": "Nothing due in {period}"
     },
     "form": {
@@ -412,11 +412,11 @@
       "year": "This year"
     },
     "noAccounts": {
-      "description": "Add an account first — your transactions will show up here once you have somewhere to record them.",
+      "description": "You need an account before you can record transactions — that is where your money comes from or goes to. Add one first and your transactions will show up here.",
       "title": "No accounts yet"
     },
     "noTransactions": {
-      "description": "Record your first one to start building your household ledger.",
+      "description": "A transaction is every income or expense, always from an account. Plinto uses them to calculate your balances.",
       "title": "No transactions yet"
     },
     "noMatches": {
@@ -495,7 +495,7 @@
         "paused": "Paused"
       },
       "empty": {
-        "description": "Automate rent, salary or subscriptions — they post themselves each month when due.",
+        "description": "Recurring rules are transactions that repeat every month: rent, subscriptions, payroll. Plinto posts them on its own and turns them into obligations so you know what's coming.",
         "title": "No recurring rules yet"
       }
     }
@@ -600,7 +600,7 @@
       "statementTitle": "{name} statement"
     },
     "empty": {
-      "description": "Add a card or a line like ADDI, then enter each statement as it arrives. One number a month gives you the payment, the balance and how much room you have left.",
+      "description": "This is for your cards and revolving credit lines. They are not accounts: they have a limit, and every statement you record becomes an obligation with its own due date.",
       "title": "No cards or rotating lines yet"
     },
     "form": {

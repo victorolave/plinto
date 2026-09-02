@@ -20,6 +20,7 @@ import { StatCard } from '../../../components/ui/stat-card'
 import { Amount, formatMoneyMagnitude } from '../../../components/ui/amount'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
+import { EmptyState } from '../../../components/ui/empty-state'
 import {
   Wallet,
   Cart,
@@ -104,6 +105,7 @@ function formatMonthLabel(locale: string): string {
 export function DashboardOverview() {
   const t = useTranslations('dashboard')
   const tAccounts = useTranslations('accounts')
+  const tTransactions = useTranslations('transactions')
   const toErrorMessage = useErrorMessage()
   const locale = useFormattingLocale()
   const router = useRouter()
@@ -181,15 +183,16 @@ export function DashboardOverview() {
             </div>
           ) : (
             <Card>
-              <div className="empty-state">
-                <strong style={{ color: 'var(--text-strong)' }}>
-                  {t('noBalances.title')}
-                </strong>
-                <p className="muted">{t('noBalances.description')}</p>
-                <Button onClick={() => router.push(SECTION_HREF.accounts)}>
-                  {tAccounts('addAccount')}
-                </Button>
-              </div>
+              <EmptyState
+                icon={<Wallet size={30} />}
+                title={t('noBalances.title')}
+                description={t('noBalances.description')}
+                action={
+                  <Button onClick={() => router.push(SECTION_HREF.accounts)}>
+                    {tAccounts('addAccount')}
+                  </Button>
+                }
+              />
             </Card>
           )}
 
@@ -227,6 +230,13 @@ export function DashboardOverview() {
                 {recent.length === 0 ? (
                   <div className="empty-state">
                     <p className="muted">{t('noTransactions')}</p>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => router.push(SECTION_HREF.transactions)}
+                    >
+                      {tTransactions('addTransaction')}
+                    </Button>
                   </div>
                 ) : (
                   recent.map((transaction) => {
@@ -283,7 +293,16 @@ export function DashboardOverview() {
                 }
               />
               {accounts.length === 0 ? (
-                <p className="muted">{t('noAccounts')}</p>
+                <p className="muted">
+                  {t('noAccounts')}{' '}
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() => router.push(SECTION_HREF.accounts)}
+                  >
+                    {tAccounts('addAccount')}
+                  </button>
+                </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {accounts.slice(0, 4).map((account) => {

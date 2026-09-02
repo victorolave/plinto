@@ -136,11 +136,13 @@ describe('DebtsPanel', () => {
     await waitFor(() => expect(mockedCancel).toHaveBeenCalledWith('debt-1'))
   })
 
-  it('explains what a financed purchase is when there are none', async () => {
+  it('explains what a debt is when there are none', async () => {
     renderWithProviders(<DebtsPanel />)
 
     expect(await screen.findByText(/nothing financed yet/i)).toBeInTheDocument()
-    expect(screen.getByText(/ending on its own after the last/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/a debt is a loan with fixed instalments/i),
+    ).toBeInTheDocument()
   })
 
   it('surfaces a load failure instead of reporting no debt', async () => {
