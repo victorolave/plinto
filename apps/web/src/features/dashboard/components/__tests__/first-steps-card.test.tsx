@@ -103,7 +103,7 @@ beforeEach(() => {
 })
 
 describe('FirstStepsCard', () => {
-  it('renders nothing while any query is loading', () => {
+  it('renders a skeleton placeholder, not nothing, while any query is loading', () => {
     mockedListAccounts.mockImplementation(pending)
     mockedListTransactions.mockResolvedValue({
       data: { transactions: [] },
@@ -115,7 +115,11 @@ describe('FirstStepsCard', () => {
 
     renderWithProviders(<FirstStepsCard />)
 
+    // The real title never renders as text while loading (the heading is a
+    // shimmer bar, not the translated string) — but the card still occupies
+    // its own announced region instead of vanishing outright.
     expect(screen.queryByText('First steps')).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'First steps' })).toBeInTheDocument()
   })
 
   it('renders nothing when a query errors', async () => {
@@ -178,6 +182,38 @@ describe('FirstStepsCard', () => {
     expect(screen.queryByText('First steps')).not.toBeInTheDocument()
   })
 
+  it('tells its parent it is visible once it shows real content', async () => {
+    mockAllResolved({ accounts: 1, transactionsTotal: 3, members: 1 })
+    const onVisibilityChange = vi.fn()
+
+    renderWithProviders(<FirstStepsCard onVisibilityChange={onVisibilityChange} />)
+
+    await screen.findByText('First steps')
+
+    expect(onVisibilityChange).toHaveBeenCalledWith(true)
+  })
+
+  it('tells its parent it is not visible once every step is complete', async () => {
+    mockAllResolved({
+      accounts: 1,
+      transactionsTotal: 1,
+      obligations: 1,
+      creditLines: 1,
+      members: 2,
+    })
+    const onVisibilityChange = vi.fn()
+    const queryClient = createTestQueryClient()
+
+    renderWithProviders(<FirstStepsCard onVisibilityChange={onVisibilityChange} />, {
+      queryClient,
+    })
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(queryKeys.members)?.status).toBe('success'),
+    )
+    expect(onVisibilityChange).toHaveBeenCalledWith(false)
+  })
+
   it('hides the card and remembers the choice per tenant', async () => {
     mockAllResolved()
     const user = userEvent.setup()
@@ -193,16 +229,29 @@ describe('FirstStepsCard', () => {
     )
   })
 
-  it('stays hidden on a fresh render once the tenant already dismissed it', async () => {
+  it('stays hidden on a fresh render once the tenant already dismissed it', () => {
     window.localStorage.setItem('plinto.dashboard.firstSteps.hidden.tenant-1', '1')
     mockAllResolved()
-    const queryClient = createTestQueryClient()
 
-    renderWithProviders(<FirstStepsCard />, { queryClient })
+    renderWithProviders(<FirstStepsCard />)
 
-    await waitFor(() =>
-      expect(queryClient.getQueryState(queryKeys.accounts())?.status).toBe('success'),
-    )
     expect(screen.queryByText('First steps')).not.toBeInTheDocument()
+  })
+
+  it('never calls any of its services when the tenant already dismissed the card', () => {
+    // `enabled: !hidden` on every query is the point of this test: reading the
+    // dismissal from localStorage happens synchronously in the `useState`
+    // initializer, so not one of these five services should fire — not even
+    // once, and not eventually.
+    window.localStorage.setItem('plinto.dashboard.firstSteps.hidden.tenant-1', '1')
+    mockAllResolved()
+
+    renderWithProviders(<FirstStepsCard />)
+
+    expect(mockedListAccounts).not.toHaveBeenCalled()
+    expect(mockedListTransactions).not.toHaveBeenCalled()
+    expect(mockedListObligations).not.toHaveBeenCalled()
+    expect(mockedListCreditLines).not.toHaveBeenCalled()
+    expect(mockedListMembers).not.toHaveBeenCalled()
   })
 })

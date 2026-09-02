@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties } from 'react'
+import { type CSSProperties, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
@@ -111,6 +111,10 @@ export function DashboardOverview() {
   const locale = useFormattingLocale()
   const router = useRouter()
   const { activeTenantName: tenantName } = useDashboard()
+  // FirstStepsCard reports whether it is showing its real content, so the
+  // noBalances empty state below can step aside instead of repeating the same
+  // "you have nothing yet" message underneath it.
+  const [firstStepsVisible, setFirstStepsVisible] = useState(false)
 
   const accountsQuery = useQuery({
     queryKey: queryKeys.accounts(),
@@ -156,7 +160,7 @@ export function DashboardOverview() {
         <DashboardSkeleton />
       ) : (
         <>
-          <FirstStepsCard />
+          <FirstStepsCard onVisibilityChange={setFirstStepsVisible} />
 
           {totals.length > 0 ? (
             <div className="stat-grid">
@@ -184,7 +188,7 @@ export function DashboardOverview() {
                 />
               ))}
             </div>
-          ) : (
+          ) : firstStepsVisible ? null : (
             <Card>
               <EmptyState
                 icon={<Wallet size={30} />}

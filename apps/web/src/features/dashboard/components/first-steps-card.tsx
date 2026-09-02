@@ -23,6 +23,63 @@ interface Step {
   href: string
 }
 
+/** localStorage key a household's dismissal is remembered under. */
+function storageKeyFor(activeTenantId: string | null): string {
+  return `plinto.dashboard.firstSteps.hidden.${activeTenantId ?? 'unknown'}`
+}
+
+/** Whether `key` was previously dismissed. Best-effort: a browser that refuses
+ * storage access (private mode, blocked cookies) just shows the card again. */
+function readHidden(key: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(key) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Compact placeholder while the checklist's own five queries resolve.
+ *
+ * `DashboardOverview` already renders its own skeleton for its own three
+ * queries; this one is deliberately smaller and covers only what this card
+ * adds, so a household never sees the page pop from "no card" to "card" once
+ * accounts/balances/transactions have loaded but obligations/credit/members
+ * have not.
+ */
+function FirstStepsSkeleton({ label }: { label: string }) {
+  return (
+    <Card role="status" aria-label={label}>
+      <div style={{ padding: '0 0 var(--space-4)' }} aria-hidden="true">
+        <span className="skeleton skeleton-line skeleton-line--heading" />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="data-row" aria-hidden="true">
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flex: 1 }}
+            >
+              <span className="skeleton" style={{ width: 20, height: 20, flexShrink: 0 }} />
+              <span className="skeleton skeleton-line" style={{ width: '55%' }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+export interface FirstStepsCardProps {
+  /**
+   * Fires whenever the card's own verdict on whether it is showing its real
+   * content changes. `DashboardOverview` uses this to suppress its own
+   * `noBalances` empty state while this card is visible — both would
+   * otherwise say "you have nothing yet" at once.
+   */
+  onVisibilityChange?: (visible: boolean) => void
+}
+
 /**
  * Onboarding checklist for a brand-new household. Each row points at the
  * section that completes it, and the whole card disappears the moment there
@@ -30,44 +87,46 @@ interface Step {
  *
  * "Hidden" is per household, not per user: it lives in localStorage keyed by
  * `activeTenantId`, so dismissing it for one household does not hide it for
- * another the same person switches into.
+ * another the same person switches into. Switching tenants reloads the page
+ * (see `DashboardShell`), so a fresh `activeTenantId` always arrives via a
+ * fresh mount rather than a prop change on this component.
  */
-export function FirstStepsCard() {
+export function FirstStepsCard({ onVisibilityChange }: FirstStepsCardProps = {}) {
   const t = useTranslations('dashboard.firstSteps')
   const router = useRouter()
   const { activeTenantId } = useDashboard()
 
-  const storageKey = `plinto.dashboard.firstSteps.hidden.${activeTenantId ?? 'unknown'}`
-  const [hidden, setHidden] = useState(false)
-
-  useEffect(() => {
-    try {
-      setHidden(window.localStorage.getItem(storageKey) === '1')
-    } catch {
-      setHidden(false)
-    }
-  }, [storageKey])
+  const storageKey = storageKeyFor(activeTenantId)
+  // Read synchronously on mount, not in an effect: an effect runs after the
+  // first commit, by which point `enabled: !hidden` below would already have
+  // let every query fire once for a household that dismissed this card.
+  const [hidden, setHidden] = useState(() => readHidden(storageKey))
 
   const accountsQuery = useQuery({
     queryKey: queryKeys.accounts(),
     queryFn: async () => (await listAccounts()).data.accounts,
+    enabled: !hidden,
   })
   const transactionsQuery = useQuery({
     queryKey: queryKeys.transactionsTotal,
     queryFn: () => listTransactions({ pageSize: 1 }),
+    enabled: !hidden,
   })
   const period = currentPeriod()
   const obligationsQuery = useQuery({
     queryKey: queryKeys.obligations(period),
     queryFn: async () => (await listObligations(period)).data.obligations,
+    enabled: !hidden,
   })
   const creditQuery = useQuery({
     queryKey: queryKeys.creditLines,
     queryFn: async () => (await listCreditLines()).data.creditLines,
+    enabled: !hidden,
   })
   const membersQuery = useQuery({
     queryKey: queryKeys.members,
     queryFn: async () => (await listMembers()).data.members,
+    enabled: !hidden,
   })
 
   const queries = [
@@ -109,8 +168,18 @@ export function FirstStepsCard() {
   ]
 
   const allDone = steps.every((step) => step.done)
+  // The one state that actually renders the real card — loading (still
+  // resolving), hidden (dismissed) and allDone (nothing left to nudge about)
+  // all render something else or nothing.
+  const visible = !hidden && !loading && !hasError && !allDone
 
-  if (hidden || loading || hasError || allDone) return null
+  useEffect(() => {
+    onVisibilityChange?.(visible)
+  }, [visible, onVisibilityChange])
+
+  if (hidden || hasError) return null
+  if (loading) return <FirstStepsSkeleton label={t('title')} />
+  if (allDone) return null
 
   const handleHide = () => {
     setHidden(true)

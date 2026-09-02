@@ -108,7 +108,7 @@
       "savings": "Savings"
     },
     "empty": {
-      "description": "An account is where your money comes from or goes to: your bank, Nequi, cash, a savings account. Instalment loans are accounts too, of type debt. Create your first one to start seeing what you have.",
+      "description": "An account is where your money comes from or goes to: your bank, a digital wallet, cash, a savings account. Instalment loans are accounts too, of type debt. Create your first one to start seeing what you have.",
       "title": "Start with your first account"
     },
     "archiveModal": {

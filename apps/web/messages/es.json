@@ -108,7 +108,7 @@
       "savings": "Ahorros"
     },
     "empty": {
-      "description": "Una cuenta es de donde sale o a donde entra tu dinero: tu banco, Nequi, el efectivo, un ahorro. Los préstamos con cuotas también son cuentas, de tipo deuda. Crea la primera para empezar a ver qué tienes.",
+      "description": "Una cuenta es de donde sale o a donde entra tu dinero: tu banco, una billetera digital, el efectivo, un ahorro. Los préstamos con cuotas también son cuentas, de tipo deuda. Crea la primera para empezar a ver qué tienes.",
       "title": "Empieza con tu primera cuenta"
     },
     "archiveModal": {
@@ -424,7 +424,7 @@
       "year": "Este año"
     },
     "noAccounts": {
-      "description": "Necesitas una cuenta antes de poder registrar movimientos — es de ahí de donde sale o entra tu dinero. Agrégala primero y tus movimientos aparecerán acá.",
+      "description": "Necesitas una cuenta antes de poder registrar movimientos — de donde sale o a donde entra tu dinero. Agrégala primero y tus movimientos aparecerán acá.",
       "title": "Todavía no hay cuentas"
     },
     "noTransactions": {
@@ -507,7 +507,7 @@
         "paused": "En pausa"
       },
       "empty": {
-        "description": "Los recurrentes son movimientos que se repiten cada mes: arriendo, suscripciones, nómina. Plinto los registra solo y los convierte en obligaciones para que sepas qué viene.",
+        "description": "Los recurrentes son movimientos que se repiten cada mes: arriendo, suscripciones, nómina. Plinto los registra automáticamente y los convierte en obligaciones para que sepas qué viene.",
         "title": "Todavía no hay reglas recurrentes"
       }
     }
