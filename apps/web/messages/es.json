@@ -108,7 +108,7 @@
       "savings": "Ahorros"
     },
     "empty": {
-      "description": "Una cuenta es donde vive tu dinero — un banco, una billetera, una tarjeta de crédito. Cada una lleva una sola moneda para que tus saldos queden siempre limpios.",
+      "description": "Una cuenta es de donde sale o a donde entra tu dinero: tu banco, una billetera digital, el efectivo, un ahorro. Los préstamos con cuotas también son cuentas, de tipo deuda. Crea la primera para empezar a ver qué tienes.",
       "title": "Empieza con tu primera cuenta"
     },
     "archiveModal": {
@@ -139,7 +139,7 @@
       "income": "Ingreso"
     },
     "empty": {
-      "description": "Las categorías etiquetan tus ingresos y gastos para que puedas ver a dónde va realmente el dinero.",
+      "description": "Las categorías te dicen en qué se va el dinero. Son opcionales, pero con ellas los reportes cuentan algo.",
       "title": "Todavía no hay categorías"
     },
     "deleteModal": {
@@ -178,13 +178,25 @@
     "manage": "Gestionar",
     "monthBalances": "{month} · saldos",
     "noAccounts": "Todavía no hay cuentas.",
-    "noTransactions": "Todavía no hay movimientos. Agrega el primero para empezar a llevar el control.",
+    "noTransactions": "Todavía no hay movimientos. Cada ingreso o gasto se registra desde una cuenta y con ellos Plinto calcula tus saldos.",
     "owedAmount": "{amount} en deuda",
     "recentActivity": "Actividad reciente",
     "seeAll": "Ver todo",
     "noBalances": {
-      "description": "Agrega una cuenta y registra tu primer movimiento para ver acá el saldo de tu hogar.",
-      "title": "Todavía no hay saldos"
+      "description": "Para saber qué tienes, empieza por decirle dónde está tu dinero: crea tu primera cuenta.",
+      "title": "Plinto te dice qué debes, qué tienes y qué viene"
+    },
+    "firstSteps": {
+      "title": "Primeros pasos",
+      "subtitle": "Cinco cosas y Plinto empieza a decirte qué debes, qué tienes y qué viene.",
+      "hide": "Ocultar",
+      "steps": {
+        "accounts": "Dile a Plinto dónde está tu dinero",
+        "transactions": "Registra tu primer movimiento",
+        "obligations": "Anota lo que debes este mes",
+        "credit": "Agrega una tarjeta o crédito rotativo",
+        "members": "Invita a quien comparte los gastos"
+      }
     }
   },
   "members": {
@@ -232,7 +244,7 @@
       "title": "Qué puede hacer cada rol"
     },
     "empty": {
-      "description": "Este hogar no tiene miembros, lo cual no debería ser posible — quien lo creó es su propietario. Prueba recargando.",
+      "description": "Plinto es del hogar, no de una sola persona. Invita a quien comparte los gastos: el propietario administra, los miembros registran movimientos y los observadores solo miran.",
       "title": "Todavía no hay miembros"
     },
     "inviteDrawer": {
@@ -290,7 +302,7 @@
       "title": "Registrar una compra financiada"
     },
     "empty": {
-      "description": "Registra una compra que pagas en cuotas fijas y cada una aparece en el tablero de obligaciones — terminando sola después de la última.",
+      "description": "Una deuda es un préstamo con cuotas fijas: capital, valor de la cuota y número de cuotas. Cada cuota aparece como una obligación del mes.",
       "title": "Todavía no hay nada financiado"
     },
     "form": {
@@ -353,7 +365,7 @@
       "pending": "Pendiente"
     },
     "empty": {
-      "description": "Las obligaciones aparecen acá cuando tus reglas recurrentes se materializan para el mes, o puedes registrar una puntual.",
+      "description": "Una obligación es algo que tienes que pagar en el mes: arriendo, servicios, cuotas, tarjetas. Plinto te dice qué está pendiente, qué pagaste y qué se venció. El estado sale de los pagos que enlazas, no lo marcas a mano.",
       "title": "No hay nada que pagar en {period}"
     },
     "form": {
@@ -412,11 +424,11 @@
       "year": "Este año"
     },
     "noAccounts": {
-      "description": "Agrega primero una cuenta — tus movimientos aparecerán acá cuando tengas dónde registrarlos.",
+      "description": "Necesitas una cuenta antes de poder registrar movimientos — de donde sale o a donde entra tu dinero. Agrégala primero y tus movimientos aparecerán acá.",
       "title": "Todavía no hay cuentas"
     },
     "noTransactions": {
-      "description": "Registra el primero para empezar a construir el libro de tu hogar.",
+      "description": "Un movimiento es cada ingreso o gasto, siempre desde una cuenta. Con ellos Plinto calcula tus saldos.",
       "title": "Todavía no hay movimientos"
     },
     "noMatches": {
@@ -495,7 +507,7 @@
         "paused": "En pausa"
       },
       "empty": {
-        "description": "Automatiza el arriendo, el salario o las suscripciones — se registran solos cada mes cuando corresponde.",
+        "description": "Los recurrentes son movimientos que se repiten cada mes: arriendo, suscripciones, nómina. Plinto los registra automáticamente y los convierte en obligaciones para que sepas qué viene.",
         "title": "Todavía no hay reglas recurrentes"
       }
     }
@@ -600,7 +612,7 @@
       "statementTitle": "Corte de {name}"
     },
     "empty": {
-      "description": "Agrega una tarjeta o una línea como ADDI y luego registra cada corte cuando llegue. Un número al mes te da el pago, el saldo y cuánto cupo te queda.",
+      "description": "Aquí van tus tarjetas y créditos rotativos. No son cuentas: tienen un cupo, y cada corte que registres se convierte en una obligación con su fecha de pago.",
       "title": "Todavía no hay tarjetas ni líneas rotativas"
     },
     "form": {

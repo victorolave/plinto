@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties } from 'react'
+import { type CSSProperties, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
@@ -20,6 +20,7 @@ import { StatCard } from '../../../components/ui/stat-card'
 import { Amount, formatMoneyMagnitude } from '../../../components/ui/amount'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
+import { EmptyState } from '../../../components/ui/empty-state'
 import {
   Wallet,
   Cart,
@@ -28,6 +29,7 @@ import {
   accountTypeIcon,
 } from '../../../components/ui/icons'
 import { DashboardSkeleton } from './dashboard-skeleton'
+import { FirstStepsCard } from './first-steps-card'
 import { SECTION_HREF } from '../../../components/layout/dashboard-nav'
 import { useDashboard } from '../../../components/layout/dashboard-context'
 
@@ -104,10 +106,15 @@ function formatMonthLabel(locale: string): string {
 export function DashboardOverview() {
   const t = useTranslations('dashboard')
   const tAccounts = useTranslations('accounts')
+  const tTransactions = useTranslations('transactions')
   const toErrorMessage = useErrorMessage()
   const locale = useFormattingLocale()
   const router = useRouter()
   const { activeTenantName: tenantName } = useDashboard()
+  // FirstStepsCard reports whether it is showing its real content, so the
+  // noBalances empty state below can step aside instead of repeating the same
+  // "you have nothing yet" message underneath it.
+  const [firstStepsVisible, setFirstStepsVisible] = useState(false)
 
   const accountsQuery = useQuery({
     queryKey: queryKeys.accounts(),
@@ -153,6 +160,8 @@ export function DashboardOverview() {
         <DashboardSkeleton />
       ) : (
         <>
+          <FirstStepsCard onVisibilityChange={setFirstStepsVisible} />
+
           {totals.length > 0 ? (
             <div className="stat-grid">
               {totals.map((total, index) => (
@@ -179,17 +188,18 @@ export function DashboardOverview() {
                 />
               ))}
             </div>
-          ) : (
+          ) : firstStepsVisible ? null : (
             <Card>
-              <div className="empty-state">
-                <strong style={{ color: 'var(--text-strong)' }}>
-                  {t('noBalances.title')}
-                </strong>
-                <p className="muted">{t('noBalances.description')}</p>
-                <Button onClick={() => router.push(SECTION_HREF.accounts)}>
-                  {tAccounts('addAccount')}
-                </Button>
-              </div>
+              <EmptyState
+                icon={<Wallet size={30} />}
+                title={t('noBalances.title')}
+                description={t('noBalances.description')}
+                action={
+                  <Button onClick={() => router.push(SECTION_HREF.accounts)}>
+                    {tAccounts('addAccount')}
+                  </Button>
+                }
+              />
             </Card>
           )}
 
@@ -227,6 +237,13 @@ export function DashboardOverview() {
                 {recent.length === 0 ? (
                   <div className="empty-state">
                     <p className="muted">{t('noTransactions')}</p>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => router.push(SECTION_HREF.transactions)}
+                    >
+                      {tTransactions('addTransaction')}
+                    </Button>
                   </div>
                 ) : (
                   recent.map((transaction) => {
@@ -283,7 +300,16 @@ export function DashboardOverview() {
                 }
               />
               {accounts.length === 0 ? (
-                <p className="muted">{t('noAccounts')}</p>
+                <p className="muted">
+                  {t('noAccounts')}{' '}
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() => router.push(SECTION_HREF.accounts)}
+                  >
+                    {tAccounts('addAccount')}
+                  </button>
+                </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {accounts.slice(0, 4).map((account) => {

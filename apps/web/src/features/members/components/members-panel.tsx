@@ -231,6 +231,23 @@ export function MembersPanel() {
             icon={<Users size={30} />}
             title={t('empty.title')}
             description={t('empty.description')}
+            // canAdminister requires an owner row in `members`, which by
+            // definition cannot exist while this branch renders — kept for
+            // fidelity with the rest of the panel's gating, and ready the day
+            // this state stops being "should not be possible".
+            action={
+              canAdminister ? (
+                <Button
+                  leftIcon={<Plus size={18} />}
+                  onClick={() => {
+                    setLastResult(null)
+                    setInviteOpen(true)
+                  }}
+                >
+                  {t('invite')}
+                </Button>
+              ) : undefined
+            }
           />
         ) : null}
 
