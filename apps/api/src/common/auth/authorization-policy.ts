@@ -31,6 +31,12 @@ export type Permission =
   // other. Granted on the same lines for now.
   | 'credit:read'
   | 'credit:write'
+  // Exporting the whole household — every tenant-scoped table as one JSON
+  // bundle, or the transaction ledger as CSV. Owner only: it is a full data
+  // dump, not a read of one screen's worth of numbers, and includes things a
+  // member or viewer never sees elsewhere (audit history, other members'
+  // emails).
+  | 'tenant:export'
 
 // Map roles to allowed permissions
 const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
@@ -55,6 +61,7 @@ const ROLE_PERMISSIONS: Record<MembershipRole, Permission[]> = {
     'debt:write',
     'credit:read',
     'credit:write',
+    'tenant:export',
   ],
   member: [
     'tenant:select',
