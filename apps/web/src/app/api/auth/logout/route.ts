@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { resolveApiBase } from '../../../../lib/auth/server-session'
+import { resolveApiBase } from '../../../../lib/api/api-base'
 import { isSecureCookie } from '../../../../lib/auth/cookie-options'
 
 export async function POST() {
-  const apiBaseConfigured = process.env.NEXT_PUBLIC_API_BASE_URL
+  // Either source counts as "configured" — resolveApiBase() itself always
+  // resolves to something (it has a localhost:3001 default), so this checks
+  // for explicit configuration rather than resolveApiBase()'s return value,
+  // to preserve skipping the call in an environment where neither is set.
+  const apiBaseConfigured = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL
   const internalKey = process.env.INTERNAL_API_KEY
   const sessionCookie = cookies().get('plinto_session')?.value
 

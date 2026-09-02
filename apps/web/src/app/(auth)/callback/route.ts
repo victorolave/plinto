@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { getOidcClient } from '../../../lib/auth/oidc-client'
 import { createPlintoJwt, JWT_TTL_SECONDS } from '../../../lib/auth/jwt'
 import { isSecureCookie } from '../../../lib/auth/cookie-options'
+import { resolveApiBase } from '../../../lib/api/api-base'
 
 const STATE_COOKIE = 'plinto_oidc_state'
 const VERIFIER_COOKIE = 'plinto_oidc_verifier'
@@ -49,11 +50,10 @@ export async function GET(request: Request) {
     const refreshToken = tokenSet.refresh_token
 
     const claims = tokenSet.claims()
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL
     const internalKey = process.env.INTERNAL_API_KEY
 
     stage = 'config_check'
-    if (!apiBase || !internalKey) {
+    if (!internalKey) {
       throw new Error('Missing API configuration')
     }
 
@@ -61,10 +61,11 @@ export async function GET(request: Request) {
       return redirectTo('/login')
     }
 
-    // Build an absolute session URL when apiBase is configured as a relative path.
-    const sessionUrl = apiBase.startsWith('http')
-      ? `${apiBase}/auth/session`
-      : new URL(`${apiBase}/auth/session`, request.url).toString()
+    // resolveApiBase() prefers API_INTERNAL_URL, falls back to
+    // NEXT_PUBLIC_API_BASE_URL, and anchors a relative value to
+    // http://localhost:3001 — the same resolution server-session.ts and the
+    // logout route use for their own server-side calls to the API.
+    const sessionUrl = `${resolveApiBase()}/auth/session`
 
     stage = 'session_fetch'
     const sessionResponse = await fetch(sessionUrl, {

@@ -220,13 +220,22 @@ describe('GET /callback', () => {
 
   // ---------- API errors ----------
 
-  it('redirects to /login instead of throwing when NEXT_PUBLIC_API_BASE_URL is not set', async () => {
+  it('falls back to the default API base and completes the flow when NEXT_PUBLIC_API_BASE_URL is not set', async () => {
+    // resolveApiBase() (lib/api/api-base.ts) always resolves to something —
+    // it has a localhost:3001 default — so a missing NEXT_PUBLIC_API_BASE_URL
+    // alone is no longer a "missing API configuration" error, unlike a
+    // missing INTERNAL_API_KEY below (which has no such default).
     vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
     vi.stubEnv('INTERNAL_API_KEY', 'key')
+    const redirectResp = makeMockRedirectResponse('/dashboard')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
 
-    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+    await GET(makeRequest())
 
-    expect(response._redirectUrl).toBe('/login')
+    expect(globalFetch).toHaveBeenCalledWith(
+      'http://localhost:3001/api/auth/session',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 
   it('redirects to /login instead of throwing when INTERNAL_API_KEY is not set', async () => {

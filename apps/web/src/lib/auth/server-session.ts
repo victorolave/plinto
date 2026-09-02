@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers'
+import { resolveApiBase } from '../api/api-base'
 
 const SESSION_COOKIE_NAME = 'plinto_session'
 
@@ -8,15 +9,11 @@ export interface CurrentUser {
   activeTenantId: string | null
 }
 
-/**
- * Resolves an absolute base URL for server-side fetches to the API. Server
- * components can't use a relative `/api` path, so a relative configured base is
- * anchored to the local API origin as a development fallback.
- */
-export function resolveApiBase(): string {
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api'
-  return apiBase.startsWith('http') ? apiBase : `http://localhost:3001${apiBase}`
-}
+// Re-exported for backward compatibility: this used to be defined here, and
+// other server-side call sites (the logout route, the OIDC callback) import
+// it by name. The canonical implementation now lives in lib/api/api-base.ts,
+// shared by all three.
+export { resolveApiBase }
 
 export function getServerSessionCookie(): string | undefined {
   return cookies().get(SESSION_COOKIE_NAME)?.value
