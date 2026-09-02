@@ -126,18 +126,51 @@ never need to run migrations by hand. Check `docker compose logs migrate` if
 
 Postgres data lives in the named volume `plinto-postgres-data`. Back it up
 with `pg_dump` rather than copying the volume directly, so a restore isn't
-tied to matching Postgres versions:
+tied to matching Postgres versions. Two scripts wrap this so the day you
+actually need a restore isn't the first time you run one:
+
+```bash
+# Backup — writes backups/plinto-<timestamp>.dump (pg_dump --format=custom)
+./deploy/backup.sh
+
+# Restore — stops api/web, pg_restore --clean --if-exists's the dump back in,
+# brings api/web back up, and polls /api/health until it reports healthy.
+# Prompts you to type "restore" first; pass --yes to skip that (automation).
+./deploy/restore.sh backups/plinto-20260902-110000.dump
+```
+
+Both read `POSTGRES_USER`/`POSTGRES_DB` from the same env file Compose itself
+uses (`PLINTO_ENV_FILE`, default `.env`) — no flags to keep in sync with your
+`.env` by hand.
+
+**Manual equivalent**, if you'd rather not use the scripts (or need to adapt
+the command for something they don't cover):
 
 ```bash
 # Backup
-docker compose exec postgres pg_dump -U plinto plinto > backup-$(date +%F).sql
+docker compose exec -T postgres pg_dump -U plinto -d plinto --format=custom > backup-$(date +%F).dump
 
-# Restore (into a fresh, empty database — do not restore over live data)
-docker compose exec -T postgres psql -U plinto -d plinto < backup-2026-09-02.sql
+# Restore (drops and recreates every object first — do not run this against
+# a database you meant to keep untouched)
+docker compose exec -T postgres pg_restore --clean --if-exists --no-owner --no-privileges -U plinto -d plinto < backup-2026-09-02.dump
 ```
 
 Substitute your actual `POSTGRES_USER`/`POSTGRES_DB` if you changed them
 from the example.
+
+**Test a restore before you need one.** A backup you have never restored is
+a guess, not a backup. Periodically — before an upgrade you're nervous about,
+or just on a schedule — copy a recent dump to a scratch machine (or a second
+`docker compose -p plinto-restore-drill` project on the same host, pointed at
+a throwaway `.env`) and run `deploy/restore.sh` against it. The two things a
+drill catches that nothing else will: a dump that silently stopped being
+produced, and a restore step that only worked when you last wrote it down.
+
+**Retention.** `deploy/backup.sh` never deletes anything — `backups/` will
+grow forever if left alone. Prune it yourself (a `find backups -mtime +30
+-delete` in cron, or whatever your platform's own snapshotting offers) and
+keep at least one copy somewhere other than this host — a volume backup and
+its host are usually lost together.
 
 ## Troubleshooting
 
