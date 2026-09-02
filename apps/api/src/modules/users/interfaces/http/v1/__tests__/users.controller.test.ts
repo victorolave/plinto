@@ -80,4 +80,32 @@ describe('UsersController', () => {
     })
     expect(result).toEqual({ data: { id: 'user-1', name: 'New Name' } })
   })
+
+  it('marks the onboarding tour as seen using the authenticated user and correlation id', async () => {
+    const userProfileService = {
+      markOnboardingTourSeen: vi
+        .fn()
+        .mockResolvedValue({ id: 'user-1', onboardingTourSeenAt: '2026-01-01T00:00:00.000Z' }),
+    }
+    const membershipRepository = { listByUserId: vi.fn() }
+    const sessionService = { getActiveTenant: vi.fn(), autoSelectIfSingleTenant: vi.fn() }
+    const controller = new UsersController(
+      userProfileService as any,
+      membershipRepository as any,
+      sessionService as any,
+    )
+
+    const result = await controller.markOnboardingTourSeen({
+      user: { id: 'user-1' },
+      requestId: 'corr-1',
+    } as any)
+
+    expect(userProfileService.markOnboardingTourSeen).toHaveBeenCalledWith({
+      userId: 'user-1',
+      correlationId: 'corr-1',
+    })
+    expect(result).toEqual({
+      data: { id: 'user-1', onboardingTourSeenAt: '2026-01-01T00:00:00.000Z' },
+    })
+  })
 })

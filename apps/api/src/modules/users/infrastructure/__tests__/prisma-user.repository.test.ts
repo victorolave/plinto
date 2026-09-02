@@ -116,4 +116,19 @@ describe('PrismaUserRepository', () => {
       expect(result).toBe(user)
     })
   })
+
+  describe('markOnboardingTourSeen', () => {
+    it('stamps onboardingTourSeenAt with a fresh Date for the user matched by id', async () => {
+      const user = makeUser({ onboardingTourSeenAt: new Date('2026-01-01T00:00:00.000Z') })
+      prisma.user.update.mockResolvedValue(user)
+
+      const result = await repository.markOnboardingTourSeen('user-1')
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { onboardingTourSeenAt: expect.any(Date) },
+      })
+      expect(result).toBe(user)
+    })
+  })
 })

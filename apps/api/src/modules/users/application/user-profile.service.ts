@@ -58,4 +58,42 @@ export class UserProfileService {
 
     return updated
   }
+
+  /**
+   * Idempotent: the timestamp is stamped only the first time. A tour replayed
+   * from the help button must not touch it again — "first login" has to stay
+   * true regardless of how many times the tour is later re-run.
+   */
+  async markOnboardingTourSeen(params: {
+    userId: string
+    correlationId: string
+  }): Promise<User> {
+    const existing = await this.userRepository.findById(params.userId)
+
+    if (!existing) {
+      throw new NotFoundException(USER_NOT_FOUND)
+    }
+
+    if (existing.onboardingTourSeenAt) {
+      return existing
+    }
+
+    const updated = await this.userRepository.markOnboardingTourSeen(params.userId)
+
+    const tenantId = await this.sessionService.getActiveTenant(params.userId)
+
+    if (tenantId) {
+      await this.auditService.record({
+        tenantId,
+        actorUserId: params.userId,
+        action: 'user.onboarding_tour.seen',
+        resourceType: 'user',
+        resourceId: updated.id,
+        correlationId: params.correlationId,
+        metadata: null,
+      })
+    }
+
+    return updated
+  }
 }

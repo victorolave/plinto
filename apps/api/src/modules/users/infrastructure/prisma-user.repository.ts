@@ -42,4 +42,11 @@ export class PrismaUserRepository extends UserRepository {
   async updateName(id: string, name: string): Promise<User> {
     return this.prisma.user.update({ where: { id }, data: { name } })
   }
+
+  async markOnboardingTourSeen(id: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: { onboardingTourSeenAt: new Date() },
+    })
+  }
 }

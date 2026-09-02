@@ -8,6 +8,7 @@ const makeUser = (overrides?: Partial<User>): User => ({
   idpSub: 'google|abc',
   email: 'alice@example.com',
   name: 'Alice',
+  onboardingTourSeenAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
@@ -18,6 +19,7 @@ const makeUserRepo = () => ({
   findByIdpSub: vi.fn(),
   create: vi.fn(),
   updateName: vi.fn(),
+  markOnboardingTourSeen: vi.fn(),
 })
 
 const makeAuditService = () => ({
@@ -137,6 +139,75 @@ describe('UserProfileService', () => {
       const result = await service.updateProfile({
         userId: 'user-1',
         name: 'New Name',
+        correlationId: 'corr-1',
+      })
+
+      expect(auditService.record).not.toHaveBeenCalled()
+      expect(result).toBe(updated)
+    })
+  })
+
+  describe('markOnboardingTourSeen', () => {
+    it('stamps the timestamp when it is not set yet', async () => {
+      const existing = makeUser({ onboardingTourSeenAt: null })
+      const updated = makeUser({ onboardingTourSeenAt: new Date('2026-01-01T00:00:00.000Z') })
+      userRepository.findById.mockResolvedValue(existing)
+      userRepository.markOnboardingTourSeen.mockResolvedValue(updated)
+      sessionService.getActiveTenant.mockResolvedValue('tenant-1')
+
+      const result = await service.markOnboardingTourSeen({
+        userId: 'user-1',
+        correlationId: 'corr-1',
+      })
+
+      expect(userRepository.markOnboardingTourSeen).toHaveBeenCalledWith('user-1')
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          action: 'user.onboarding_tour.seen',
+          resourceType: 'user',
+          resourceId: updated.id,
+          correlationId: 'corr-1',
+        }),
+      )
+      expect(result).toBe(updated)
+    })
+
+    it('is a no-op when the timestamp is already set (second call)', async () => {
+      const existing = makeUser({
+        onboardingTourSeenAt: new Date('2026-01-01T00:00:00.000Z'),
+      })
+      userRepository.findById.mockResolvedValue(existing)
+
+      const result = await service.markOnboardingTourSeen({
+        userId: 'user-1',
+        correlationId: 'corr-1',
+      })
+
+      expect(userRepository.markOnboardingTourSeen).not.toHaveBeenCalled()
+      expect(auditService.record).not.toHaveBeenCalled()
+      expect(result).toBe(existing)
+    })
+
+    it('throws USER_NOT_FOUND when the user does not exist', async () => {
+      userRepository.findById.mockResolvedValue(null)
+
+      await expect(
+        service.markOnboardingTourSeen({ userId: 'missing', correlationId: 'corr-1' }),
+      ).rejects.toBeInstanceOf(NotFoundException)
+      expect(userRepository.markOnboardingTourSeen).not.toHaveBeenCalled()
+    })
+
+    it('skips audit recording when the user has no active tenant', async () => {
+      const existing = makeUser({ onboardingTourSeenAt: null })
+      const updated = makeUser({ onboardingTourSeenAt: new Date('2026-01-01T00:00:00.000Z') })
+      userRepository.findById.mockResolvedValue(existing)
+      userRepository.markOnboardingTourSeen.mockResolvedValue(updated)
+      sessionService.getActiveTenant.mockResolvedValue(null)
+
+      const result = await service.markOnboardingTourSeen({
+        userId: 'user-1',
         correlationId: 'corr-1',
       })
 

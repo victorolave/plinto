@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Req,
   UseGuards,
   UsePipes,
@@ -53,6 +54,16 @@ export class UsersController {
     const user = await this.userProfileService.updateProfile({
       userId,
       name: body.name,
+      correlationId: req.requestId ?? 'unknown',
+    })
+    return { data: user }
+  }
+
+  @Post('onboarding-tour/seen')
+  async markOnboardingTourSeen(@Req() req: RequestContext) {
+    const userId = req.user?.id ?? ''
+    const user = await this.userProfileService.markOnboardingTourSeen({
+      userId,
       correlationId: req.requestId ?? 'unknown',
     })
     return { data: user }
