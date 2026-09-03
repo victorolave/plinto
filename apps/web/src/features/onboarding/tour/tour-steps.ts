@@ -33,9 +33,9 @@ interface StepAnchor {
 
 /**
  * Order and anchors for every tour step. `data-tour` values here must match
- * the attributes rendered on the sidebar, bottom nav, tenant switcher, help
- * button, and first-steps card — see dashboard-shell.tsx / sidebar.tsx /
- * bottom-nav.tsx / first-steps-card.tsx.
+ * the attributes rendered on the sidebar, bottom nav, tenant switcher, and
+ * first-steps card — see dashboard-shell.tsx / sidebar.tsx / bottom-nav.tsx /
+ * first-steps-card.tsx.
  *
  * `accounts` and `transactions` share their selector with both the sidebar
  * link AND the bottom-nav bar link — the sidebar collapses under 900px
@@ -44,7 +44,9 @@ interface StepAnchor {
  * actually picks the one currently rendered. `obligations`/`debts`/`credit`/
  * `categories` only live inside the bottom nav's collapsible "more" sheet,
  * which the tour cannot force open, so those are centered on mobile instead
- * of pointing at a hidden target.
+ * of pointing at a hidden target. `help` lives in that same "more" sheet on
+ * mobile, so it is centered there too — the sidebar's own Help link
+ * (`nav-help`) is only ever used as the desktop anchor.
  */
 const STEP_ANCHORS: StepAnchor[] = [
   { id: 'welcome' },
@@ -56,11 +58,7 @@ const STEP_ANCHORS: StepAnchor[] = [
   { id: 'credit', selector: '[data-tour="nav-credit"]', mobileSelector: null },
   { id: 'categories', selector: '[data-tour="nav-categories"]', mobileSelector: null },
   { id: 'firstSteps', selector: '[data-tour="first-steps"]' },
-  {
-    id: 'help',
-    selector: '[data-tour="help-button"]',
-    mobileSelector: '[data-tour="help-more-item"]',
-  },
+  { id: 'help', selector: '[data-tour="nav-help"]', mobileSelector: null },
 ]
 
 /**

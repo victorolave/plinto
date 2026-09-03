@@ -25,7 +25,6 @@ import { Avatar } from '../ui/avatar'
 import { TenantSwitcher } from './tenant-switcher'
 import { SECTION_HREF, sectionFromPath, type DashboardSection } from './dashboard-nav'
 import { useDashboard } from './dashboard-context'
-import { useProductTour } from '../../features/onboarding/tour/product-tour-context'
 
 interface BarEntry {
   id: DashboardSection
@@ -61,6 +60,7 @@ const MORE_SECTIONS: BarEntry[] = [
   { id: 'credit', labelKey: 'credit', icon: Card },
   { id: 'categories', labelKey: 'categories', icon: Tag },
   { id: 'settings', labelKey: 'settings', icon: Settings },
+  { id: 'help', labelKey: 'help', icon: HelpCircle, dataTour: 'nav-help' },
 ]
 
 export interface BottomNavProps {
@@ -95,7 +95,6 @@ export function BottomNav({ onAdd }: BottomNavProps) {
   const tCommon = useTranslations('common')
   const [moreOpen, setMoreOpen] = useState(false)
   const active = sectionFromPath(usePathname() ?? '')
-  const { start } = useProductTour()
 
   // Lock the scrollable shell (.app-scroll) while the sheet is open — locking
   // body is a no-op here since body never scrolls, and on iOS touch would bleed
@@ -199,6 +198,7 @@ export function BottomNav({ onAdd }: BottomNavProps) {
                     href={SECTION_HREF[entry.id]}
                     className={`more-sheet-item ${isActive ? 'is-active' : ''}`.trim()}
                     aria-current={isActive ? 'page' : undefined}
+                    data-tour={entry.dataTour}
                     onClick={() => setMoreOpen(false)}
                   >
                     <Icon size={20} stroke={isActive ? 2.3 : 2} />
@@ -206,19 +206,6 @@ export function BottomNav({ onAdd }: BottomNavProps) {
                   </Link>
                 )
               })}
-
-              <button
-                type="button"
-                className="more-sheet-item"
-                data-tour="help-more-item"
-                onClick={() => {
-                  setMoreOpen(false)
-                  start()
-                }}
-              >
-                <HelpCircle size={20} />
-                {tShell('help')}
-              </button>
             </div>
 
             <button

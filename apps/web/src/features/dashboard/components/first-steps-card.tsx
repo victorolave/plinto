@@ -79,6 +79,40 @@ function readHidden(key: string): boolean {
 }
 
 /**
+ * Fired by `showFirstStepsAgain` so a currently-mounted card can un-hide
+ * itself without a full remount. A `window` event (rather than a second
+ * module-level store) because there is exactly one consumer and the payload
+ * is trivial — no need to duplicate the `firstStepsStatus` subscription
+ * plumbing above for this.
+ */
+const SHOW_FIRST_STEPS_EVENT = 'plinto:first-steps:show'
+
+interface ShowFirstStepsDetail {
+  tenantId: string | null
+}
+
+/**
+ * Settings' help card calls this to let a household see the checklist again
+ * after dismissing it. Clearing the storage key is enough on its own — the
+ * card reads it fresh on every mount (e.g. after `router.push('/dashboard')`
+ * from Settings) — the event only matters for the case where the card is
+ * *already* mounted (dashboard open in another tab, or a future surface that
+ * renders it alongside Settings) so it doesn't need a remount to reappear.
+ */
+export function showFirstStepsAgain(tenantId: string | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.removeItem(storageKeyFor(tenantId))
+  } catch {
+    // Best-effort: if we can't clear it, the card just stays hidden until
+    // storage access works again — never a crash.
+  }
+  window.dispatchEvent(
+    new CustomEvent<ShowFirstStepsDetail>(SHOW_FIRST_STEPS_EVENT, { detail: { tenantId } }),
+  )
+}
+
+/**
  * Compact placeholder while the checklist's own five queries resolve.
  *
  * `DashboardOverview` already renders its own skeleton for its own three
@@ -216,6 +250,20 @@ export function FirstStepsCard({ onVisibilityChange }: FirstStepsCardProps = {})
   useEffect(() => {
     onVisibilityChange?.(visible)
   }, [visible, onVisibilityChange])
+
+  // Lets `showFirstStepsAgain` (Settings' help card) un-hide this card
+  // in-place when it happens to already be mounted, instead of relying
+  // purely on a remount to re-read storage.
+  useEffect(() => {
+    function onShowAgain(event: Event) {
+      const detail = (event as CustomEvent<ShowFirstStepsDetail>).detail
+      if (detail?.tenantId === activeTenantId) {
+        setHidden(false)
+      }
+    }
+    window.addEventListener(SHOW_FIRST_STEPS_EVENT, onShowAgain)
+    return () => window.removeEventListener(SHOW_FIRST_STEPS_EVENT, onShowAgain)
+  }, [activeTenantId])
 
   // Reset on every mount (not just the first ever): a household can leave
   // `/dashboard` and come back, remounting this card with fresh queries —

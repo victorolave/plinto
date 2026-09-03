@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../test/render-with-providers'
 import { Sidebar } from '../sidebar'
-
-const start = vi.fn()
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
@@ -21,21 +17,24 @@ vi.mock('../dashboard-context', () => ({
   }),
 }))
 
-vi.mock('../../../features/onboarding/tour/product-tour-context', () => ({
-  useProductTour: () => ({ start, isRunning: false }),
-}))
-
 describe('Sidebar', () => {
-  it('renders a help button that starts the product tour', async () => {
+  it('renders a Help link below Settings, and no help icon button', () => {
     renderWithProviders(<Sidebar />)
-    const user = userEvent.setup()
 
-    await user.click(screen.getByRole('button', { name: 'Help' }))
+    const settings = document.querySelector('[data-tour="nav-settings"]')
+    const help = document.querySelector('[data-tour="nav-help"]')
+    expect(settings).not.toBeNull()
+    expect(help).not.toBeNull()
+    expect(help?.getAttribute('href')).toBe('/dashboard/help')
 
-    expect(start).toHaveBeenCalledTimes(1)
+    // Help must render below Settings in the sidebar footer.
+    const position = settings!.compareDocumentPosition(help!)
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    expect(document.querySelector('[data-tour="help-button"]')).toBeNull()
   })
 
-  it('tags navigation links and the help button with data-tour anchors', () => {
+  it('tags navigation links with data-tour anchors', () => {
     renderWithProviders(<Sidebar />)
 
     expect(document.querySelector('[data-tour="nav-accounts"]')).not.toBeNull()
@@ -44,6 +43,5 @@ describe('Sidebar', () => {
     expect(document.querySelector('[data-tour="nav-debts"]')).not.toBeNull()
     expect(document.querySelector('[data-tour="nav-credit"]')).not.toBeNull()
     expect(document.querySelector('[data-tour="nav-categories"]')).not.toBeNull()
-    expect(document.querySelector('[data-tour="help-button"]')).not.toBeNull()
   })
 })

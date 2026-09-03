@@ -23,7 +23,10 @@
   padding: var(--space-5);
   min-width: 280px;
   max-width: 360px;
-  z-index: 1000;
+  /* Strictly above .driver-overlay (1000). With equal z-indexes the overlay,
+     appended to <body> after the popover, paints on top: the popover looks
+     dimmed and every click lands on the overlay, which closes the tour. */
+  z-index: 1001;
 }
 
 .driver-popover-title {
@@ -117,24 +120,32 @@
   color: var(--text-strong);
 }
 
+/* driver.js draws the arrow with the border trick: a 0×0 box whose four
+   5px borders are all white, and per side it turns three of them
+   transparent so the remaining one reads as a triangle. Colouring all four
+   here would paint a square — so everything goes transparent first and each
+   side re-colours only the border that is meant to show: `side-left` means
+   the popover sits to the LEFT of the element, so the arrow is its LEFT
+   border pointing right, and so on. */
 .driver-popover-arrow {
-  border-color: var(--surface-card);
+  border-color: transparent;
 }
 .driver-popover-arrow-side-left {
-  border-right-color: var(--surface-card);
-}
-.driver-popover-arrow-side-right {
   border-left-color: var(--surface-card);
 }
+.driver-popover-arrow-side-right {
+  border-right-color: var(--surface-card);
+}
 .driver-popover-arrow-side-top {
-  border-bottom-color: var(--surface-card);
+  border-top-color: var(--surface-card);
 }
 .driver-popover-arrow-side-bottom {
-  border-top-color: var(--surface-card);
+  border-bottom-color: var(--surface-card);
 }
 
 /* Already ~10000 by default (driver.js sets it inline) — pinned here,
-   above --z-dropdown (300), so it never depends on that inline value. */
+   above --z-dropdown (300), so it never depends on that inline value.
+   Must stay BELOW .driver-popover (1001): see the note there. */
 .driver-overlay {
   z-index: 1000 !important;
 }

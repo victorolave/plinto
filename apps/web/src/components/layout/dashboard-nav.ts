@@ -13,6 +13,7 @@ export type DashboardSection =
   | 'credit'
   | 'categories'
   | 'settings'
+  | 'help'
 
 export const SECTION_HREF: Record<DashboardSection, string> = {
   overview: '/dashboard',
@@ -23,6 +24,7 @@ export const SECTION_HREF: Record<DashboardSection, string> = {
   credit: '/dashboard/credit',
   categories: '/dashboard/categories',
   settings: '/dashboard/settings',
+  help: '/dashboard/help',
 }
 
 /** Longest-prefix match so nested paths still resolve to their section. */
@@ -35,6 +37,7 @@ export function sectionFromPath(pathname: string): DashboardSection {
     'credit',
     'categories',
     'settings',
+    'help',
   ]
   for (const section of sections) {
     const href = SECTION_HREF[section]

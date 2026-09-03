@@ -4,8 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../test/render-with-providers'
 import { BottomNav } from '../bottom-nav'
 
-const start = vi.fn()
-
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
 }))
@@ -21,10 +19,6 @@ vi.mock('../dashboard-context', () => ({
   }),
 }))
 
-vi.mock('../../../features/onboarding/tour/product-tour-context', () => ({
-  useProductTour: () => ({ start, isRunning: false }),
-}))
-
 describe('BottomNav', () => {
   it('tags the always-visible accounts/transactions bar links with the sidebar\'s data-tour anchors', () => {
     renderWithProviders(<BottomNav onAdd={vi.fn()} />)
@@ -33,17 +27,14 @@ describe('BottomNav', () => {
     expect(document.querySelector('[data-tour="nav-transactions"]')).not.toBeNull()
   })
 
-  it('starts the product tour and closes the sheet from the help item', async () => {
+  it('lists Help in the "More" sheet, linking to the help page', async () => {
     renderWithProviders(<BottomNav onAdd={vi.fn()} />)
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: 'More' }))
-    const helpItem = document.querySelector('[data-tour="help-more-item"]') as HTMLElement
+    const helpItem = document.querySelector('[data-tour="nav-help"]') as HTMLElement
     expect(helpItem).not.toBeNull()
-
-    await user.click(helpItem)
-
-    expect(start).toHaveBeenCalledTimes(1)
-    expect(document.querySelector('[data-tour="help-more-item"]')).toBeNull()
+    expect(helpItem.getAttribute('href')).toBe('/dashboard/help')
+    expect(helpItem.textContent).toContain('Help')
   })
 })

@@ -151,25 +151,34 @@ describe('buildTourSteps', () => {
     expect(mobileSteps.some((s) => s.popover?.title === 'steps.transactions.title')).toBe(false)
   })
 
-  it('points the help step at the mobile anchor on small screens', () => {
-    const desktopHelp = addAnchor('help-button')
-    const mobileHelp = addAnchor('help-more-item')
+  it('anchors the help step to the sidebar Help link on desktop', () => {
+    const desktopHelp = addAnchor('nav-help')
 
     const desktopSteps = buildTourSteps(t, { isMobile: false })
-    const mobileSteps = buildTourSteps(t, { isMobile: true })
-
     const desktopStep = desktopSteps.find((s) => s.popover?.title === 'steps.help.title')
-    const mobileStep = mobileSteps.find((s) => s.popover?.title === 'steps.help.title')
 
     expect(resolvedElement(desktopStep!)).toBe(desktopHelp)
-    expect(resolvedElement(mobileStep!)).toBe(mobileHelp)
   })
 
-  it('drops the help step on mobile when the more-sheet item is not in the DOM', () => {
-    addAnchor('help-button')
-
-    const mobileSteps = buildTourSteps(t, { isMobile: true })
+  it('drops the help step on desktop when the sidebar Help link is not in the DOM', () => {
+    const mobileSteps = buildTourSteps(t, { isMobile: false })
 
     expect(mobileSteps.some((s) => s.popover?.title === 'steps.help.title')).toBe(false)
+  })
+
+  it('centers the help step on mobile instead of anchoring it — Help only lives inside the "More" sheet there', () => {
+    addAnchor('nav-help')
+
+    const mobileSteps = buildTourSteps(t, { isMobile: true })
+    const mobileStep = mobileSteps.find((s) => s.popover?.title === 'steps.help.title')
+
+    expect(mobileStep).toBeDefined()
+    expect(mobileStep!.element).toBeUndefined()
+  })
+
+  it('keeps the centered help step on mobile even without the "More" sheet open (its anchor absent from the DOM)', () => {
+    const mobileSteps = buildTourSteps(t, { isMobile: true })
+
+    expect(mobileSteps.some((s) => s.popover?.title === 'steps.help.title')).toBe(true)
   })
 })

@@ -53,6 +53,7 @@ const SUBTITLE: Record<DashboardSection, SubtitleResolver> = {
   credit: () => ({ key: 'subtitle.credit' }),
   categories: () => ({ key: 'subtitle.categories' }),
   settings: () => ({ key: 'subtitle.settings' }),
+  help: () => ({ key: 'subtitle.help' }),
 }
 
 /**

@@ -85,6 +85,16 @@ export function useProductTourController(): UseProductTourResult {
     const instance = driver({
       showProgress: true,
       allowClose: true,
+      // driver.js 1.8 ignores Next/Prev clicks while its 400ms rAF-driven
+      // popover transition is running, and a click that lands right after
+      // the popover moves can hit the overlay underneath and close the
+      // tour instead. Disabling the animation removes that dead-click
+      // window entirely — the popover jumps straight to the next step.
+      animate: false,
+      // Square stage cut-out to match the design system (no rounded
+      // highlight around the anchored element).
+      stagePadding: 6,
+      stageRadius: 0,
       nextBtnText: t('buttons.next'),
       prevBtnText: t('buttons.prev'),
       doneBtnText: t('buttons.done'),

@@ -18,7 +18,6 @@ import {
   HelpCircle,
   type IconProps,
 } from '../ui/icons'
-import { useProductTour } from '../../features/onboarding/tour/product-tour-context'
 import { Avatar } from '../ui/avatar'
 import { IconButton } from '../ui/button'
 import { TenantSwitcher } from './tenant-switcher'
@@ -72,7 +71,6 @@ export function Sidebar() {
   const t = useTranslations('nav')
   const tShell = useTranslations('shell')
   const active = sectionFromPath(usePathname() ?? '')
-  const { start } = useProductTour()
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -112,26 +110,23 @@ export function Sidebar() {
           {t('settings')}
         </Link>
 
+        <Link
+          href={SECTION_HREF.help}
+          className={`nav-item ${active === 'help' ? 'is-active' : ''}`.trim()}
+          aria-current={active === 'help' ? 'page' : undefined}
+          data-tour="nav-help"
+        >
+          <span className="nav-item-marker" />
+          <HelpCircle size={19} />
+          {t('help')}
+        </Link>
+
         <div className="sidebar-user">
           <Avatar name={user.name} size="sm" />
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="sidebar-user-name">{user.name}</div>
             {user.email ? <div className="sidebar-user-email">{user.email}</div> : null}
           </div>
-          <IconButton
-            label={tShell('help')}
-            onClick={start}
-            data-tour="help-button"
-            style={{
-              width: 28,
-              height: 28,
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--chrome-text-subtle)',
-            }}
-          >
-            <HelpCircle size={16} />
-          </IconButton>
           <IconButton
             label={tShell('logOut')}
             onClick={onLogout}
