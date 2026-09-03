@@ -23,7 +23,10 @@
   padding: var(--space-5);
   min-width: 280px;
   max-width: 360px;
-  z-index: 1000;
+  /* Strictly above .driver-overlay (1000). With equal z-indexes the overlay,
+     appended to <body> after the popover, paints on top: the popover looks
+     dimmed and every click lands on the overlay, which closes the tour. */
+  z-index: 1001;
 }
 
 .driver-popover-title {
@@ -134,7 +137,8 @@
 }
 
 /* Already ~10000 by default (driver.js sets it inline) — pinned here,
-   above --z-dropdown (300), so it never depends on that inline value. */
+   above --z-dropdown (300), so it never depends on that inline value.
+   Must stay BELOW .driver-popover (1001): see the note there. */
 .driver-overlay {
   z-index: 1000 !important;
 }
