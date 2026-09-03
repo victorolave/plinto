@@ -62,6 +62,20 @@ describe('useProductTour', () => {
     expect(drive).toHaveBeenCalledTimes(1)
   })
 
+  it('disables the popover transition so Next/Prev clicks are never dropped', () => {
+    const { result } = renderHook(() => useProductTourController(), {
+      wrapper: wrapperFor(new QueryClient()),
+    })
+
+    act(() => {
+      result.current.start()
+    })
+
+    expect(mockedDriver).toHaveBeenCalledWith(
+      expect.objectContaining({ animate: false, stagePadding: 6, stageRadius: 0 }),
+    )
+  })
+
   it('does not start a second instance while one is already active', () => {
     isActive.mockReturnValue(true)
     const { result } = renderHook(() => useProductTourController(), {
