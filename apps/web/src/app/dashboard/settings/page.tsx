@@ -1,7 +1,6 @@
 import { MembersPanel } from '../../../features/members/components/members-panel'
 import { DataExportCard } from '../../../features/settings/components/data-export-card'
 import { ExampleHouseholdCard } from '../../../features/settings/components/example-household-card'
-import { HelpCard } from '../../../features/settings/components/help-card'
 import { LanguageSelector } from '../../../features/settings/components/language-selector'
 import { sectionMetadata } from '../../../lib/section-metadata'
 
@@ -19,11 +18,6 @@ export default function SettingsPage() {
       <div className="page">
         <DataExportCard />
         <ExampleHouseholdCard />
-        {/* Household-level help (replay the tour / bring back first steps),
-            same tier as export and the example household — placed below
-            them and above the per-browser language selector so the
-            household-scoped settings stay grouped together. */}
-        <HelpCard />
         <LanguageSelector />
       </div>
     </>

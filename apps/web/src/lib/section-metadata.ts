@@ -10,6 +10,7 @@ type NavKey =
   | 'credit'
   | 'categories'
   | 'settings'
+  | 'help'
 
 // A dashboard section's browser title is its navigation label — the tab
 // should say the same thing the sidebar does. The root layout's title

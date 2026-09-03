@@ -28,7 +28,8 @@
     "overview": "Dashboard",
     "primary": "Primary",
     "settings": "Settings",
-    "transactions": "Transactions"
+    "transactions": "Transactions",
+    "help": "Help"
   },
   "shell": {
     "addTransaction": "Add transaction",
@@ -36,7 +37,6 @@
       "link": "Go to Settings",
       "text": "You're in the example household. This data is invented."
     },
-    "help": "Help",
     "loading": "Loading your household…",
     "logOut": "Log out",
     "loggingOut": "Logging out…",
@@ -49,7 +49,8 @@
       "obligations": "Obligations",
       "overview": "Dashboard",
       "settings": "Settings",
-      "transactions": "Transactions"
+      "transactions": "Transactions",
+      "help": "Help"
     },
     "subtitle": {
       "accounts": "Balances by currency",
@@ -61,7 +62,8 @@
       "overviewWelcome": "Welcome back, {name}",
       "settings": "Household & members",
       "transactionsGeneric": "Income, expenses and transfers",
-      "transactionsTenant": "{tenant} ledger"
+      "transactionsTenant": "{tenant} ledger",
+      "help": "Guided tour, first steps and guides"
     }
   },
   "tenantSwitcher": {
@@ -97,7 +99,7 @@
         "title": "First steps"
       },
       "help": {
-        "description": "You can replay this tour anytime from here. Settings holds members, export, and language.",
+        "description": "Help lives here: you can replay this tour and bring back the first steps whenever you like.",
         "title": "Need help?"
       },
       "household": {
@@ -591,12 +593,6 @@
       "pending": "Preparing download…",
       "minorUnitsNote": "Amounts in the JSON are in each currency's minor units (e.g. cents); check the file's \"money\" block for how many decimals each one uses."
     },
-    "help": {
-      "title": "Help",
-      "subtitle": "Watch the tour again or bring back the first steps whenever you like.",
-      "tourButton": "Take the tour",
-      "firstStepsButton": "Show first steps"
-    },
     "language": {
       "subtitle": "Applies to this browser. Amounts and dates follow the language you pick.",
       "title": "Language"
@@ -779,5 +775,11 @@
   },
   "statCard": {
     "deltaThisMonth": "{sign}{percent}% this month"
+  },
+  "help": {
+    "title": "Help",
+    "subtitle": "Watch the tour again or bring back the first steps whenever you like.",
+    "tourButton": "Take the tour",
+    "firstStepsButton": "Show first steps"
   }
 }

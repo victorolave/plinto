@@ -11,9 +11,10 @@ import { HelpCircle } from '../../../components/ui/icons'
 
 /**
  * Lets a household replay onboarding on demand instead of only ever seeing
- * it once. Lives in Settings (household-level, always reachable) rather than
- * on the dashboard itself, where the checklist it re-shows would otherwise
- * have to fight for space with the thing it is re-showing.
+ * it once. Lives on its own Help page (below Settings in the nav, always
+ * reachable) rather than inside Settings or on the dashboard itself, where
+ * the checklist it re-shows would otherwise have to fight for space with the
+ * thing it is re-showing.
  *
  * Starting the tour from here anchors its nav steps to the sidebar, which is
  * present on every dashboard route — the `firstSteps` step is simply skipped
@@ -22,7 +23,7 @@ import { HelpCircle } from '../../../components/ui/icons'
  * route the tour might start from.
  */
 export function HelpCard() {
-  const t = useTranslations('settings.help')
+  const t = useTranslations('help')
   const router = useRouter()
   const { activeTenantId } = useDashboard()
   const { start, isRunning } = useProductTour()

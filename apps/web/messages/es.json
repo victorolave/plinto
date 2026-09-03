@@ -28,7 +28,8 @@
     "overview": "Panel",
     "primary": "Principal",
     "settings": "Ajustes",
-    "transactions": "Movimientos"
+    "transactions": "Movimientos",
+    "help": "Ayuda"
   },
   "shell": {
     "addTransaction": "Agregar movimiento",
@@ -36,7 +37,6 @@
       "link": "Ir a Ajustes",
       "text": "Estás en el hogar de ejemplo. Estos datos son inventados."
     },
-    "help": "Ayuda",
     "loading": "Cargando tu hogar…",
     "logOut": "Cerrar sesión",
     "loggingOut": "Cerrando sesión…",
@@ -49,7 +49,8 @@
       "obligations": "Obligaciones",
       "overview": "Panel",
       "settings": "Ajustes",
-      "transactions": "Movimientos"
+      "transactions": "Movimientos",
+      "help": "Ayuda"
     },
     "subtitle": {
       "accounts": "Saldos por moneda",
@@ -61,7 +62,8 @@
       "overviewWelcome": "Hola de nuevo, {name}",
       "settings": "Hogar y miembros",
       "transactionsGeneric": "Ingresos, gastos y transferencias",
-      "transactionsTenant": "Libro de {tenant}"
+      "transactionsTenant": "Libro de {tenant}",
+      "help": "Recorrido guiado, primeros pasos y guías"
     }
   },
   "tenantSwitcher": {
@@ -97,7 +99,7 @@
         "title": "Primeros pasos"
       },
       "help": {
-        "description": "Puedes repetir este recorrido cuando quieras desde aquí. En Ajustes encuentras miembros, exportación y el idioma.",
+        "description": "Aquí encuentras la ayuda: puedes repetir este recorrido y volver a mostrar los primeros pasos cuando quieras.",
         "title": "¿Necesitas ayuda?"
       },
       "household": {
@@ -591,12 +593,6 @@
       "pending": "Preparando descarga…",
       "minorUnitsNote": "Los montos del JSON están en unidades mínimas de cada moneda (por ejemplo, centavos); revisa el bloque \"money\" del archivo para saber cuántos decimales usa cada una."
     },
-    "help": {
-      "title": "Ayuda",
-      "subtitle": "Vuelve a ver el recorrido o los primeros pasos cuando quieras.",
-      "tourButton": "Ver el recorrido",
-      "firstStepsButton": "Mostrar primeros pasos"
-    },
     "language": {
       "subtitle": "Aplica a este navegador. Los montos y las fechas siguen el idioma que elijas.",
       "title": "Idioma"
@@ -779,5 +775,11 @@
   },
   "statCard": {
     "deltaThisMonth": "{sign}{percent}% este mes"
+  },
+  "help": {
+    "title": "Ayuda",
+    "subtitle": "Vuelve a ver el recorrido o los primeros pasos cuando quieras.",
+    "tourButton": "Ver el recorrido",
+    "firstStepsButton": "Mostrar primeros pasos"
   }
 }
