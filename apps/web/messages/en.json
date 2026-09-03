@@ -591,6 +591,12 @@
       "pending": "Preparing download…",
       "minorUnitsNote": "Amounts in the JSON are in each currency's minor units (e.g. cents); check the file's \"money\" block for how many decimals each one uses."
     },
+    "help": {
+      "title": "Help",
+      "subtitle": "Watch the tour again or bring back the first steps whenever you like.",
+      "tourButton": "Take the tour",
+      "firstStepsButton": "Show first steps"
+    },
     "language": {
       "subtitle": "Applies to this browser. Amounts and dates follow the language you pick.",
       "title": "Language"

@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createTestQueryClient, renderWithProviders } from '../../../../test/render-with-providers'
-import { FirstStepsCard } from '../first-steps-card'
+import { FirstStepsCard, showFirstStepsAgain } from '../first-steps-card'
 import { queryKeys } from '../../../../lib/api/query-keys'
 import type { Account } from '../../../accounts/services/accounts'
 import type { ObligationInstance } from '../../../obligations/services/obligations'
@@ -239,6 +239,44 @@ describe('FirstStepsCard', () => {
     expect(window.localStorage.getItem('plinto.dashboard.firstSteps.hidden.tenant-1')).toBe(
       '1',
     )
+  })
+
+  it('clears the dismissal for the given tenant', () => {
+    window.localStorage.setItem('plinto.dashboard.firstSteps.hidden.tenant-1', '1')
+
+    showFirstStepsAgain('tenant-1')
+
+    expect(window.localStorage.getItem('plinto.dashboard.firstSteps.hidden.tenant-1')).toBeNull()
+  })
+
+  it('re-shows an already-mounted card that had been hidden, for the same tenant', async () => {
+    mockAllResolved()
+    const user = userEvent.setup()
+
+    renderWithProviders(<FirstStepsCard />)
+
+    await screen.findByText('First steps')
+    await user.click(screen.getByRole('button', { name: 'Hide' }))
+    expect(screen.queryByText('First steps')).not.toBeInTheDocument()
+
+    showFirstStepsAgain('tenant-1')
+
+    expect(await screen.findByText('First steps')).toBeInTheDocument()
+  })
+
+  it('does not re-show a hidden card mounted for a different tenant', async () => {
+    mockAllResolved()
+    const user = userEvent.setup()
+
+    renderWithProviders(<FirstStepsCard />)
+
+    await screen.findByText('First steps')
+    await user.click(screen.getByRole('button', { name: 'Hide' }))
+    expect(screen.queryByText('First steps')).not.toBeInTheDocument()
+
+    showFirstStepsAgain('some-other-tenant')
+
+    expect(screen.queryByText('First steps')).not.toBeInTheDocument()
   })
 
   it('stays hidden on a fresh render once the tenant already dismissed it', () => {

@@ -591,6 +591,12 @@
       "pending": "Preparando descarga…",
       "minorUnitsNote": "Los montos del JSON están en unidades mínimas de cada moneda (por ejemplo, centavos); revisa el bloque \"money\" del archivo para saber cuántos decimales usa cada una."
     },
+    "help": {
+      "title": "Ayuda",
+      "subtitle": "Vuelve a ver el recorrido o los primeros pasos cuando quieras.",
+      "tourButton": "Ver el recorrido",
+      "firstStepsButton": "Mostrar primeros pasos"
+    },
     "language": {
       "subtitle": "Aplica a este navegador. Los montos y las fechas siguen el idioma que elijas.",
       "title": "Idioma"
