@@ -79,10 +79,40 @@ export const CreateObligationSchema = z
     validationIssue(VALIDATION_CODE.DUE_DATE_INSIDE_PERIOD, ['dueDate']),
   )
 
-/** Links an existing transaction to an obligation as (part of) its payment. */
-export const ReconcileObligationSchema = z.object({
-  transactionId: z.string().trim().min(1),
-})
+/**
+ * A movement created on the spot to settle an obligation.
+ *
+ * Mirrors `CreateTransactionSchema` minus two fields it must not be given:
+ * `type`, because only an expense can settle money owed, and `currency`,
+ * because a transaction takes its account's. Leaving them out is what makes
+ * "record the payment" a single decision rather than a form the reader can get
+ * wrong.
+ */
+export const ObligationPaymentTransactionSchema = z
+  .object({
+    accountId: z.string().trim().min(1),
+    amountMinor: z.number().int().positive(),
+    description: z.string().trim().min(1).optional(),
+    occurredAt: z.string().datetime().optional(),
+    categoryId: z.string().trim().min(1).nullish(),
+  })
+  // Strict, so a caller that sends `type: 'income'` or a `currency` is told it
+  // was ignored rather than left believing it was honoured.
+  .strict()
+
+/**
+ * Settles an obligation, either with a movement already in the ledger or with
+ * one recorded in the same request.
+ *
+ * Both, or neither, is rejected rather than resolved by precedence: a caller
+ * that sends both has not decided which movement paid the bill, and guessing
+ * would link the wrong one silently. The branches are `.strict()` for exactly
+ * that reason.
+ */
+export const ReconcileObligationSchema = z.union([
+  z.object({ transactionId: z.string().trim().min(1) }).strict(),
+  z.object({ transaction: ObligationPaymentTransactionSchema }).strict(),
+])
 
 /**
  * Materializes the instances of one or more periods. `horizonMonths` covers
@@ -125,6 +155,9 @@ export type ObligationPaymentDto = z.infer<typeof ObligationPaymentSchema>
 export type ObligationInstanceDto = z.infer<typeof ObligationInstanceSchema>
 export type CreateObligationDto = z.infer<typeof CreateObligationSchema>
 export type ReconcileObligationDto = z.infer<typeof ReconcileObligationSchema>
+export type ObligationPaymentTransactionDto = z.infer<
+  typeof ObligationPaymentTransactionSchema
+>
 export type GenerateObligationsDto = z.infer<typeof GenerateObligationsSchema>
 export type GenerateObligationsResultDto = z.infer<typeof GenerateObligationsResultSchema>
 export type ObligationCurrencyTotalDto = z.infer<typeof ObligationCurrencyTotalSchema>

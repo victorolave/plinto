@@ -167,4 +167,48 @@ describe('ObligationsController', () => {
       expect.objectContaining({ actorUserId: null, correlationId: 'unknown' }),
     )
   })
+
+  /**
+   * One endpoint, two ways to answer "which movement paid this?": one already
+   * in the ledger, or one recorded now. The contract makes them exclusive, so
+   * the controller only has to route.
+   */
+  it('records the movement and settles the obligation when given a new one', async () => {
+    const obligationService = {
+      reconcileWithNewTransaction: vi.fn().mockResolvedValue({ id: 'o-1' }),
+      reconcile: vi.fn(),
+    }
+    const controller = new ObligationsController(obligationService as any)
+    const request = { tenantId: 'tenant-1', user: { id: 'user-1' }, requestId: 'req-1' } as any
+
+    const result = await controller.reconcile(request, 'o-1', {
+      transaction: { accountId: 'account-1', amountMinor: 230000 },
+    })
+
+    expect(obligationService.reconcileWithNewTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        obligationId: 'o-1',
+        transaction: { accountId: 'account-1', amountMinor: 230000 },
+      }),
+    )
+    expect(obligationService.reconcile).not.toHaveBeenCalled()
+    expect(result).toEqual({ data: { obligation: { id: 'o-1' } } })
+  })
+
+  it('links the existing movement when given an id, without recording one', async () => {
+    const obligationService = {
+      reconcile: vi.fn().mockResolvedValue({ id: 'o-1' }),
+      reconcileWithNewTransaction: vi.fn(),
+    }
+    const controller = new ObligationsController(obligationService as any)
+    const request = { tenantId: 'tenant-1', user: { id: 'user-1' }, requestId: 'req-1' } as any
+
+    await controller.reconcile(request, 'o-1', { transactionId: 'tx-1' })
+
+    expect(obligationService.reconcileWithNewTransaction).not.toHaveBeenCalled()
+    expect(obligationService.reconcile).toHaveBeenCalledWith(
+      expect.objectContaining({ transactionId: 'tx-1' }),
+    )
+  })
+
 })

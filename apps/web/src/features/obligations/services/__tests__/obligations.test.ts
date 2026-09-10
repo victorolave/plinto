@@ -63,14 +63,34 @@ describe('obligations API service', () => {
     })
   })
 
-  it('reconciles an obligation with a transaction', async () => {
+  it('settles an obligation with a movement already in the ledger', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce({ data: { obligation: { id: 'o-1' } } })
 
-    await reconcileObligation('o-1', 'tx-1')
+    await reconcileObligation('o-1', { transactionId: 'tx-1' })
 
     expect(apiFetch).toHaveBeenCalledWith('/obligations/o-1/payments', {
       method: 'POST',
       body: JSON.stringify({ transactionId: 'tx-1' }),
+    })
+  })
+
+  /**
+   * The same endpoint, the other branch of its contract: paying the bill and
+   * writing it down travel together rather than as two requests that can half
+   * succeed.
+   */
+  it('settles an obligation with a movement recorded in the same request', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({ data: { obligation: { id: 'o-1' } } })
+
+    await reconcileObligation('o-1', {
+      transaction: { accountId: 'account-1', amountMinor: 230000 },
+    })
+
+    expect(apiFetch).toHaveBeenCalledWith('/obligations/o-1/payments', {
+      method: 'POST',
+      body: JSON.stringify({
+        transaction: { accountId: 'account-1', amountMinor: 230000 },
+      }),
     })
   })
 

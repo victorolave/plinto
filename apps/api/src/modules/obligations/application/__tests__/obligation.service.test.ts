@@ -65,6 +65,8 @@ describe('ObligationService', () => {
   }
   let transactionRepository: { findByIdForTenant: ReturnType<typeof vi.fn> }
   let auditService: { record: ReturnType<typeof vi.fn> }
+  let accountRepository: { findByIdForTenant: ReturnType<typeof vi.fn> }
+  let transactionService: { createTransaction: ReturnType<typeof vi.fn> }
   let service: ObligationService
 
   beforeEach(() => {
@@ -81,9 +83,19 @@ describe('ObligationService', () => {
       findByIdForTenant: vi.fn().mockResolvedValue(makeTransaction()),
     }
     auditService = { record: vi.fn().mockResolvedValue(undefined) }
+    accountRepository = {
+      findByIdForTenant: vi
+        .fn()
+        .mockResolvedValue({ id: 'account-1', tenantId: 'tenant-1', currency: 'COP' }),
+    }
+    transactionService = {
+      createTransaction: vi.fn().mockResolvedValue(makeTransaction()),
+    }
     service = new ObligationService(
       obligationRepository as any,
       transactionRepository as any,
+      accountRepository as any,
+      transactionService as any,
       auditService as any,
     )
   })
@@ -439,4 +451,107 @@ describe('ObligationService', () => {
       )
     })
   })
+
+  /**
+   * Linking required the movement to exist first, so paying a bill meant
+   * leaving the board, recording an expense, coming back and finding it. The
+   * two acts are one act; this path lets the drawer do both.
+   */
+  describe('reconcileWithNewTransaction', () => {
+    const params = {
+      tenantId: 'tenant-1',
+      actorUserId: 'user-1',
+      correlationId: 'req-1',
+      obligationId: 'obligation-1',
+      transaction: { accountId: 'account-1', amountMinor: 230000 },
+    }
+
+    beforeEach(() => {
+      obligationRepository.findInstanceByIdForTenant.mockResolvedValue(makeInstance())
+    })
+
+    it('records the movement as an expense, never as income', async () => {
+      await service.reconcileWithNewTransaction(params)
+
+      expect(transactionService.createTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'expense', accountId: 'account-1', amountMinor: 230000 }),
+      )
+    })
+
+    it('settles the obligation with the movement it just recorded', async () => {
+      await service.reconcileWithNewTransaction(params)
+
+      expect(obligationRepository.createPayment).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        obligationInstanceId: 'obligation-1',
+        transactionId: 'tx-1',
+      })
+    })
+
+    it('refuses an obligation that does not exist, before recording anything', async () => {
+      obligationRepository.findInstanceByIdForTenant.mockResolvedValue(null)
+
+      await expect(service.reconcileWithNewTransaction(params)).rejects.toMatchObject({
+        status: 404,
+      })
+      expect(transactionService.createTransaction).not.toHaveBeenCalled()
+    })
+
+    it('refuses an account that does not exist, before recording anything', async () => {
+      accountRepository.findByIdForTenant.mockResolvedValue(null)
+
+      await expect(service.reconcileWithNewTransaction(params)).rejects.toMatchObject({
+        status: 404,
+      })
+      expect(transactionService.createTransaction).not.toHaveBeenCalled()
+    })
+
+    /**
+     * Checked against the *account* rather than the created movement, so the
+     * mismatch is refused before a write rather than compensated after one.
+     * A movement takes its account's currency, so the two are the same answer.
+     */
+    it('refuses an account in another currency without recording anything', async () => {
+      accountRepository.findByIdForTenant.mockResolvedValue({
+        id: 'account-2',
+        tenantId: 'tenant-1',
+        currency: 'USD',
+      })
+
+      await expect(service.reconcileWithNewTransaction(params)).rejects.toMatchObject({
+        status: 409,
+      })
+      expect(transactionService.createTransaction).not.toHaveBeenCalled()
+      expect(obligationRepository.createPayment).not.toHaveBeenCalled()
+    })
+
+    it('carries the optional details through to the movement', async () => {
+      await service.reconcileWithNewTransaction({
+        ...params,
+        transaction: {
+          ...params.transaction,
+          description: 'Arriendo',
+          occurredAt: '2026-07-05T00:00:00.000Z',
+          categoryId: 'category-1',
+        },
+      })
+
+      expect(transactionService.createTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: 'Arriendo',
+          occurredAt: '2026-07-05T00:00:00.000Z',
+          categoryId: 'category-1',
+        }),
+      )
+    })
+
+    it('records the reconciliation in the audit trail', async () => {
+      await service.reconcileWithNewTransaction(params)
+
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'obligation.reconciled' }),
+      )
+    })
+  })
+
 })

@@ -86,11 +86,20 @@ export class ObligationsController {
     @Body(new ZodValidationPipe(ReconcileObligationSchema))
     body: ReconcileObligationBody,
   ) {
-    const obligation = await this.obligationService.reconcile({
-      ...this.contextOf(req),
-      obligationId: id,
-      transactionId: body.transactionId,
-    })
+    // The contract makes the two branches exclusive, so this is a routing
+    // decision, not a precedence one: a body carrying both never reaches here.
+    const obligation =
+      'transaction' in body
+        ? await this.obligationService.reconcileWithNewTransaction({
+            ...this.contextOf(req),
+            obligationId: id,
+            transaction: body.transaction,
+          })
+        : await this.obligationService.reconcile({
+            ...this.contextOf(req),
+            obligationId: id,
+            transactionId: body.transactionId,
+          })
 
     return { data: { obligation } }
   }

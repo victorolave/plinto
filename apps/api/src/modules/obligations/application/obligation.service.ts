@@ -1,6 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { AuditService } from '../../audit/application/audit.service'
 import { TransactionRepository } from '../../transactions/domain/transaction.repository'
+import { TransactionService } from '../../transactions/application/transaction.service'
+import { AccountRepository } from '../../accounts/domain/account.repository'
 import {
   ObligationPeriodSummary,
   ResolvedObligationInstance,
@@ -28,6 +30,11 @@ const TRANSACTION_NOT_AN_EXPENSE = {
   message: 'Only an expense can settle an obligation',
 } as const
 
+const ACCOUNT_NOT_FOUND = {
+  code: 'ACCOUNT_NOT_FOUND',
+  message: 'Account not found for the active tenant',
+}
+
 const CURRENCY_MISMATCH = {
   code: 'OBLIGATION_CURRENCY_MISMATCH',
   message: 'Transaction currency does not match the obligation currency',
@@ -49,6 +56,8 @@ export class ObligationService {
   constructor(
     private readonly obligationRepository: ObligationRepository,
     private readonly transactionRepository: TransactionRepository,
+    private readonly accountRepository: AccountRepository,
+    private readonly transactionService: TransactionService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -189,6 +198,97 @@ export class ObligationService {
       currency: payment.currency,
       expectedAmountMinor: instance.expectedAmountMinor,
       period: instance.period,
+    })
+
+    return this.reload(instance.id, params.tenantId, params.now ?? new Date())
+  }
+
+  /**
+   * Settles an obligation with a movement recorded in the same request.
+   *
+   * `reconcile` above needs the movement to exist already, which made paying a
+   * bill three steps: leave the board, record the expense, come back and find
+   * it in a picker. Paying and writing it down are one act, so this records
+   * both.
+   *
+   * The type is forced rather than accepted — only an expense can settle money
+   * owed — and the currency comes from the account, so neither can be got
+   * wrong by the caller.
+   */
+  async reconcileWithNewTransaction(
+    params: MutationContext & {
+      obligationId: string
+      transaction: {
+        accountId: string
+        amountMinor: number
+        description?: string
+        occurredAt?: string
+        categoryId?: string | null
+      }
+      now?: Date
+    },
+  ): Promise<ResolvedObligationInstance> {
+    const instance = await this.obligationRepository.findInstanceByIdForTenant(
+      params.obligationId,
+      params.tenantId,
+    )
+
+    if (!instance) {
+      throw new NotFoundException(OBLIGATION_NOT_FOUND)
+    }
+
+    // Read the account before writing anything. A movement takes its account's
+    // currency, so checking the account answers the same question as checking
+    // the movement would — but in time to refuse rather than to compensate for
+    // an expense that is already in the ledger.
+    const account = await this.accountRepository.findByIdForTenant(
+      params.transaction.accountId,
+      params.tenantId,
+    )
+
+    if (!account) {
+      throw new NotFoundException(ACCOUNT_NOT_FOUND)
+    }
+
+    if (account.currency !== instance.currency) {
+      throw new ConflictException(CURRENCY_MISMATCH)
+    }
+
+    // Through the service rather than the repository: it owns the account and
+    // category checks and writes the movement's own audit entry, none of which
+    // should have a second implementation here.
+    const transaction = await this.transactionService.createTransaction({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      requestId: params.correlationId,
+      accountId: params.transaction.accountId,
+      type: 'expense',
+      amountMinor: params.transaction.amountMinor,
+      description: params.transaction.description,
+      occurredAt: params.transaction.occurredAt,
+      categoryId: params.transaction.categoryId,
+    })
+
+    // Cannot come back null the way `reconcile` can: the unique index it
+    // guards against is on a transaction that already settles something, and
+    // this one was created a line ago.
+    const payment = await this.obligationRepository.createPayment({
+      tenantId: params.tenantId,
+      obligationInstanceId: instance.id,
+      transactionId: transaction.id,
+    })
+
+    if (payment === null) {
+      throw new ConflictException(TRANSACTION_ALREADY_RECONCILED)
+    }
+
+    await this.audit(params, 'obligation.reconciled', instance.id, {
+      transactionId: transaction.id,
+      amountMinor: payment.amountMinor,
+      currency: payment.currency,
+      expectedAmountMinor: instance.expectedAmountMinor,
+      period: instance.period,
+      createdWithPayment: true,
     })
 
     return this.reload(instance.id, params.tenantId, params.now ?? new Date())
