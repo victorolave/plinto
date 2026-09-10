@@ -3,10 +3,11 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
+import { SUPPORTED_CURRENCIES } from '@plinto/shared'
 import { createTenant, updateProfile } from '../services/onboarding'
 import { useErrorMessage } from '../../../lib/api/use-error-message'
 import { Button } from '../../../components/ui/button'
-import { Field, Input } from '../../../components/ui/field'
+import { Field, Input, Select } from '../../../components/ui/field'
 
 export function OnboardingForm() {
   const t = useTranslations('onboarding.form')
@@ -60,12 +61,17 @@ export function OnboardingForm() {
         hint={t('baseCurrencyHint')}
         htmlFor="onboarding-currency"
       >
-        <Input
+        <Select
           id="onboarding-currency"
           value={baseCurrency}
           onChange={(event) => setBaseCurrency(event.target.value)}
-          maxLength={3}
-        />
+        >
+          {SUPPORTED_CURRENCIES.map((code) => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </Select>
       </Field>
       {error ? <p className="error-text">{error}</p> : null}
       <Button type="submit" disabled={loading} block>

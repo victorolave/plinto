@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CurrencyCodeSchema } from '../money/supported-currencies'
 import { VALIDATION_CODE, validationIssue } from './validation-code'
 
 export const AccountTypeSchema = z.enum(['cash', 'bank', 'credit', 'savings', 'debt'])
@@ -34,7 +35,7 @@ export const AccountSchema = z.object({
 export const CreateAccountSchema = z.object({
   name: z.string().trim().min(1),
   type: AccountTypeSchema,
-  currency: z.string().trim().regex(/^[A-Z]{3}$/),
+  currency: CurrencyCodeSchema,
 })
 
 // Currency is intentionally omitted: transactions carry their own currency and
