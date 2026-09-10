@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service'
 import { Transaction, TransactionType, Transfer } from '../domain/transaction.entity'
-import { TransactionRepository } from '../domain/transaction.repository'
+import { TransactionFilters, TransactionRepository } from '../domain/transaction.repository'
 
 /**
  * Prisma adapter for the TransactionRepository port. This is the only unit
@@ -129,50 +130,94 @@ export class PrismaTransactionRepository extends TransactionRepository {
     })
   }
 
-  async listByTenantId(
+  /**
+   * The one place the ledger's filters become SQL.
+   *
+   * It existed as four near-identical methods before, each repeating the
+   * archived-account exclusion; a filter added to one and forgotten in another
+   * would have reported a total that did not match its own page. Building the
+   * clause once makes that drift impossible rather than merely unlikely.
+   */
+  private whereFor(
     tenantId: string,
-    pagination?: { skip: number; take: number },
-  ): Promise<Transaction[]> {
-    return this.prisma.transaction.findMany({
+    filters: TransactionFilters,
+  ): Prisma.TransactionWhereInput {
+    const where: Prisma.TransactionWhereInput = {
+      tenantId,
       // Exclude transactions whose account has been archived: an archived
       // account is hidden everywhere, so its movements must not leak into the
-      // tenant-wide list (or the balance computation that shares this query).
-      // Restoring the account re-includes them, since the filter is dynamic.
-      where: { tenantId, account: { archivedAt: null } },
-      orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
-      ...(pagination ? { skip: pagination.skip, take: pagination.take } : {}),
-    })
+      // tenant-wide list. Restoring the account re-includes them, since the
+      // filter is dynamic.
+      account: { archivedAt: null },
+    }
+
+    if (filters.accountId) where.accountId = filters.accountId
+    if (filters.type) where.type = filters.type
+
+    // Whole UTC days, inclusive at both ends. The browser filter compared the
+    // UTC date slice of `occurredAt`, and anchoring these bounds to the
+    // server's zone instead would silently shift the range by a day.
+    if (filters.dateFrom || filters.dateTo) {
+      where.occurredAt = {
+        ...(filters.dateFrom ? { gte: new Date(`${filters.dateFrom}T00:00:00.000Z`) } : {}),
+        ...(filters.dateTo ? { lte: new Date(`${filters.dateTo}T23:59:59.999Z`) } : {}),
+      }
+    }
+
+    // Description *and* account name, because that is what the browser filter
+    // searched: narrowing it here would return fewer rows for the same term
+    // than the unpaginated list used to.
+    if (filters.search) {
+      where.OR = [
+        { description: { contains: filters.search, mode: 'insensitive' } },
+        { account: { name: { contains: filters.search, mode: 'insensitive' } } },
+      ]
+    }
+
+    return where
   }
 
-  async listByAccountId(
+  async list(
     tenantId: string,
-    accountId: string,
+    filters: TransactionFilters,
     pagination?: { skip: number; take: number },
   ): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
-      // Same archived-account exclusion as listByTenantId: an archived
-      // account is hidden everywhere, including when filtering to just its
-      // own transactions.
-      where: { tenantId, accountId, account: { archivedAt: null } },
+      where: this.whereFor(tenantId, filters),
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
       ...(pagination ? { skip: pagination.skip, take: pagination.take } : {}),
     })
   }
 
-  async countByTenantId(tenantId: string): Promise<number> {
-    // Same archived-account exclusion as listByTenantId so the reported total
-    // matches what the list actually returns.
-    return this.prisma.transaction.count({
-      where: { tenantId, account: { archivedAt: null } },
-    })
-  }
+  /**
+   * How many income and expense rows the filters match, ignoring any type
+   * filter among them.
+   *
+   * One aggregate answers two questions: it labels the income/expense tabs,
+   * and the page total is a sum of its parts, so no separate count query is
+   * needed. The type filter is dropped on purpose — the tabs are what sets it,
+   * and counting through it would report zero for every tab but the open one.
+   */
+  async countByType(
+    tenantId: string,
+    filters: TransactionFilters,
+  ): Promise<{ income: number; expense: number }> {
+    const withoutType: TransactionFilters = { ...filters }
+    delete withoutType.type
 
-  async countByAccountId(tenantId: string, accountId: string): Promise<number> {
-    // Same archived-account exclusion as countByTenantId so the reported
-    // total matches what listByAccountId actually returns.
-    return this.prisma.transaction.count({
-      where: { tenantId, accountId, account: { archivedAt: null } },
+    const rows = await this.prisma.transaction.groupBy({
+      by: ['type'],
+      where: this.whereFor(tenantId, withoutType),
+      _count: { _all: true },
     })
+
+    // Absent groups are zero, not missing: a household with no income at all
+    // still has an income tab to label.
+    const counts = { income: 0, expense: 0 }
+    for (const row of rows) {
+      counts[row.type as TransactionType] = row._count._all
+    }
+    return counts
   }
 
   async sumByAccount(

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { PaginationQuerySchema } from '../http/pagination.schema'
 import { AccountTypeSchema } from './account.schema'
 import { VALIDATION_CODE, validationIssue } from './validation-code'
 
@@ -22,6 +23,57 @@ export const TransactionSchema = z.object({
   recurringPeriod: z.string().regex(/^\d{4}-\d{2}$/).nullish(),
   idempotencyKey: z.string().nullish(),
 })
+
+/**
+ * A query-string filter that a cleared form control sends as `''`.
+ *
+ * `?search=` and no `search` key at all mean the same thing to a reader, so
+ * they have to mean the same thing to the contract. Trimming here rather than
+ * at each call site also keeps `"mercado"` and `" mercado "` from being two
+ * different cache keys upstream.
+ */
+function optionalFilter<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((value) => {
+    if (typeof value !== 'string') return value
+    const trimmed = value.trim()
+    return trimmed === '' ? undefined : trimmed
+  }, schema.optional())
+}
+
+/**
+ * A calendar date as `<input type="date">` emits it.
+ *
+ * The shape check alone is not enough: `2026-02-30` matches the pattern and
+ * `Date` quietly rolls it forward to 2026-03-02, so a filter for a day that
+ * does not exist would return a different day's rows. Round-tripping through
+ * `toISOString` is what rejects it instead of guessing.
+ */
+const CalendarDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00.000Z`)
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+  }, 'not a real calendar date')
+
+/**
+ * Everything the ledger can be narrowed by, in one place.
+ *
+ * These ran in the browser until the list was paginated. Filtering a single
+ * fetched page and calling it a search is wrong the moment there is a second
+ * page, so the narrowing moved to where the rows actually live. Dates are
+ * compared against the UTC date slice of `occurredAt`, matching how a row
+ * renders and how the browser filter used to read it.
+ */
+export const TransactionListQuerySchema = PaginationQuerySchema.extend({
+  type: optionalFilter(TransactionTypeSchema),
+  accountId: optionalFilter(z.string()),
+  search: optionalFilter(z.string()),
+  dateFrom: optionalFilter(CalendarDateSchema),
+  dateTo: optionalFilter(CalendarDateSchema),
+})
+
+export type TransactionListQuery = z.infer<typeof TransactionListQuerySchema>
 
 export const CreateTransactionSchema = z.object({
   accountId: z.string().trim().min(1),

@@ -430,11 +430,18 @@ registry.registerPath({
   method: 'get',
   path: '/api/transactions',
   tags: ['Transactions'],
-  summary: 'List transactions for the active tenant (paginated)',
+  summary: 'List transactions for the active tenant (paginated and filtered)',
   security: sessionCookieAuth,
   request: {
+    // Declared as strings because that is what a query string carries; the
+    // endpoint coerces and validates them with TransactionListQuerySchema. An
+    // empty value means "no filter", not "match empty".
     query: z.object({
       accountId: z.string().optional(),
+      type: z.enum(['income', 'expense']).optional(),
+      search: z.string().optional(),
+      dateFrom: z.string().optional().describe('Inclusive calendar day, YYYY-MM-DD'),
+      dateTo: z.string().optional().describe('Inclusive calendar day, YYYY-MM-DD'),
       page: z.string().optional(),
       pageSize: z.string().optional(),
     }),
@@ -452,6 +459,12 @@ registry.registerPath({
                 pageSize: z.number().int(),
                 total: z.number().int(),
                 totalPages: z.number().int(),
+              }),
+              // Whole filtered set, not this page — they label the tabs that
+              // set the `type` filter.
+              counts: z.object({
+                income: z.number().int(),
+                expense: z.number().int(),
               }),
             }),
           }),

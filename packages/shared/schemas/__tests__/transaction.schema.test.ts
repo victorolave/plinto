@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  TransactionListQuerySchema,
   TransactionSchema,
   TransactionTypeSchema,
   CreateTransactionSchema,
@@ -363,5 +364,89 @@ describe('CreateTransferSchema', () => {
       fxRate: '123456789012.12345678',
     })
     expect(result.success).toBe(true)
+  })
+})
+
+/**
+ * These filters used to run in the browser over whatever page had been
+ * fetched. Once the ledger is paginated that is a silent lie: a search would
+ * only ever look at the rows already on screen. Moving them into the query
+ * contract is what lets filtering and pagination compose instead of fight.
+ *
+ * Query strings carry everything as text, and a cleared form field arrives as
+ * `''` rather than as an absent key, so "empty means unset" is part of the
+ * contract rather than something each caller remembers to do.
+ */
+describe('TransactionListQuerySchema', () => {
+  it('defaults to the first page', () => {
+    const result = TransactionListQuerySchema.parse({})
+
+    expect(result.page).toBe(1)
+    expect(result.pageSize).toBe(50)
+  })
+
+  it('coerces the numbers a query string delivers as text', () => {
+    const result = TransactionListQuerySchema.parse({ page: '3', pageSize: '25' })
+
+    expect(result.page).toBe(3)
+    expect(result.pageSize).toBe(25)
+  })
+
+  it('refuses a page size that would let one request pull the whole ledger', () => {
+    expect(TransactionListQuerySchema.safeParse({ pageSize: '5000' }).success).toBe(false)
+  })
+
+  it.each(['income', 'expense'])('accepts the type %s', (type) => {
+    expect(TransactionListQuerySchema.parse({ type }).type).toBe(type)
+  })
+
+  it('rejects a type outside the ledger vocabulary', () => {
+    expect(TransactionListQuerySchema.safeParse({ type: 'transfer' }).success).toBe(false)
+  })
+
+  it.each(['type', 'accountId', 'search', 'dateFrom', 'dateTo'])(
+    'reads an empty %s as no filter at all',
+    (field) => {
+      const result = TransactionListQuerySchema.parse({ [field]: '' })
+
+      expect(result[field as 'search']).toBeUndefined()
+    },
+  )
+
+  it('trims the search term, so a stray space is not a different query', () => {
+    expect(TransactionListQuerySchema.parse({ search: '  mercado  ' }).search).toBe('mercado')
+  })
+
+  it('reads a whitespace-only search as no filter', () => {
+    expect(TransactionListQuerySchema.parse({ search: '   ' }).search).toBeUndefined()
+  })
+
+  it.each(['2026-13-01', '15-09-2026', '2026-09', 'yesterday'])(
+    'rejects the malformed date %s',
+    (dateFrom) => {
+      expect(TransactionListQuerySchema.safeParse({ dateFrom }).success).toBe(false)
+    },
+  )
+
+  it('accepts a full query', () => {
+    const result = TransactionListQuerySchema.parse({
+      page: '2',
+      pageSize: '50',
+      type: 'expense',
+      accountId: 'account-1',
+      search: 'mercado',
+      dateFrom: '2026-01-01',
+      dateTo: '2026-12-31',
+    })
+
+    expect(result).toEqual({
+      page: 2,
+      pageSize: 50,
+      type: 'expense',
+      accountId: 'account-1',
+      search: 'mercado',
+      dateFrom: '2026-01-01',
+      dateTo: '2026-12-31',
+    })
   })
 })

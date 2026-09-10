@@ -43,42 +43,46 @@ describe('TransactionsController', () => {
 
   it('lists transactions using the resolved tenant context, defaulting page and pageSize', async () => {
     const transactionService = {
-      listTransactions: vi.fn().mockResolvedValue({ transactions: [{ id: 'tx-1' }], total: 1 }),
+      listTransactions: vi
+        .fn()
+        .mockResolvedValue({ transactions: [{ id: 'tx-1' }], total: 1, counts: { income: 1, expense: 0 } }),
     }
     const controller = new TransactionsController(transactionService as any)
 
-    const result = await controller.listTransactions(
-      { tenantId: 'tenant-1' } as any,
-      undefined,
-    )
+    const result = await controller.listTransactions({ tenantId: 'tenant-1' } as any, {})
 
     expect(transactionService.listTransactions).toHaveBeenCalledWith('tenant-1', {
-      accountId: undefined,
       page: 1,
       pageSize: 50,
     })
     expect(result).toEqual({
       data: { transactions: [{ id: 'tx-1' }] },
-      meta: { pagination: { page: 1, pageSize: 50, total: 1, totalPages: 1 } },
+      meta: {
+        pagination: { page: 1, pageSize: 50, total: 1, totalPages: 1 },
+        counts: { income: 1, expense: 0 },
+      },
     })
   })
 
   it('computes totalPages from total and pageSize', async () => {
     const transactionService = {
-      listTransactions: vi.fn().mockResolvedValue({ transactions: [], total: 125 }),
+      listTransactions: vi
+        .fn()
+        .mockResolvedValue({ transactions: [], total: 125, counts: { income: 25, expense: 100 } }),
     }
     const controller = new TransactionsController(transactionService as any)
 
-    const result = await controller.listTransactions(
-      { tenantId: 'tenant-1' } as any,
-      undefined,
-      '1',
-      '50',
-    )
+    const result = await controller.listTransactions({ tenantId: 'tenant-1' } as any, {
+      page: '1',
+      pageSize: '50',
+    })
 
     expect(result).toEqual({
       data: { transactions: [] },
-      meta: { pagination: { page: 1, pageSize: 50, total: 125, totalPages: 3 } },
+      meta: {
+        pagination: { page: 1, pageSize: 50, total: 125, totalPages: 3 },
+        counts: { income: 25, expense: 100 },
+      },
     })
   })
 
@@ -89,7 +93,10 @@ describe('TransactionsController', () => {
     const controller = new TransactionsController(transactionService as any)
 
     await expect(
-      controller.listTransactions({ tenantId: 'tenant-1' } as any, undefined, '1', '500'),
+      controller.listTransactions({ tenantId: 'tenant-1' } as any, {
+        page: '1',
+        pageSize: '500',
+      }),
     ).rejects.toMatchObject({
       response: expect.objectContaining({ code: 'VALIDATION_ERROR' }),
     })
@@ -97,24 +104,91 @@ describe('TransactionsController', () => {
     expect(transactionService.listTransactions).not.toHaveBeenCalled()
   })
 
-  it('passes accountId through to the service alongside pagination', async () => {
+  /**
+   * The filters moved out of the browser when the ledger was paginated, so the
+   * endpoint is now the only place they are applied. Anything it drops here is
+   * a filter the reader set and the results silently ignore.
+   */
+  it('passes every filter through to the service alongside pagination', async () => {
     const transactionService = {
-      listTransactions: vi.fn().mockResolvedValue({ transactions: [], total: 0 }),
+      listTransactions: vi
+        .fn()
+        .mockResolvedValue({ transactions: [], total: 0, counts: { income: 0, expense: 0 } }),
     }
     const controller = new TransactionsController(transactionService as any)
 
-    await controller.listTransactions(
-      { tenantId: 'tenant-1' } as any,
-      'account-1',
-      '2',
-      '10',
-    )
+    await controller.listTransactions({ tenantId: 'tenant-1' } as any, {
+      accountId: 'account-1',
+      type: 'expense',
+      search: 'mercado',
+      dateFrom: '2026-01-01',
+      dateTo: '2026-01-31',
+      page: '2',
+      pageSize: '10',
+    })
 
     expect(transactionService.listTransactions).toHaveBeenCalledWith('tenant-1', {
       accountId: 'account-1',
+      type: 'expense',
+      search: 'mercado',
+      dateFrom: '2026-01-01',
+      dateTo: '2026-01-31',
       page: 2,
       pageSize: 10,
     })
+  })
+
+  /**
+   * The tabs read these, and the tabs are what sets the type filter. Reporting
+   * them per page would relabel the tabs every time the reader turned one.
+   */
+  it('reports type counts for the whole filtered set, not for the page', async () => {
+    const transactionService = {
+      listTransactions: vi
+        .fn()
+        .mockResolvedValue({ transactions: [], total: 100, counts: { income: 30, expense: 70 } }),
+    }
+    const controller = new TransactionsController(transactionService as any)
+
+    const result = await controller.listTransactions({ tenantId: 'tenant-1' } as any, {
+      pageSize: '10',
+    })
+
+    expect(result.meta.counts).toEqual({ income: 30, expense: 70 })
+    expect(result.meta.pagination.totalPages).toBe(10)
+  })
+
+  it('reads a cleared filter as no filter rather than as an empty match', async () => {
+    const transactionService = {
+      listTransactions: vi
+        .fn()
+        .mockResolvedValue({ transactions: [], total: 0, counts: { income: 0, expense: 0 } }),
+    }
+    const controller = new TransactionsController(transactionService as any)
+
+    await controller.listTransactions({ tenantId: 'tenant-1' } as any, {
+      accountId: '',
+      search: '  ',
+      type: '',
+    })
+
+    expect(transactionService.listTransactions).toHaveBeenCalledWith('tenant-1', {
+      page: 1,
+      pageSize: 50,
+    })
+  })
+
+  it('rejects a date that is not a real calendar day', async () => {
+    const transactionService = { listTransactions: vi.fn() }
+    const controller = new TransactionsController(transactionService as any)
+
+    await expect(
+      controller.listTransactions({ tenantId: 'tenant-1' } as any, { dateFrom: '2026-02-30' }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'VALIDATION_ERROR' }),
+    })
+
+    expect(transactionService.listTransactions).not.toHaveBeenCalled()
   })
 
   it('lists balances using the resolved tenant context', async () => {
