@@ -37,6 +37,12 @@ jobs:
         id: version
         run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      # QEMU so one amd64 runner can produce arm64 layers too. Self-hosting
+      # happens on Raspberry Pis and ARM VPSs at least as often as on x86
+      # boxes, and an amd64-only image leaves those people emulating or
+      # stuck.
+      - uses: docker/setup-qemu-action@v3
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Sign in to ${{ env.REGISTRY }}
@@ -54,6 +60,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:${{ steps.version.outputs.value }}
