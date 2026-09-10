@@ -86,14 +86,34 @@ export async function createObligation(input: {
   })
 }
 
-/** Declares that an existing transaction settles (part of) the obligation. */
+/**
+ * A movement to record and settle the obligation with, in one request.
+ *
+ * No `type` and no `currency`: only an expense can settle money owed, and a
+ * movement takes its account's currency. The API decides both.
+ */
+export interface NewObligationPayment {
+  accountId: string
+  amountMinor: number
+  description?: string
+  occurredAt?: string
+  categoryId?: string | null
+}
+
+/**
+ * Declares which movement settles (part of) the obligation.
+ *
+ * Either one already in the ledger, or one recorded in the same request — the
+ * API rejects a body carrying both, so this takes one argument, not two
+ * optional ones.
+ */
 export async function reconcileObligation(
   obligationId: string,
-  transactionId: string,
+  payment: { transactionId: string } | { transaction: NewObligationPayment },
 ): ObligationResponse {
   return apiFetch<{ data: { obligation: ObligationInstance } }>(
     `/obligations/${encodeURIComponent(obligationId)}/payments`,
-    { method: 'POST', body: JSON.stringify({ transactionId }) },
+    { method: 'POST', body: JSON.stringify(payment) },
   )
 }
 
