@@ -468,27 +468,19 @@ describe('GET /callback', () => {
     expect(sessionCookie.options.path).toBe('/')
   })
 
-  it('sets plinto_refresh_token cookie when OIDC provides a refresh token', async () => {
-    const redirectResp = makeMockRedirectResponse('/')
-    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
-
-    await GET(makeRequest())
-
-    const rtCookie = redirectResp.cookies._store['plinto_refresh_token']
-    expect(rtCookie).toBeDefined()
-    expect(rtCookie.value).toBe('oidc-refresh-token')
-    expect(rtCookie.options.httpOnly).toBe(true)
-    expect(rtCookie.options.maxAge).toBe(60 * 60 * 24 * 30) // 30 days
-    expect(rtCookie.options.path).toBe('/')
-  })
-
-  it('does NOT set plinto_refresh_token when tokenSet has no refresh_token', async () => {
-    mockGetOidcClient.mockResolvedValue(makeOidcClient({
-      callback: vi.fn().mockResolvedValue({
-        refresh_token: undefined,
-        claims: () => ({ sub: 'idp|sub', email: 'u@e.com', name: 'U' }),
-      }),
-    }) as any)
+  /**
+   * Plinto asks for `openid email profile` and nothing else, so a compliant
+   * provider issues no refresh token and there is nothing here to store. The
+   * branch that used to store one was removed rather than left dormant: it
+   * described a renewal Plinto does not perform, and reading it led straight
+   * to the wrong conclusion that sessions could be renewed and simply were
+   * not. Storing a thirty-day credential nobody reads is a liability, not a
+   * spare part.
+   *
+   * If a provider returns one anyway — some do, unasked — it is dropped here
+   * rather than written to the browser. See docs/delivery/oidc-providers.md.
+   */
+  it('never stores a refresh token, even when the provider returns one', async () => {
     const redirectResp = makeMockRedirectResponse('/')
     mockNextResponseRedirect.mockReturnValue(redirectResp as any)
 

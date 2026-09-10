@@ -5,12 +5,13 @@
  *  1. Calls the API to revoke the session if env vars + cookie are present.
  *  2. Always returns 200 { success: true }.
  *  3. Always clears plinto_session cookie (maxAge: 0).
+ *  4. Also clears plinto_refresh_token, which nothing sets any more but which
+ *     browsers signed in against an older build still carry.
  *
- * BUG FOUND:
- *   The handler clears plinto_session but does NOT clear plinto_refresh_token.
- *   A 30-day refresh-token cookie set during callback will survive logout.
- *   Compare with refresh/route.ts which calls response.cookies.delete('plinto_refresh_token')
- *   on failure paths.
+ * The bug this file once described — logout leaving a 30-day refresh cookie
+ * behind — was fixed. The `refresh/route.ts` it pointed at no longer exists
+ * either: renewal happens by sliding the database session on activity, not by
+ * returning to the IdP. See docs/delivery/oidc-providers.md.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
