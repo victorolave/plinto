@@ -1,7 +1,8 @@
 # PRD 002: Minimum financial core (accounts and transactions)
 
 ## Status
-Draft (Ready for implementation)
+Implemented (accounts, movements and categories shipped; the ledger gained
+server-side filtering and pagination after this document was written)
 
 ## Objective
 

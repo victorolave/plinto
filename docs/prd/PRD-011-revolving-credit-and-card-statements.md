@@ -2,7 +2,8 @@
 
 ## Status
 Partially implemented (11.1 delivered with its UI; 11.2 delivered except the
-debt summary's third figure — see *Delivery*)
+debt summary's third figure — see *Delivery*, and the
+[roadmap](../roadmap.md#2-revolving-debt-in-the-debt-summary) for when it lands)
 
 ## Objective
 
