@@ -25,5 +25,8 @@ export {
   CreateCategorySchema,
   UpdateCategorySchema,
   PaginationQuerySchema,
+  TransactionListQuerySchema,
   CreateDemoHouseholdSchema,
 } from '@plinto/shared'
+
+export type { TransactionListQuery } from '@plinto/shared'

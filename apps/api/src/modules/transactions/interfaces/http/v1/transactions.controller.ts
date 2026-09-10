@@ -23,7 +23,8 @@ import {
   CreateTransactionSchema,
   UpdateTransactionSchema,
   CreateTransferSchema,
-  PaginationQuerySchema,
+  TransactionListQuerySchema,
+  type TransactionListQuery,
 } from '../../../../../common/shared-schemas'
 import { TransactionService } from '../../../application/transaction.service'
 
@@ -40,28 +41,34 @@ export class TransactionsController {
   @RequirePermission('transaction:read')
   async listTransactions(
     @Req() req: RequestContext,
-    @Query('accountId') accountId?: string,
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
+    // The whole query object rather than one parameter per filter: the ledger
+    // is narrowed five ways now, and a positional signature would grow a
+    // parameter every time a filter is added while telling the reader nothing
+    // about which are optional or how they are parsed.
+    @Query() query: Record<string, string | undefined>,
   ) {
-    const { page: parsedPage, pageSize: parsedPageSize } = new ZodValidationPipe(
-      PaginationQuerySchema,
-    ).transform({ page, pageSize })
+    const { page, pageSize, ...filters } = new ZodValidationPipe(
+      TransactionListQuerySchema,
+    ).transform(query) as TransactionListQuery
 
-    const { transactions, total } = await this.transactionService.listTransactions(
+    const { transactions, total, counts } = await this.transactionService.listTransactions(
       req.tenantId as string,
-      { accountId, page: parsedPage, pageSize: parsedPageSize },
+      { ...filters, page, pageSize },
     )
 
     return {
       data: { transactions },
       meta: {
         pagination: {
-          page: parsedPage,
-          pageSize: parsedPageSize,
+          page,
+          pageSize,
           total,
-          totalPages: Math.ceil(total / parsedPageSize),
+          totalPages: Math.ceil(total / pageSize),
         },
+        // For the income/expense tabs. Whole-set figures, not this page's:
+        // the tabs set the type filter, so per-page counts would rewrite the
+        // labels every time the reader turned a page.
+        counts,
       },
     }
   }

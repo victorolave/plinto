@@ -773,6 +773,13 @@
     "USER_NOT_FOUND": "That person no longer exists.",
     "VALIDATION_ERROR": "Some of the details are not valid. Check the fields and try again."
   },
+  "pagination": {
+    "label": "Pagination",
+    "previous": "Previous page",
+    "next": "Next page",
+    "goToPage": "Go to page {page}",
+    "range": "{start, number}-{end, number} of {total, number}"
+  },
   "statCard": {
     "deltaThisMonth": "{sign}{percent}% this month"
   },

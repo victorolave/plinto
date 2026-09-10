@@ -52,19 +52,52 @@ export interface PaginationMeta {
   totalPages: number
 }
 
-export async function listTransactions(params?: {
+/**
+ * How many rows of each type the current filters match, ignoring the type
+ * filter itself. Labels the income/expense tabs, which are what sets that
+ * filter — so these describe the whole filtered set, never just this page.
+ */
+export interface TransactionTypeCounts {
+  income: number
+  expense: number
+}
+
+export interface TransactionListResponse {
+  data: { transactions: Transaction[] }
+  meta: { pagination: PaginationMeta; counts: TransactionTypeCounts }
+}
+
+/**
+ * How the ledger can be narrowed. These are applied by the API, not here: the
+ * list is paginated, and filtering a single fetched page in the browser would
+ * quietly search only what happened to be on screen.
+ */
+export interface TransactionFilters {
   accountId?: string
-  page?: number
-  pageSize?: number
-}): Promise<{ data: { transactions: Transaction[] }; meta: { pagination: PaginationMeta } }> {
+  type?: TransactionType
+  /** Inclusive calendar day, `YYYY-MM-DD`. */
+  dateFrom?: string
+  /** Inclusive calendar day, `YYYY-MM-DD`. */
+  dateTo?: string
+  /** Matched against the description and the account name. */
+  search?: string
+}
+
+export async function listTransactions(
+  params?: TransactionFilters & { page?: number; pageSize?: number },
+): Promise<TransactionListResponse> {
   const query = new URLSearchParams()
-  if (params?.accountId) query.set('accountId', params.accountId)
-  if (params?.page !== undefined) query.set('page', String(params.page))
-  if (params?.pageSize !== undefined) query.set('pageSize', String(params.pageSize))
+  // Empty values are dropped rather than sent: `?search=` and no `search` key
+  // mean the same thing, and sending both shapes would make two cache entries
+  // for one question.
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value === undefined || value === '') continue
+    query.set(key, String(value))
+  }
 
   const queryString = query.toString()
   const url = queryString ? `/transactions?${queryString}` : '/transactions'
-  return apiFetch<{ data: { transactions: Transaction[] }; meta: { pagination: PaginationMeta } }>(url)
+  return apiFetch<TransactionListResponse>(url)
 }
 
 export async function createTransaction(input: {

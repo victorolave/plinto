@@ -773,6 +773,13 @@
     "USER_NOT_FOUND": "Esa persona ya no existe.",
     "VALIDATION_ERROR": "Algunos datos no son válidos. Revisa los campos e intenta de nuevo."
   },
+  "pagination": {
+    "label": "Paginación",
+    "previous": "Página anterior",
+    "next": "Página siguiente",
+    "goToPage": "Ir a la página {page}",
+    "range": "{start, number}-{end, number} de {total, number}"
+  },
   "statCard": {
     "deltaThisMonth": "{sign}{percent}% este mes"
   },

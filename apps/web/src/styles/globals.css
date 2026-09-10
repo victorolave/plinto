@@ -2608,3 +2608,71 @@
     opacity: 0.7;
   }
 }
+
+/* A ledger is navigated by jumping, not by scrolling: the page numbers are the
+   control, and the range line above them says where in the whole you are. */
+.pagination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+.pagination-range {
+  font-size: var(--text-sm);
+  margin: 0;
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pagination-page,
+.pagination-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control-sm);
+  height: var(--control-sm);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-card);
+  color: var(--text-body);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+.pagination-page:hover:not(.is-current),
+.pagination-step:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.pagination-page:focus-visible,
+.pagination-step:focus-visible {
+  outline: 2px solid var(--focus-outer);
+  outline-offset: 2px;
+}
+/* The current page is a statement of position, not an action — it reads as
+   filled rather than as one more button to press. */
+.pagination-page.is-current {
+  background: var(--surface-ink);
+  border-color: var(--surface-ink);
+  color: var(--text-on-ink);
+  cursor: default;
+}
+.pagination-step:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+.pagination-gap {
+  padding: 0 var(--space-1);
+  color: var(--text-muted);
+  user-select: none;
+}

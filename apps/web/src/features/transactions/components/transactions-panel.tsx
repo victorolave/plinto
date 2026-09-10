@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { useErrorMessage } from '../../../lib/api/use-error-message'
 import { listAccounts } from '../../accounts/services/accounts'
@@ -28,6 +28,7 @@ import { listCategories } from '../../categories/services/categories'
 import { Card } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Input, Select } from '../../../components/ui/field'
+import { Pagination } from '../../../components/ui/pagination'
 import { Amount } from '../../../components/ui/amount'
 import { Tabs } from '../../../components/ui/tabs'
 import { Drawer } from '../../../components/ui/drawer'
@@ -53,6 +54,25 @@ export type {
 
 type ActiveDrawer = 'transaction' | 'transfer' | 'loan' | 'debt' | 'recurring' | null
 
+/**
+ * Rows per page in the ledger.
+ *
+ * A screenful, not the contract's 100 ceiling. A page that has to be scrolled
+ * to the end before its own controls appear is not a page, it is the same long
+ * list with a button hidden under it — and on a phone that is several swipes
+ * for every turn. Ten keeps the movements and the way to reach the rest
+ * visible together, on a phone as well as on a desktop.
+ */
+const LEDGER_PAGE_SIZE = 10
+
+/**
+ * A stable empty array for the accounts the filters hook reads.
+ *
+ * `?? []` would build a new array on every render, and the hook's memos depend
+ * on that identity — the ledger query would re-key itself forever.
+ */
+const EMPTY_ACCOUNTS: Awaited<ReturnType<typeof listAccounts>>['data']['accounts'] = []
+
 export function TransactionsPanel() {
   const t = useTranslations('transactions')
   const toErrorMessage = useErrorMessage()
@@ -67,9 +87,44 @@ export function TransactionsPanel() {
     queryKey: queryKeys.balances,
     queryFn: async () => (await listBalances()).data.balances,
   })
+
+  // Declared before the ledger query because the query is *of* these filters:
+  // narrowing happens in the database now, not over an array in the browser.
+  const accountsForFilters = accountsQuery.data ?? EMPTY_ACCOUNTS
+  const {
+    historyFilter,
+    setHistoryFilter,
+    search,
+    setSearch,
+    accountFilter,
+    setAccountFilter,
+    dateFrom,
+    dateTo,
+    datePreset,
+    applyPreset,
+    setCustomFrom,
+    setCustomTo,
+    accountById,
+    filters,
+    filtersActive,
+    clearFilters,
+  } = useTransactionFilters(accountsForFilters)
+
+  const [page, setPage] = useState(1)
+
+  // A filter change re-slices the whole ledger, so page 7 of the old results
+  // is a page that may not exist in the new ones. Landing on an empty screen
+  // after typing a search reads as "no matches" rather than as "wrong page".
+  useEffect(() => {
+    setPage(1)
+  }, [filters])
+
   const transactionsQuery = useQuery({
-    queryKey: queryKeys.transactions(),
-    queryFn: async () => listTransactions({ pageSize: 100 }),
+    queryKey: queryKeys.transactions({ ...filters, page, pageSize: LEDGER_PAGE_SIZE }),
+    queryFn: async () => listTransactions({ ...filters, page, pageSize: LEDGER_PAGE_SIZE }),
+    // Keep the previous page on screen while the next one loads: without it
+    // every page turn blanks the table and jumps the scroll position.
+    placeholderData: keepPreviousData,
   })
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories,
@@ -83,11 +138,11 @@ export function TransactionsPanel() {
       (await listRecurringTransactionRules({ includeArchived: true })).data.rules,
   })
 
-  const accounts = accountsQuery.data ?? []
+  const accounts = accountsForFilters
   const balances = balancesQuery.data ?? []
   const transactions = transactionsQuery.data?.data.transactions ?? []
   const transactionsTotal = transactionsQuery.data?.meta.pagination.total ?? 0
-  const hasMoreTransactions = transactionsTotal > transactions.length
+  const typeCounts = transactionsQuery.data?.meta.counts ?? { income: 0, expense: 0 }
   const categories = categoriesQuery.data ?? []
   const rules = rulesQuery.data ?? []
 
@@ -141,25 +196,6 @@ export function TransactionsPanel() {
     loadError
   const error = activeError ? (toErrorMessage(activeError) ?? t('loadFailed')) : null
 
-  const {
-    historyFilter,
-    setHistoryFilter,
-    search,
-    setSearch,
-    accountFilter,
-    setAccountFilter,
-    dateFrom,
-    dateTo,
-    datePreset,
-    applyPreset,
-    setCustomFrom,
-    setCustomTo,
-    accountById,
-    visibleTransactions,
-    filtersActive,
-    clearFilters,
-  } = useTransactionFilters(transactions, accounts)
-
   const closeDrawer = () => {
     setDrawer(null)
     setEditingTransaction(null)
@@ -177,6 +213,9 @@ export function TransactionsPanel() {
     // Keying only transactions() would leave the dashboard widget stale.
     void queryClient.invalidateQueries({ queryKey: ['transactions'] })
     void queryClient.invalidateQueries({ queryKey: queryKeys.balances })
+    // The ledger is newest-first, so a just-saved movement is on page 1.
+    // Staying on page 9 would report success and show the reader nothing.
+    setPage(1)
     closeDrawer()
   }
 
@@ -205,8 +244,6 @@ export function TransactionsPanel() {
     setDrawer('transaction')
   }
 
-  const incomeCount = transactions.filter((t) => t.type === 'income').length
-  const expenseCount = transactions.filter((t) => t.type === 'expense').length
 
   return (
     <div className="page">
@@ -233,9 +270,13 @@ export function TransactionsPanel() {
       <div className="tx-toolbar">
         <Tabs
           items={[
-            { id: 'all', label: t('filter.all'), count: transactions.length },
-            { id: 'income', label: t('filter.income'), count: incomeCount },
-            { id: 'expense', label: t('filter.expense'), count: expenseCount },
+            {
+              id: 'all',
+              label: t('filter.all'),
+              count: typeCounts.income + typeCounts.expense,
+            },
+            { id: 'income', label: t('filter.income'), count: typeCounts.income },
+            { id: 'expense', label: t('filter.expense'), count: typeCounts.expense },
           ]}
           value={historyFilter}
           onChange={setHistoryFilter}
@@ -335,21 +376,12 @@ export function TransactionsPanel() {
         </div>
       ) : null}
 
-      {!loading && hasMoreTransactions ? (
-        <p className="muted">
-          {t('showingLatest', {
-            shown: transactions.length,
-            total: transactionsTotal,
-          })}
-        </p>
-      ) : null}
-
       {/* Transaction list — the focus of the view */}
       <TransactionList
         loading={loading}
         accounts={accounts}
         transactions={transactions}
-        visibleTransactions={visibleTransactions}
+        visibleTransactions={transactions}
         accountById={accountById}
         filtersActive={filtersActive}
         onAddAccount={() => router.push('/dashboard/accounts')}
@@ -357,6 +389,15 @@ export function TransactionsPanel() {
         onClearFilters={clearFilters}
         onEditTransaction={openEdit}
       />
+
+      {loading ? null : (
+        <Pagination
+          page={page}
+          pageSize={LEDGER_PAGE_SIZE}
+          total={transactionsTotal}
+          onPageChange={setPage}
+        />
+      )}
 
       {/* Recurring rules — visible on the main view, created on demand */}
       <RecurringSection
