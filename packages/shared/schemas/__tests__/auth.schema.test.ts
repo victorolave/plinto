@@ -160,3 +160,28 @@ describe('CreateSessionSchema', () => {
     expect(result.success).toBe(false)
   })
 })
+
+/**
+ * `baseCurrency` was the loosest currency field in the codebase: it validated
+ * as `z.string().trim().min(1)`, so a household could be created holding
+ * "banana". Every amount in it would then be scaled at the two-decimal default
+ * `minorUnitExponent` falls back to, silently and with no error to notice.
+ */
+describe('CreateTenantSchema baseCurrency allow-list', () => {
+  it.each(['XXX', 'ABC', 'banana', 'peso', 'COPP'])(
+    'rejects %s',
+    (baseCurrency) => {
+      const result = CreateTenantSchema.safeParse({ name: 'Acme', baseCurrency })
+      expect(result.success).toBe(false)
+    },
+  )
+
+  it.each(['COP', 'USD', 'EUR'])('accepts the supported currency %s', (baseCurrency) => {
+    const result = CreateTenantSchema.safeParse({ name: 'Acme', baseCurrency })
+    expect(result.success).toBe(true)
+  })
+
+  it('still treats baseCurrency as optional', () => {
+    expect(CreateTenantSchema.safeParse({ name: 'Acme' }).success).toBe(true)
+  })
+})

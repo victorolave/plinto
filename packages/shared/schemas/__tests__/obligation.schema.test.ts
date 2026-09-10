@@ -193,3 +193,15 @@ describe('obligation schemas', () => {
     expect(result.totals.map((total) => total.currency)).toEqual(['COP', 'USD'])
   })
 })
+
+describe('CreateObligationSchema currency allow-list', () => {
+  it.each(['XXX', 'ABC', 'QQQ', 'usd'])('rejects %s', (currency) => {
+    const result = CreateObligationSchema.safeParse({ ...validCreateInput, currency })
+    expect(result.success).toBe(false)
+  })
+
+  it.each(['COP', 'USD', 'EUR'])('accepts the supported currency %s', (currency) => {
+    const result = CreateObligationSchema.safeParse({ ...validCreateInput, currency })
+    expect(result.success).toBe(true)
+  })
+})
