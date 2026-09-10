@@ -3,7 +3,7 @@
 import { type FormEvent, useState } from 'react'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
-import { CreateAccountSchema, UpdateAccountSchema } from '@plinto/shared'
+import { CreateAccountSchema, SUPPORTED_CURRENCIES, UpdateAccountSchema } from '@plinto/shared'
 import { useErrorMessage } from '../../../lib/api/use-error-message'
 import { useValidationMessage } from '../../../lib/api/use-validation-message'
 import { type Account, type AccountType, createAccount, updateAccount } from '../services/accounts'
@@ -109,14 +109,19 @@ export function AccountForm({ editing, createMutation, updateMutation }: Account
           htmlFor="account-currency"
           hint={editing ? t('form.currencyFixedHint') : undefined}
         >
-          <Input
+          <Select
             id="account-currency"
             value={currency}
             onChange={(event) => setCurrency(event.target.value)}
-            maxLength={3}
             required
             disabled={editing !== null}
-          />
+          >
+            {SUPPORTED_CURRENCIES.map((code) => (
+              <option key={code} value={code}>
+                {code}
+              </option>
+            ))}
+          </Select>
         </Field>
       </div>
 

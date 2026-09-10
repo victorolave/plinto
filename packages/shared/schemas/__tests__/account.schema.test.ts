@@ -143,3 +143,28 @@ describe('isLiabilityAccountType', () => {
     expect(isLiabilityAccountType('crypto')).toBe(false)
   })
 })
+
+/**
+ * The account form is the only place a currency enters Plinto by hand, so this
+ * contract is the one that decides whether an unknown code can ever reach a
+ * stored row.
+ */
+describe('CreateAccountSchema currency allow-list', () => {
+  it.each(['XXX', 'ABC', 'QQQ', 'cop'])('rejects %s', (currency) => {
+    const result = CreateAccountSchema.safeParse({
+      name: 'Ahorros',
+      type: 'savings',
+      currency,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it.each(['COP', 'USD', 'EUR'])('accepts the supported currency %s', (currency) => {
+    const result = CreateAccountSchema.safeParse({
+      name: 'Ahorros',
+      type: 'savings',
+      currency,
+    })
+    expect(result.success).toBe(true)
+  })
+})

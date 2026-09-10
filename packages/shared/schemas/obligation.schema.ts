@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CurrencyCodeSchema } from '../money/supported-currencies'
 import { VALIDATION_CODE, validationIssue } from './validation-code'
 
 /** Calendar period a set of obligations belongs to, e.g. `2026-07`. */
@@ -68,7 +69,7 @@ export const CreateObligationSchema = z
     period: ObligationPeriodSchema,
     dueDate: z.string().datetime(),
     expectedAmountMinor: z.number().int().positive(),
-    currency: z.string().trim().regex(/^[A-Z]{3}$/),
+    currency: CurrencyCodeSchema,
   })
   // An obligation whose due date falls outside its own period would be
   // invisible in the month that reports it and unaccounted for in the month it
