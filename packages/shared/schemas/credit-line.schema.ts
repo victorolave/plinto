@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CurrencyCodeSchema } from '../money/supported-currencies'
 import { VALIDATION_CODE, validationIssue } from './validation-code'
 
 export const CreditLineStatusSchema = z.enum(['active', 'closed'])
@@ -21,7 +22,7 @@ const creditLineShape = {
    * debt out of view.
    */
   limitMinor: z.number().int().nonnegative(),
-  currency: z.string().trim().regex(/^[A-Z]{3}$/),
+  currency: CurrencyCodeSchema,
 }
 
 export const CreateCreditLineSchema = z.object(creditLineShape)

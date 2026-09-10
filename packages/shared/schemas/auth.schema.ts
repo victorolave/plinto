@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CurrencyCodeSchema } from '../money/supported-currencies'
 
 export const UpdateProfileSchema = z.object({
   name: z.string().min(1),
@@ -6,7 +7,7 @@ export const UpdateProfileSchema = z.object({
 
 export const CreateTenantSchema = z.object({
   name: z.string().min(1),
-  baseCurrency: z.string().trim().min(1).optional(),
+  baseCurrency: CurrencyCodeSchema.optional(),
 })
 
 export const SelectTenantSchema = z.object({
