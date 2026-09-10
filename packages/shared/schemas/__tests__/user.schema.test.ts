@@ -54,4 +54,31 @@ describe('UserSchema', () => {
     const result = UserSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })
+
+  it('parses without onboardingTourSeenAt', () => {
+    const result = UserSchema.safeParse(validUser)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.onboardingTourSeenAt).toBeUndefined()
+    }
+  })
+
+  it('parses a null onboardingTourSeenAt', () => {
+    const result = UserSchema.safeParse({ ...validUser, onboardingTourSeenAt: null })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.onboardingTourSeenAt).toBeNull()
+    }
+  })
+
+  it('parses a timestamp onboardingTourSeenAt', () => {
+    const result = UserSchema.safeParse({
+      ...validUser,
+      onboardingTourSeenAt: '2026-01-01T00:00:00.000Z',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.onboardingTourSeenAt).toBe('2026-01-01T00:00:00.000Z')
+    }
+  })
 })

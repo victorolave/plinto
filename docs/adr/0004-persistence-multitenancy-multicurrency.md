@@ -77,6 +77,34 @@ Plinto uses an explicit and secure representation of monetary values:
 
 The number of decimals per currency is defined by configuration/reference table (minor units per currency).
 
+#### 5.1 Where the reference table lives (implementation note)
+
+The table is `packages/shared/money/currency.ts`, exported from `@plinto/shared`
+as `minorUnitExponent`, `toMinorUnits`, `toMajorUnits` and `toMajorUnitsString`.
+Every conversion between a major-unit amount a person types and the minor units
+this database stores goes through it.
+
+Two points that were decided while implementing it:
+
+**Values follow CLDR, not the ISO 4217 column.** The two disagree, and they
+disagree precisely where it matters: ISO still lists `COP` — the default
+currency of a household here — with two decimals, for a centavo that has not
+circulated in decades. `IQD` is the same story. CLDR records what actually
+circulates, and it is also what `Intl.NumberFormat` uses to render, so taking
+the scale from anywhere else would divide by one number and print with another.
+
+**The table is explicit, not derived from `Intl` at runtime.** Deriving it would
+be less code and always current, but the scale an amount is *stored* at must not
+depend on how the runtime was built: a Node image compiled with small-icu would
+answer differently, and the same amount would be persisted at two scales
+depending on which container wrote it. The table is therefore the source of
+truth, and a test asserts it agrees with `Intl` for every currency the runtime
+knows — so divergence from CLDR fails CI instead of corrupting data.
+
+Amounts written before this table existed were stored at a flat ×100 for every
+currency; migration `20260808000000_rescale_amounts_to_currency_minor_units`
+rescales them.
+
 ### 6. Currency per Account
 
 - Each **Account** has a defined currency (`currency`).
@@ -177,3 +205,26 @@ A more detailed audit log system is considered out of initial scope.
 - Validate currency when creating accounts and transactions.
 - Do not add caching or sharding at this stage.
 
+
+---
+
+## Amendment (2026-09-10) — two structures in this record do not exist
+
+Audited against `schema.prisma`.
+
+**No `exchange_rates` table.** Foreign-exchange data lives embedded in each
+`Transfer` — `fxRate`, `feeMinor` and `rateSource` — which makes an individual
+transfer fully auditable but leaves no queryable history of rates. Nothing can
+answer "what was the rate on this date" independently of a transfer that used
+it. This is the missing piece behind the deferred consolidated multi-currency
+view; see the [roadmap](../roadmap.md#4-consolidated-multi-currency-view).
+
+**No `deleted_at` anywhere.** Soft delete was written here as "considered for
+key entities" rather than decided, and it was not implemented. Deletions are
+real deletions, with the audit trail as the record that they happened.
+
+The core of this record does hold: amounts are integer minor units paired with
+a currency, every tenant-scoped table carries `tenant_id`, and currency is now
+validated against a closed allow-list
+(`packages/shared/money/supported-currencies.ts`) rather than a
+three-capitals pattern.

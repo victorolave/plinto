@@ -1,0 +1,44 @@
+/* ============================================================
+   PLINTO · RULES, ELEVATION, MOTION
+   ------------------------------------------------------------
+   Ported from the Plinto Design System (tokens/elevation.css).
+
+   Structure is drawn with rules: 2px opens a section, 1px separates
+   entries, nothing else divides anything. --shadow-xs and --shadow-sm
+   resolve to none on purpose, so reaching for one on a panel quietly
+   does nothing. The remaining steps are for layers that genuinely
+   leave the page — menu, dialog, toast.
+   ============================================================ */
+:root {
+  --rule-width-hair: 1px;
+  --rule-width-strong: 2px;
+
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: 0 8px 24px rgba(10, 10, 10, 0.12);
+  --shadow-lg: 0 16px 48px rgba(10, 10, 10, 0.16);
+  --shadow-overlay: 0 24px 64px rgba(10, 10, 10, 0.22);
+
+  --scrim: rgba(10, 10, 10, 0.55);
+
+  /* Precise and quick. No spring, no bounce, no loop. */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  --z-base: 0;
+  --z-sticky: 100;
+  --z-dropdown: 300;
+  --z-overlay: 500;
+  --z-modal: 600;
+  --z-toast: 800;
+}
+
+[data-theme='dark'] {
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.7);
+  --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.8);
+  --scrim: rgba(0, 0, 0, 0.7);
+}

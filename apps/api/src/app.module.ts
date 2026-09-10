@@ -9,8 +9,22 @@ import { AuthModule } from './modules/auth/auth.module'
 import { UsersModule } from './modules/users/users.module'
 import { TenantsModule } from './modules/tenants/tenants.module'
 import { MembershipsModule } from './modules/memberships/memberships.module'
+import { MembersModule } from './modules/memberships/members.module'
+import { InvitationsModule } from './modules/invitations/invitations.module'
 import { SessionsModule } from './modules/sessions/sessions.module'
 import { AuditModule } from './modules/audit/audit.module'
+import { AccountsModule } from './modules/accounts/accounts.module'
+import { TransactionsModule } from './modules/transactions/transactions.module'
+import { RecurringModule } from './modules/recurring/recurring.module'
+import { ObligationsModule } from './modules/obligations/obligations.module'
+import { CategoriesModule } from './modules/categories/categories.module'
+import { ReportsModule } from './modules/reports/reports.module'
+import { DebtsModule } from './modules/debts/debts.module'
+import { CreditModule } from './modules/credit/credit.module'
+import { JobsModule } from './modules/jobs/jobs.module'
+import { HealthModule } from './modules/health/health.module'
+import { ExportModule } from './modules/export/export.module'
+import { DemoModule } from './modules/demo/demo.module'
 
 @Module({
   imports: [
@@ -29,8 +43,22 @@ import { AuditModule } from './modules/audit/audit.module'
     UsersModule,
     TenantsModule,
     MembershipsModule,
+    MembersModule,
+    InvitationsModule,
     SessionsModule,
     AuditModule,
+    AccountsModule,
+    TransactionsModule,
+    RecurringModule,
+    ObligationsModule,
+    CategoriesModule,
+    ReportsModule,
+    DebtsModule,
+    CreditModule,
+    JobsModule,
+    HealthModule,
+    ExportModule,
+    DemoModule,
   ],
 })
 export class AppModule {}

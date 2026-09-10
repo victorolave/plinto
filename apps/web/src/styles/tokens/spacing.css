@@ -1,0 +1,50 @@
+/* ============================================================
+   PLINTO · SPACE & GEOMETRY
+   ------------------------------------------------------------
+   Ported from the Plinto Design System (tokens/spacing.css).
+
+   4px grid. Every corner is square: the system draws with lines,
+   and a radius would soften the only structure there is. Density is
+   medium — a 40px control, a 14px row, a 40px page margin — dense
+   enough for a ledger, open enough to read at a glance.
+   ============================================================ */
+:root {
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-11: 80px;
+  --space-12: 120px;
+
+  /* Square. All of it. */
+  --radius-none: 0;
+  --radius-control: 0;
+  --radius-chip: 0;
+  --radius-card: 0;
+  --radius-pill: 0;
+  --radius-avatar: 0;
+
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-lg: 48px;
+  --target-min-aa: 44px;
+
+  --border-width: 1px;
+  --border-width-strong: 2px;
+
+  /* layout */
+  --page-margin: 40px;
+  --gutter: 32px;
+  --sidebar-w: 240px;
+  --topbar-h: 60px;
+  --pad-row: 14px;
+  --pad-block: 24px;
+  --grid-columns: 12;
+}

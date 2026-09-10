@@ -1,0 +1,158 @@
+/* ============================================================
+   PLINTO · COLOR
+   ------------------------------------------------------------
+   Ported verbatim from the Plinto Design System (tokens/colors.css).
+
+   Black, white, one red. Grey is structure, never decoration.
+   #E8492C is a SIGNAL — the mark, the active state, the one figure
+   that has to be read. It is never a background for pleasure.
+   Red as TEXT only ever appears at red-700 (6.4:1); the brand red
+   itself carries INK text, never white.
+   ============================================================ */
+:root {
+  --white: #ffffff;
+  --black: #000000;
+
+  --neutral-0: #ffffff;
+  --neutral-50: #f7f7f7;
+  --neutral-100: #f0f0f0;
+  --neutral-200: #e2e2e2;
+  --neutral-300: #c9c9c9;
+  --neutral-400: #9b9b9b;
+  --neutral-500: #6e6e6e;
+  --neutral-600: #4a4a4a;
+  --neutral-700: #2e2e2e;
+  --neutral-800: #1a1a1a;
+  --neutral-900: #0a0a0a;
+
+  --red-50: #fdece9;
+  --red-100: #fad6cf;
+  --red-200: #f5b3a6;
+  --red-300: #f0907c;
+  --red-400: #ec6c53;
+  --red-500: #e8492c; /* brand */
+  --red-600: #cc3a20;
+  --red-700: #a32c17;
+  --red-800: #7a2010;
+
+  --green-500: #0e8a55;
+  --green-600: #0a6b42;
+  --amber-500: #b45309;
+
+  /* ---- surfaces ---- */
+  --surface-page: var(--neutral-50); /* the canvas: light grey */
+  --surface-card: var(--neutral-0); /* blocks sit white ON the canvas */
+  --surface-inset: var(--neutral-100);
+  --surface-sunken: var(--neutral-100);
+  --surface-raised: var(--neutral-0);
+  --surface-hover: var(--neutral-50);
+  --surface-active: var(--neutral-100);
+  --surface-ink: var(--neutral-900);
+  --surface-accent: var(--red-500);
+
+  /* ---- text ---- */
+  --text-strong: var(--neutral-900);
+  --text-body: var(--neutral-800);
+  --text-muted: var(--neutral-500);
+  --text-subtle: var(--neutral-500);
+  --text-disabled: var(--neutral-400);
+  --text-on-ink: var(--neutral-0);
+  --text-on-accent: var(--neutral-900);
+  --text-accent: var(--red-700);
+
+  /* ---- borders, rules, grid ---- */
+  --border-hair: var(--neutral-200);
+  --border-default: var(--neutral-300);
+  --border-strong: var(--neutral-900);
+  --rule-hair: var(--neutral-200);
+  --rule-strong: var(--neutral-900);
+  --grid-line: rgba(10, 10, 10, 0.09);
+
+  /* ---- actions ---- */
+  --action-primary: var(--neutral-900);
+  --action-primary-hover: var(--neutral-700);
+  --action-primary-active: var(--neutral-600);
+  --action-primary-text: var(--neutral-0);
+  --action-accent: var(--red-500);
+  --action-accent-hover: var(--red-400);
+  --action-accent-active: var(--red-600);
+  --action-accent-text: var(--neutral-900);
+
+  /* ---- status ---- */
+  --status-positive: var(--green-600);
+  --status-negative: var(--neutral-900);
+  --status-danger: var(--red-700);
+  --status-warning: var(--amber-500);
+  --status-info: var(--neutral-900);
+  /* Income read on an INVERSE block. --surface-ink flips with the theme,
+     so the green that clears AA against it has to flip the opposite way:
+     a light green on the black block, the dark one on the white block. */
+  --status-positive-on-ink: #3ecf8e;
+
+  /* ---- focus ---- */
+  --focus-inner: var(--surface-page);
+  --focus-outer: var(--neutral-900);
+
+  /* ============================================================
+     App chrome — the permanent black block (sidebar, bottom nav).
+     Deliberately NOT --surface-ink: an inverse block flips with the
+     theme, but the chrome is black in daylight and black at night.
+     Its foreground is stated as white alphas so it stays legible on
+     the block regardless of which theme is painting around it.
+     ============================================================ */
+  --surface-chrome: var(--neutral-900);
+  --surface-chrome-raised: #141414;
+  --chrome-text-strong: var(--neutral-0);
+  --chrome-text-muted: rgba(255, 255, 255, 0.66);
+  --chrome-text-subtle: rgba(255, 255, 255, 0.44);
+  --chrome-border: rgba(255, 255, 255, 0.14);
+  --chrome-hover: rgba(255, 255, 255, 0.09);
+}
+
+/* The same system at night: true black, true white, the same red. */
+[data-theme='dark'] {
+  --surface-page: var(--neutral-900);
+  --surface-card: #141414; /* blocks lift one step off true black */
+  --surface-inset: #1a1a1a;
+  --surface-sunken: #161616;
+  --surface-raised: #1c1c1c;
+  --surface-hover: #1f1f1f;
+  --surface-active: #262626;
+  --surface-ink: var(--neutral-0);
+  --surface-accent: var(--red-500);
+
+  --text-strong: var(--neutral-0);
+  --text-body: #ededed;
+  --text-muted: #a3a3a3;
+  --text-subtle: #a3a3a3;
+  --text-disabled: #5c5c5c;
+  --text-on-ink: var(--neutral-900);
+  --text-on-accent: var(--neutral-900);
+  --text-accent: var(--red-400);
+
+  --border-hair: #262626;
+  --border-default: #3d3d3d;
+  --border-strong: var(--neutral-0);
+  --rule-hair: #262626;
+  --rule-strong: var(--neutral-0);
+  --grid-line: rgba(255, 255, 255, 0.1);
+
+  --action-primary: var(--neutral-0);
+  --action-primary-hover: #e2e2e2;
+  --action-primary-active: #c9c9c9;
+  --action-primary-text: var(--neutral-900);
+
+  --status-positive: #3ecf8e;
+  --status-negative: var(--neutral-0);
+  --status-danger: var(--red-400);
+  --status-warning: #e0a44a;
+  --status-info: var(--neutral-0);
+  --status-positive-on-ink: var(--green-600);
+
+  --focus-outer: var(--neutral-0);
+
+  /* The chrome stays a dark block; it only drops a step further so the
+     page beside it still reads as the lighter surface. */
+  --surface-chrome: #050505;
+  --surface-chrome-raised: #161616;
+}

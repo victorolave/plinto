@@ -1,0 +1,532 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common'
+import { TransactionFilters, TransactionRepository } from '../domain/transaction.repository'
+import { AccountRepository } from '../../accounts/domain/account.repository'
+import { AuditService } from '../../audit/application/audit.service'
+import { CategoryRepository } from '../../categories/domain/category.repository'
+import { Transaction, TransactionType, AccountBalance, Transfer } from '../domain/transaction.entity'
+import { transferMatchesFingerprint } from '../domain/transfer-fingerprint'
+
+@Injectable()
+export class TransactionService {
+  constructor(
+    private readonly transactionRepository: TransactionRepository,
+    private readonly accountRepository: AccountRepository,
+    private readonly auditService: AuditService,
+    private readonly categoryRepository: CategoryRepository,
+  ) {}
+
+  /**
+   * Resolves a category for a tenant and asserts it matches the given
+   * transaction type. Centralizes the CATEGORY_NOT_FOUND / CATEGORY_TYPE_MISMATCH
+   * invariant shared by createTransaction and the explicit-categoryId path of
+   * updateTransaction, so the check codes/messages can't drift between them.
+   */
+  private async resolveCategoryForType(
+    categoryId: string,
+    type: TransactionType,
+    tenantId: string,
+  ): Promise<string> {
+    const category = await this.categoryRepository.findByIdForTenant(categoryId, tenantId)
+
+    if (!category) {
+      throw new NotFoundException({
+        code: 'CATEGORY_NOT_FOUND',
+        message: 'Category not found for the active tenant',
+      })
+    }
+
+    if (category.type !== type) {
+      throw new UnprocessableEntityException({
+        code: 'CATEGORY_TYPE_MISMATCH',
+        message: 'Category type must match the transaction type',
+      })
+    }
+
+    return categoryId
+  }
+
+  async createTransaction(params: {
+    tenantId: string
+    actorUserId: string | null
+    requestId: string
+    accountId: string
+    type: TransactionType
+    amountMinor: number
+    description?: string
+    occurredAt?: string
+    categoryId?: string | null
+  }): Promise<Transaction> {
+    const account = await this.accountRepository.findByIdForTenant(
+      params.accountId,
+      params.tenantId,
+    )
+
+    if (!account) {
+      throw new NotFoundException({
+        code: 'ACCOUNT_NOT_FOUND',
+        message: 'Account not found for the active tenant',
+      })
+    }
+
+    let resolvedCategoryId: string | null = null
+    if (params.categoryId) {
+      resolvedCategoryId = await this.resolveCategoryForType(
+        params.categoryId,
+        params.type,
+        params.tenantId,
+      )
+    }
+
+    const transaction = await this.transactionRepository.create({
+      tenantId: params.tenantId,
+      accountId: params.accountId,
+      type: params.type,
+      amountMinor: params.amountMinor,
+      currency: account.currency,
+      description: params.description ?? null,
+      occurredAt: params.occurredAt ? new Date(params.occurredAt) : new Date(),
+      categoryId: resolvedCategoryId,
+    })
+
+    await this.auditService.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: `transaction.${params.type}`,
+      resourceType: 'transaction',
+      resourceId: transaction.id,
+      correlationId: params.requestId,
+      metadata: {
+        accountId: params.accountId,
+        amountMinor: params.amountMinor,
+        currency: account.currency,
+      },
+    })
+
+    return transaction
+  }
+
+  async createTransfer(params: {
+    tenantId: string
+    actorUserId: string | null
+    correlationId: string
+    sourceAccountId: string
+    destinationAccountId: string
+    sourceAmountMinor: number
+    destinationAmountMinor?: number
+    fxRate?: string
+    feeMinor?: number
+    description?: string
+    occurredAt?: string
+    /**
+     * Client-supplied via the `Idempotency-Key` header (validated and trimmed
+     * upstream by `IdempotencyKeyPipe`). Unrelated to the recurring engine's
+     * own `idempotencyKey` — see `TransactionRepository.createTransfer`.
+     */
+    idempotencyKey?: string
+  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction; alreadyExisted: boolean }> {
+    // Fast path for a retry: look up the key BEFORE repeating any
+    // validation a first attempt already did. A legitimate retry must not
+    // fail because, say, an account got archived in between — the transfer
+    // it is retrying already exists and none of that validation is relevant
+    // to returning it. This does not reopen the race `createTransfer`'s
+    // insert-then-catch closes below: that unique index is still what
+    // decides a genuine concurrent collision. This is only the fast path for
+    // the far more common case — the caller already succeeded once and is
+    // asking again.
+    if (params.idempotencyKey) {
+      const existing = await this.transactionRepository.findByIdempotencyKey(
+        params.tenantId,
+        params.idempotencyKey,
+      )
+      if (existing) {
+        return this.resolveIdempotentReplay(params, existing)
+      }
+    }
+
+    if (params.sourceAccountId === params.destinationAccountId) {
+      throw new UnprocessableEntityException({
+        code: 'TRANSFER_SAME_ACCOUNT',
+        message: 'Source and destination accounts must differ',
+      })
+    }
+
+    const [sourceAccount, destinationAccount] = await Promise.all([
+      this.accountRepository.findByIdForTenant(params.sourceAccountId, params.tenantId),
+      this.accountRepository.findByIdForTenant(params.destinationAccountId, params.tenantId),
+    ])
+
+    if (!sourceAccount) {
+      throw new NotFoundException({
+        code: 'ACCOUNT_NOT_FOUND',
+        message: 'Account not found for the active tenant',
+      })
+    }
+
+    if (!destinationAccount) {
+      throw new NotFoundException({
+        code: 'ACCOUNT_NOT_FOUND',
+        message: 'Account not found for the active tenant',
+      })
+    }
+
+    const sourceCurrency = sourceAccount.currency
+    const destinationCurrency = destinationAccount.currency
+    const isCrossCurrency = sourceCurrency !== destinationCurrency
+    const occurredAt = params.occurredAt ? new Date(params.occurredAt) : new Date()
+    const description = params.description ?? null
+
+    let destinationAmountMinor: number
+    let fxRate: string | null
+    let rateSource: string | null
+    let feeMinor: number | null
+
+    if (!isCrossCurrency) {
+      if (
+        params.fxRate !== undefined ||
+        (params.destinationAmountMinor !== undefined && params.destinationAmountMinor !== params.sourceAmountMinor) ||
+        params.feeMinor !== undefined
+      ) {
+        throw new BadRequestException({
+          code: 'TRANSFER_FX_NOT_ALLOWED',
+          message: 'Same-currency transfers must not include fxRate, a differing destination amount, or a fee',
+        })
+      }
+      destinationAmountMinor = params.sourceAmountMinor
+      fxRate = null
+      rateSource = null
+      feeMinor = null
+    } else {
+      if (params.fxRate === undefined || params.destinationAmountMinor === undefined) {
+        throw new UnprocessableEntityException({
+          code: 'TRANSFER_FX_REQUIRED',
+          message: 'Cross-currency transfers require both fxRate and destinationAmountMinor',
+        })
+      }
+      destinationAmountMinor = params.destinationAmountMinor
+      fxRate = params.fxRate
+      rateSource = 'manual'
+      feeMinor = params.feeMinor ?? null
+    }
+
+    const created = await this.transactionRepository.createTransfer({
+      tenantId: params.tenantId,
+      sourceAccountId: params.sourceAccountId,
+      destinationAccountId: params.destinationAccountId,
+      sourceAmountMinor: params.sourceAmountMinor,
+      destinationAmountMinor,
+      sourceCurrency,
+      destinationCurrency,
+      fxRate,
+      feeMinor,
+      rateSource,
+      description,
+      occurredAt,
+      idempotencyKey: params.idempotencyKey,
+    })
+
+    // Lost the race: a concurrent request under the same key committed
+    // between the fast-path lookup above (which found nothing) and this
+    // insert. The unique index is what caught it, not a check — see
+    // `resolveIdempotentReplay` for why it still gets the same fingerprint
+    // treatment as the fast path before being handed back as a replay.
+    if (created.alreadyExisted) {
+      return this.resolveIdempotentReplay(params, created)
+    }
+
+    const { transfer, debit, credit } = created
+
+    await this.auditService.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'transaction.transfer',
+      resourceType: 'transaction',
+      resourceId: debit.id,
+      correlationId: params.correlationId,
+      metadata: {
+        transferId: transfer.id,
+        direction: 'debit',
+        fromAccountId: params.sourceAccountId,
+        toAccountId: params.destinationAccountId,
+        sourceAmountMinor: params.sourceAmountMinor,
+        destinationAmountMinor,
+        sourceCurrency,
+        destinationCurrency,
+        fxRate,
+        feeMinor,
+      },
+    })
+
+    await this.auditService.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'transaction.transfer',
+      resourceType: 'transaction',
+      resourceId: credit.id,
+      correlationId: params.correlationId,
+      metadata: {
+        transferId: transfer.id,
+        direction: 'credit',
+        fromAccountId: params.sourceAccountId,
+        toAccountId: params.destinationAccountId,
+        sourceAmountMinor: params.sourceAmountMinor,
+        destinationAmountMinor,
+        sourceCurrency,
+        destinationCurrency,
+        fxRate,
+        feeMinor,
+      },
+    })
+
+    return { transfer, debit, credit, alreadyExisted: false }
+  }
+
+  /**
+   * Applies the `Idempotency-Key` contract once a transfer already recorded
+   * under the caller's key has been found — whether by the fast lookup at
+   * the top of `createTransfer` (the common case: a prior attempt already
+   * committed and the caller is asking again) or by `createTransfer` losing
+   * a `P2002` race to a concurrent request under the same key. Either way,
+   * "the key coincided with an existing transfer" is the same situation and
+   * gets the same rule: return the original ONLY if `params` describes the
+   * exact same transfer; otherwise this is a different request that reused
+   * a key it should not have, and gets rejected rather than silently
+   * resolved to someone else's transfer.
+   */
+  private async resolveIdempotentReplay(
+    params: {
+      tenantId: string
+      actorUserId: string | null
+      correlationId: string
+      sourceAccountId: string
+      destinationAccountId: string
+      sourceAmountMinor: number
+      destinationAmountMinor?: number
+      fxRate?: string
+      feeMinor?: number
+      description?: string
+      occurredAt?: string
+      idempotencyKey?: string
+    },
+    existing: { transfer: Transfer; debit: Transaction; credit: Transaction },
+  ): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction; alreadyExisted: true }> {
+    if (!transferMatchesFingerprint(existing, params)) {
+      throw new ConflictException({
+        code: 'IDEMPOTENCY_KEY_REUSED',
+        message: 'This Idempotency-Key was already used for a transfer with different details',
+      })
+    }
+
+    // A durable trace of the replay, distinct from `transaction.transfer`:
+    // nothing new was created, so recording that action again would
+    // fabricate a second movement that never happened. This is the "someone
+    // resent key K and got the original back" event a support or compliance
+    // question about this transfer will need.
+    await this.auditService.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'transaction.transfer.replayed',
+      resourceType: 'transaction',
+      resourceId: existing.debit.id,
+      correlationId: params.correlationId,
+      metadata: {
+        transferId: existing.transfer.id,
+        idempotencyKey: params.idempotencyKey,
+      },
+    })
+
+    return {
+      transfer: existing.transfer,
+      debit: existing.debit,
+      credit: existing.credit,
+      alreadyExisted: true,
+    }
+  }
+
+  async updateTransaction(params: {
+    tenantId: string
+    actorUserId: string | null
+    requestId: string
+    transactionId: string
+    accountId?: string
+    type?: TransactionType
+    amountMinor?: number
+    description?: string | null
+    occurredAt?: string
+    categoryId?: string | null
+  }): Promise<Transaction> {
+    const existing = await this.transactionRepository.findByIdForTenant(
+      params.transactionId,
+      params.tenantId,
+    )
+
+    if (!existing) {
+      throw new NotFoundException({
+        code: 'TRANSACTION_NOT_FOUND',
+        message: 'Transaction not found for the active tenant',
+      })
+    }
+
+    let currency = existing.currency
+    if (params.accountId) {
+      const account = await this.accountRepository.findByIdForTenant(
+        params.accountId,
+        params.tenantId,
+      )
+
+      if (!account) {
+        throw new NotFoundException({
+          code: 'ACCOUNT_NOT_FOUND',
+          message: 'Account not found for the active tenant',
+        })
+      }
+
+      currency = account.currency
+    }
+
+    // Resolve effective type for category type-match check
+    const effectiveType: TransactionType = params.type ?? existing.type
+
+    // Resolve categoryId update
+    let resolvedCategoryId: string | null | undefined = undefined
+    if (params.categoryId === null) {
+      // Explicit null clears the assignment — no type re-validation needed
+      resolvedCategoryId = null
+    } else if (typeof params.categoryId === 'string') {
+      // Caller provided an explicit new category — validate type match against effectiveType
+      resolvedCategoryId = await this.resolveCategoryForType(
+        params.categoryId,
+        effectiveType,
+        params.tenantId,
+      )
+    } else if (
+      params.type !== undefined &&
+      params.type !== existing.type &&
+      existing.categoryId
+    ) {
+      // Type-only change: the existing category remains attached but the new type may no longer
+      // match. Re-fetch and enforce the invariant (reject rather than silently clear — consistent
+      // with create behaviour).
+      const existingCategory = await this.categoryRepository.findByIdForTenant(
+        existing.categoryId,
+        params.tenantId,
+      )
+      if (existingCategory && existingCategory.type !== effectiveType) {
+        throw new UnprocessableEntityException({
+          code: 'CATEGORY_TYPE_MISMATCH',
+          message: 'Category type must match the transaction type',
+        })
+      }
+      // resolvedCategoryId stays undefined → repository patch does not touch categoryId
+    }
+
+    const updated = await this.transactionRepository.updateForTenant(
+      params.transactionId,
+      params.tenantId,
+      {
+        accountId: params.accountId,
+        type: params.type,
+        amountMinor: params.amountMinor,
+        currency: params.accountId ? currency : undefined,
+        description:
+          params.description === undefined ? undefined : params.description,
+        occurredAt: params.occurredAt ? new Date(params.occurredAt) : undefined,
+        categoryId: resolvedCategoryId,
+      },
+    )
+
+    if (!updated) {
+      throw new NotFoundException({
+        code: 'TRANSACTION_NOT_FOUND',
+        message: 'Transaction not found for the active tenant',
+      })
+    }
+
+    await this.auditService.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'transaction.updated',
+      resourceType: 'transaction',
+      resourceId: updated.id,
+      correlationId: params.requestId,
+      metadata: {
+        before: {
+          accountId: existing.accountId,
+          type: existing.type,
+          amountMinor: existing.amountMinor,
+          currency: existing.currency,
+          description: existing.description,
+          occurredAt: existing.occurredAt.toISOString(),
+          categoryId: existing.categoryId ?? null,
+        },
+        after: {
+          accountId: updated.accountId,
+          type: updated.type,
+          amountMinor: updated.amountMinor,
+          currency: updated.currency,
+          description: updated.description,
+          occurredAt: updated.occurredAt.toISOString(),
+          categoryId: updated.categoryId ?? null,
+        },
+      },
+    })
+
+    return updated
+  }
+
+  async listTransactions(
+    tenantId: string,
+    params: TransactionFilters & { page: number; pageSize: number },
+  ): Promise<{
+    transactions: Transaction[]
+    total: number
+    counts: { income: number; expense: number }
+  }> {
+    const { page, pageSize, ...filters } = params
+
+    const [transactions, counts] = await Promise.all([
+      this.transactionRepository.list(tenantId, filters, {
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      // Deliberately given the *whole* filter set including `type`: the
+      // repository drops it, because the income/expense tabs those counts
+      // label are what sets it.
+      this.transactionRepository.countByType(tenantId, filters),
+    ])
+
+    // The page total is a slice of the same aggregate, so it can never
+    // disagree with the tabs beside it.
+    const total = filters.type ? counts[filters.type] : counts.income + counts.expense
+
+    return { transactions, total, counts }
+  }
+
+  async getBalances(tenantId: string): Promise<AccountBalance[]> {
+    const [accounts, sums] = await Promise.all([
+      this.accountRepository.listByTenantId(tenantId),
+      this.transactionRepository.sumByAccount(tenantId),
+    ])
+
+    // Fold the per-(account,type) SQL sums into a signed balance per account.
+    // Work is O(accounts + distinct groups), not O(all transactions).
+    const balanceByAccount = new Map<string, number>()
+    for (const row of sums) {
+      const signed = row.type === 'income' ? row.totalMinor : -row.totalMinor
+      balanceByAccount.set(row.accountId, (balanceByAccount.get(row.accountId) ?? 0) + signed)
+    }
+
+    return accounts.map((account) => ({
+      accountId: account.id,
+      accountName: account.name,
+      currency: account.currency,
+      accountType: account.type,
+      balanceMinor: balanceByAccount.get(account.id) ?? 0,
+    }))
+  }
+}

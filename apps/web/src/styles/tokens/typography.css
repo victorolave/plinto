@@ -1,0 +1,73 @@
+/* ============================================================
+   PLINTO · TYPE
+   ------------------------------------------------------------
+   Ported from the Plinto Design System (tokens/typography.css).
+
+   ONE family carries the interface: Archivo, a neo-grotesk with a
+   tight, engineered fit. It sets the display balance, the running
+   heads and the body text alike — a Swiss system does not need a
+   second voice to make hierarchy.
+
+   DM Mono sets figures and micro-labels. Tabular monospaced digits
+   are what make a column of amounts read as a column, and mono caps
+   mark a label as machine-written context rather than prose.
+
+   Hierarchy comes from SIZE and TRACKING. Large type is tracked
+   negative until the words lock together; caps labels are tracked
+   open until they read as a rule of text. Weight moves between 400
+   and 700 and never substitutes for scale.
+
+   Nothing in the system renders below 12px, in any context.
+
+   The families arrive through next/font in app/layout.tsx, which
+   exposes --font-archivo and --font-dm-mono; the system's own
+   @import is deliberately not used so the app keeps self-hosted,
+   preloaded faces with no render-blocking request to Google.
+   ============================================================ */
+:root {
+  /* ---- families ---- */
+  --font-sans: var(--font-archivo), 'Helvetica Neue', Helvetica, Arial,
+    sans-serif;
+  --font-display: var(--font-sans); /* one voice — display is a size, not a face */
+  --font-mono: var(--font-dm-mono), 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* ---- weights ---- */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---- scale: interface ---- */
+  --text-2xs: 12px;
+  --text-xs: 13px;
+  --text-sm: 14px;
+  --text-md: 15px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+
+  /* ---- scale: display ---- */
+  --display-sm: 48px;
+  --display-md: 64px;
+  --display-lg: 88px;
+
+  /* ---- leading ---- */
+  --leading-flat: 1;
+  --leading-tight: 1.12;
+  --leading-snug: 1.3;
+  --leading-body: 1.55;
+  --leading-loose: 1.7;
+
+  /* ---- tracking ---- */
+  --tracking-display: -0.035em;
+  --tracking-tight: -0.02em;
+  --tracking-normal: -0.005em;
+  --tracking-wide: 0.08em;
+  --tracking-wider: 0.14em;
+
+  /* ---- measure ---- */
+  --measure: 68ch;
+  --measure-narrow: 46ch;
+}

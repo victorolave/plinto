@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { DEFAULT_BASE_CURRENCY } from '../../../config/constants'
 import { AuditService } from '../../audit/application/audit.service'
-import { MembershipRepository } from '../../memberships/infrastructure/membership.repository'
-import { UserRepository } from '../../users/infrastructure/user.repository'
+import { MembershipRepository } from '../../memberships/domain/membership.repository'
+import { UserRepository } from '../../users/domain/user.repository'
 import { SessionService } from '../../sessions/application/session.service'
-import { TenantRepository } from '../infrastructure/tenant.repository'
+import { TenantRepository } from '../domain/tenant.repository'
 
 @Injectable()
 export class OnboardingService {

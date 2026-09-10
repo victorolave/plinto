@@ -1,7 +1,8 @@
 # PRD 001: Authentication, Registration, and Tenant Onboarding
 
 ## Status
-Draft (Ready for implementation)
+Implemented (OIDC sign-in, sessions, household creation and onboarding
+all shipped; see the [changelog](../../CHANGELOG.md))
 
 ## Objective
 
@@ -111,12 +112,24 @@ The active tenant defines:
 
 ## Out of Scope
 
-- Invitations to other users
-- Advanced member management
-- Role changes
+> **Amended 2026-09-10.** The first three items were out of scope *for this
+> document* and were built afterwards, without a PRD of their own. They are
+> listed here as delivered so this section stops reading as a description of
+> what the product lacks.
+
+- ~~Invitations to other users~~ — **delivered.**
+  `GET`/`POST`/`DELETE /api/members/invitations`, with the web flow under
+  `apps/web/src/features/members/`.
+- ~~Advanced member management~~ — **delivered.** Listing and removing members.
+- ~~Role changes~~ — **delivered.** Owner, member and viewer roles, enforced by
+  the RBAC policy in [ADR 0007](../adr/0007-authorization-rbac-tenant-permissions.md).
 - Account recovery
 - MFA (delegated to IdP)
 - Accounts, transactions, or financial data
+
+One account belonging to **several households** was also written here as a
+future concern. It is delivered: households are listed per user and switched
+without signing in again.
 
 ---
 

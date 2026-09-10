@@ -33,7 +33,7 @@ export class ActiveTenantController {
 
   @Post()
   @UseGuards(AuthGuard, TenantGuard, RoleGuard)
-  @RequirePermission('tenant:manage')
+  @RequirePermission('tenant:select')
   @UsePipes(new ZodValidationPipe(SelectTenantSchema))
   async setActiveTenant(
     @Req() req: RequestContext,

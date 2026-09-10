@@ -1,7 +1,8 @@
 # PRD 005: Categories and basic financial reports
 
 ## Status
-Draft (Ready for implementation)
+Implemented (categories and spending by category shipped; further reports are
+out of scope — see the [roadmap](../roadmap.md#3-reports-beyond-spending-by-category))
 
 ## Objective
 
@@ -115,7 +116,13 @@ Reports are supported as **derived** calculations (not source of truth):
 - Overspending alerts
 - Hierarchical categories
 - Subcategories
-- Exportable reports (CSV/PDF)
+- ~~Exportable reports (CSV/PDF)~~ — **superseded 2026-09-10.** Export was
+  built, though not as a report: `GET /api/export/household` returns the whole
+  household as JSON and `GET /api/export/transactions.csv` returns the ledger
+  as CSV, both behind the `tenant:export` permission and both audited. No PRD
+  describes that module; this line pointed the other way and had to be
+  corrected. Importing the result back in is deferred — see the
+  [roadmap](../roadmap.md#1-importing-data-back-in).
 - Advanced dashboards
 - Cross-tenant comparisons
 

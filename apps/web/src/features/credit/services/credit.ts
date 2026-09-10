@@ -1,0 +1,163 @@
+import { apiFetch } from '../../../lib/api/client'
+
+export interface CreditLine {
+  id: string
+  tenantId: string
+  name: string
+  limitMinor: number
+  currency: string
+  status: 'active' | 'closed'
+  createdAt: string
+}
+
+export interface CreditLineStatement {
+  id: string
+  tenantId: string
+  creditLineId: string
+  period: string
+  cutoffDate: string
+  dueDate: string
+  /** Total owed, as the issuer declares it. */
+  closingBalanceMinor: number
+  /** What must be paid against this statement. */
+  amountDueMinor: number
+  /** The ceiling at that cutoff, frozen when the statement was recorded. */
+  limitMinorSnapshot: number
+  currency: string
+  createdAt: string
+  /** Derived: the snapshotted ceiling minus what the statement declared owed. */
+  availableMinor: number
+}
+
+/**
+ * A line with what its last statement said.
+ *
+ * `latestStatement` and `availableMinor` are null when no statement has been
+ * recorded yet — not zero. Zero available and zero owed is a claim; "not known
+ * yet" is the truth, and a board must not show the two the same way.
+ */
+export interface CreditLineWithLatest extends CreditLine {
+  latestStatement: CreditLineStatement | null
+  availableMinor: number | null
+}
+
+export async function listCreditLines(): Promise<{
+  data: { creditLines: CreditLine[] }
+}> {
+  return apiFetch<{ data: { creditLines: CreditLine[] } }>('/credit-lines')
+}
+
+export async function getCreditSummary(): Promise<{
+  data: { creditLines: CreditLineWithLatest[] }
+}> {
+  return apiFetch<{ data: { creditLines: CreditLineWithLatest[] } }>(
+    '/credit-lines/summary',
+  )
+}
+
+export async function createCreditLine(input: {
+  name: string
+  limitMinor: number
+  currency: string
+}): Promise<{ data: { creditLine: CreditLine } }> {
+  return apiFetch<{ data: { creditLine: CreditLine } }>('/credit-lines', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+/**
+ * Renames a line or moves its ceiling.
+ *
+ * Issuers raise and lower limits, and a household setting one up may not have
+ * the real figure to hand. Past statements are unaffected — each records the
+ * limit it was measured against — so this never restates a figure already
+ * read. Currency is not editable: the statements below carry their own
+ * amounts.
+ */
+export async function updateCreditLine(
+  id: string,
+  input: { name?: string; limitMinor?: number },
+): Promise<{ data: { creditLine: CreditLine } }> {
+  return apiFetch<{ data: { creditLine: CreditLine } }>(
+    `/credit-lines/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+}
+
+export async function closeCreditLine(
+  id: string,
+): Promise<{ data: { creditLine: CreditLine } }> {
+  return apiFetch<{ data: { creditLine: CreditLine } }>(
+    `/credit-lines/${encodeURIComponent(id)}/close`,
+    { method: 'POST' },
+  )
+}
+
+/**
+ * A page of the statements a line has issued, newest cutoff first.
+ *
+ * Paginated because a line issues one every month and none are ever deleted,
+ * so this list only grows. No screen reads it yet — the credit board shows each
+ * line's latest statement, not its history — but the endpoint it mirrors is
+ * public, and a client that ignored the page would quietly read only the first
+ * one the day a history view is built.
+ */
+export async function listStatements(
+  creditLineId: string,
+  params?: { page?: number; pageSize?: number },
+): Promise<{
+  data: { statements: CreditLineStatement[] }
+  meta: { pagination: { page: number; pageSize: number; total: number; totalPages: number } }
+}> {
+  const query = new URLSearchParams()
+  if (params?.page !== undefined) query.set('page', String(params.page))
+  if (params?.pageSize !== undefined) query.set('pageSize', String(params.pageSize))
+
+  const queryString = query.toString()
+  return apiFetch(
+    `/credit-lines/${encodeURIComponent(creditLineId)}/statements${
+      queryString ? `?${queryString}` : ''
+    }`,
+  )
+}
+
+/**
+ * Corrects a statement, and the obligation it produced with it.
+ *
+ * The cutoff is not editable: the period is derived from it, so moving it
+ * would move the obligation between months. Everything else can be fixed —
+ * a mistyped figure that cannot be corrected is a figure the household is
+ * stuck with.
+ */
+export async function updateStatement(
+  creditLineId: string,
+  statementId: string,
+  input: {
+    dueDate?: string
+    closingBalanceMinor?: number
+    amountDueMinor?: number
+  },
+): Promise<{ data: { statement: CreditLineStatement } }> {
+  return apiFetch<{ data: { statement: CreditLineStatement } }>(
+    `/credit-lines/${encodeURIComponent(creditLineId)}/statements/${encodeURIComponent(
+      statementId,
+    )}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+}
+
+export async function recordStatement(
+  creditLineId: string,
+  input: {
+    cutoffDate: string
+    dueDate: string
+    closingBalanceMinor: number
+    amountDueMinor: number
+  },
+): Promise<{ data: { statement: CreditLineStatement } }> {
+  return apiFetch<{ data: { statement: CreditLineStatement } }>(
+    `/credit-lines/${encodeURIComponent(creditLineId)}/statements`,
+    { method: 'POST', body: JSON.stringify(input) },
+  )
+}

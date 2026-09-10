@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common'
-import { MembershipRepository } from './infrastructure/membership.repository'
+import { MembershipRepository } from './domain/membership.repository'
+import { PrismaMembershipRepository } from './infrastructure/prisma-membership.repository'
 
 @Module({
-  providers: [MembershipRepository],
+  providers: [{ provide: MembershipRepository, useClass: PrismaMembershipRepository }],
   exports: [MembershipRepository],
 })
 export class MembershipsModule {}

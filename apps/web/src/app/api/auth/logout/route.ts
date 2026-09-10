@@ -1,17 +1,24 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { resolveApiBase } from '../../../../lib/api/api-base'
+import { isSecureCookie } from '../../../../lib/auth/cookie-options'
 
-export async function POST() {
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL
+export async function POST(request: Request) {
+  // Either source counts as "configured" — resolveApiBase() itself always
+  // resolves to something (it has a localhost:3001 default), so this checks
+  // for explicit configuration rather than resolveApiBase()'s return value,
+  // to preserve skipping the call in an environment where neither is set.
+  const apiBaseConfigured = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL
   const internalKey = process.env.INTERNAL_API_KEY
   const sessionCookie = cookies().get('plinto_session')?.value
 
   // Always try to revoke the session on the API if we have the necessary info
-  if (apiBase && internalKey && sessionCookie) {
+  if (apiBaseConfigured && internalKey && sessionCookie) {
     try {
-      const apiUrl = apiBase.startsWith('http')
-        ? `${apiBase}/auth/logout`
-        : `http://localhost:3001${apiBase}/auth/logout`
+      // Anchored to this request's own origin when the configured base is
+      // relative — the same reverse-proxied-self-host case the callback
+      // route handles.
+      const apiUrl = `${resolveApiBase({ requestUrl: request.url })}/auth/logout`
 
       await fetch(apiUrl, {
         method: 'POST',
@@ -30,13 +37,20 @@ export async function POST() {
   // Always clear the session cookie, even if API call failed
   // This ensures the user is logged out from the web app perspective
   const response = NextResponse.json({ success: true })
-  response.cookies.set('plinto_session', '', {
+  const clearedCookie = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isSecureCookie(),
+    sameSite: 'lax' as const,
     maxAge: 0,
     path: '/',
-  })
+  }
+  response.cookies.set('plinto_session', '', clearedCookie)
+  // Nothing sets `plinto_refresh_token` any more — the callback drops the
+  // provider's refresh token instead of storing it — but a browser that signed
+  // in against an older build still carries one, and it is a thirty-day
+  // credential. Evicting it costs a header and stops being needed on its own
+  // once those cookies age out.
+  response.cookies.set('plinto_refresh_token', '', clearedCookie)
 
   return response
 }

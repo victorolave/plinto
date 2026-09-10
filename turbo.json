@@ -6,7 +6,17 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**"]
+      "outputs": ["dist/**", ".next/**"],
+      // Turbo runs in strict env mode, so a task only receives the variables
+      // named here — anything else is stripped before the task starts, which
+      // is invisible locally because Next reads apps/web/.env.local from disk.
+      // NEXT_PUBLIC_API_BASE_URL is inlined into the client bundle at build
+      // time, so it is part of the build's identity: declaring it also keys the
+      // cache on its value, so a bundle built for one API base is never reused
+      // for another. Runtime-only secrets (JWT_SECRET, INTERNAL_API_KEY,
+      // OIDC_*) are deliberately absent — the handlers that read them are
+      // dynamic and never execute during a build.
+      "env": ["NEXT_PUBLIC_API_BASE_URL"]
     },
     "lint": {
       "dependsOn": ["^lint"]

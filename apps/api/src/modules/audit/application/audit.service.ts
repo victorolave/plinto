@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { AuditRepository } from '../infrastructure/audit.repository'
+import { AuditRepository } from '../domain/audit.repository'
 import { AuditSource } from '../domain/audit-event.entity'
 
 @Injectable()

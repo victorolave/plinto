@@ -1,10 +1,18 @@
 'use client'
 
-export default function ErrorPage() {
+import { useTranslations } from 'next-intl'
+import { Button } from '../components/ui/button'
+import { AuthLayout } from '../components/layout/auth-layout'
+
+export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
+  const t = useTranslations('errorPage')
+  const tCommon = useTranslations('common')
+
   return (
-    <main style={{ padding: '2rem' }}>
-      <h1>Something went wrong</h1>
-      <p>Please try again.</p>
-    </main>
+    <AuthLayout eyebrow={t('eyebrow')} title={t('title')} subtitle={t('subtitle')}>
+      <Button onClick={reset} block>
+        {tCommon('tryAgain')}
+      </Button>
+    </AuthLayout>
   )
 }

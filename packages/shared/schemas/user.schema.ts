@@ -4,6 +4,7 @@ export const UserSchema = z.object({
   id: z.string(),
   email: z.string().email(),
   name: z.string().optional().nullable(),
+  onboardingTourSeenAt: z.string().nullable().optional(),
   createdAt: z.string(),
 })
 

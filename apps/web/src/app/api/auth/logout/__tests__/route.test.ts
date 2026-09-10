@@ -1,0 +1,233 @@
+/**
+ * Tests for apps/web/src/app/api/auth/logout/route.ts
+ *
+ * POST /api/auth/logout:
+ *  1. Calls the API to revoke the session if env vars + cookie are present.
+ *  2. Always returns 200 { success: true }.
+ *  3. Always clears plinto_session cookie (maxAge: 0).
+ *  4. Also clears plinto_refresh_token, which nothing sets any more but which
+ *     browsers signed in against an older build still carry.
+ *
+ * The bug this file once described — logout leaving a 30-day refresh cookie
+ * behind — was fixed. The `refresh/route.ts` it pointed at no longer exists
+ * either: renewal happens by sliding the database session on activity, not by
+ * returning to the IdP. See docs/delivery/oidc-providers.md.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// ---- env stubs (before imports) ----
+vi.stubEnv('NODE_ENV', 'test')
+vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://localhost:3001')
+vi.stubEnv('INTERNAL_API_KEY', 'test-internal-key')
+
+// ---- Next.js mocks ----
+
+const mockCookiesGet = vi.fn()
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() => ({ get: mockCookiesGet })),
+}))
+
+vi.mock('next/server', () => ({
+  NextResponse: {
+    json: vi.fn(),
+    redirect: vi.fn(),
+  },
+}))
+
+// ---- actual import (after mocks) ----
+
+import { NextResponse } from 'next/server'
+import { POST } from '../route'
+
+const mockNextResponseJson = vi.mocked(NextResponse.json)
+
+// ---- fetch mock ----
+
+const globalFetch = vi.fn()
+
+// ---- response builder ----
+
+function makeMockResponse(body: unknown, status = 200) {
+  const cookieStore: Record<string, { value: string; options: Record<string, unknown> }> = {}
+  const deletedCookies: string[] = []
+
+  return {
+    _body: body,
+    _status: status,
+    cookies: {
+      set: vi.fn((name: string, value: string, options: Record<string, unknown> = {}) => {
+        cookieStore[name] = { value, options }
+      }),
+      delete: vi.fn((name: string) => {
+        deletedCookies.push(name)
+      }),
+      _store: cookieStore,
+      _deleted: deletedCookies,
+    },
+    json: () => Promise.resolve(body),
+  }
+}
+
+const BASE_URL = 'http://localhost:3000'
+
+function makeRequest(url = `${BASE_URL}/api/auth/logout`) {
+  return new Request(url, { method: 'POST' })
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+
+  globalFetch.mockResolvedValue({ ok: true })
+  vi.stubGlobal('fetch', globalFetch)
+
+  vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://localhost:3001')
+  vi.stubEnv('INTERNAL_API_KEY', 'test-internal-key')
+
+  mockCookiesGet.mockReturnValue({ value: 'session-jwt' })
+})
+
+describe('POST /api/auth/logout', () => {
+  it('returns 200 with { success: true }', async () => {
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+
+    const response = await POST(makeRequest())
+
+    expect(mockNextResponseJson).toHaveBeenCalledWith({ success: true })
+    expect(response._status).toBe(200)
+    expect(await response.json()).toEqual({ success: true })
+  })
+
+  it('calls the API revoke endpoint when env vars and session cookie are present', async () => {
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+    mockCookiesGet.mockReturnValue({ value: 'my-session-value' })
+
+    await POST(makeRequest())
+
+    expect(globalFetch).toHaveBeenCalledWith(
+      'http://localhost:3001/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'x-internal-key': 'test-internal-key',
+          Cookie: 'plinto_session=my-session-value',
+        }),
+      }),
+    )
+  })
+
+  it('sends Content-Type: application/json to the revoke endpoint', async () => {
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+
+    await POST(makeRequest())
+
+    expect(globalFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+        }),
+      }),
+    )
+  })
+
+  it('skips the API call when NEXT_PUBLIC_API_BASE_URL is not set', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+
+    await POST(makeRequest())
+
+    expect(globalFetch).not.toHaveBeenCalled()
+  })
+
+  it('skips the API call when INTERNAL_API_KEY is not set', async () => {
+    vi.stubEnv('INTERNAL_API_KEY', '')
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+
+    await POST(makeRequest())
+
+    expect(globalFetch).not.toHaveBeenCalled()
+  })
+
+  it('skips the API call when session cookie is absent', async () => {
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+    mockCookiesGet.mockReturnValue(undefined)
+
+    await POST(makeRequest())
+
+    expect(globalFetch).not.toHaveBeenCalled()
+  })
+
+  it('still returns 200 and clears session cookie even when the API call rejects', async () => {
+    globalFetch.mockRejectedValue(new Error('API unreachable'))
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+
+    // Should not throw
+    const response = await POST(makeRequest())
+
+    expect(response._status).toBe(200)
+  })
+
+  it('clears plinto_session cookie with maxAge: 0', async () => {
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+
+    await POST(makeRequest())
+
+    const sessionSet = mockResp.cookies._store['plinto_session']
+    expect(sessionSet).toBeDefined()
+    expect(sessionSet.value).toBe('')
+    expect(sessionSet.options.maxAge).toBe(0)
+  })
+
+  it('clears plinto_session with httpOnly: true, sameSite: lax, path: /', async () => {
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+
+    await POST(makeRequest())
+
+    const sessionSet = mockResp.cookies._store['plinto_session']
+    expect(sessionSet.options.httpOnly).toBe(true)
+    expect(sessionSet.options.sameSite).toBe('lax')
+    expect(sessionSet.options.path).toBe('/')
+  })
+
+  // ---------- BUG: logout does not clear plinto_refresh_token ----------
+
+  it('clears plinto_refresh_token cookie on logout', async () => {
+    // The 30-day IdP refresh-token cookie set by callback/route.ts is a
+    // credential and must not survive logout. Logout must clear both
+    // plinto_session and plinto_refresh_token.
+    // (or response.cookies.delete) alongside the plinto_session clear.
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+
+    await POST(makeRequest())
+
+    // This assertion currently fails: plinto_refresh_token is never set/deleted
+    const refreshCleared =
+      mockResp.cookies._store['plinto_refresh_token'] !== undefined ||
+      mockResp.cookies._deleted.includes('plinto_refresh_token')
+    expect(refreshCleared).toBe(true)
+  })
+
+  it('anchors a relative apiBase to this request\'s own origin (reverse-proxied self-host)', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '/api/v1')
+    const mockResp = makeMockResponse({ success: true })
+    mockNextResponseJson.mockReturnValue(mockResp as any)
+
+    await POST(makeRequest(`${BASE_URL}/api/auth/logout`))
+
+    expect(globalFetch).toHaveBeenCalledWith(
+      `${BASE_URL}/api/v1/auth/logout`,
+      expect.anything(),
+    )
+  })
+})

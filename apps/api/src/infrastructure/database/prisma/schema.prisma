@@ -8,15 +8,17 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  idpSub    String   @unique @map("idp_sub")
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                    String    @id @default(uuid())
+  idpSub                String    @unique @map("idp_sub")
+  email                 String    @unique
+  name                  String?
+  onboardingTourSeenAt  DateTime? @map("onboarding_tour_seen_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   memberships Membership[]
   sessions    Session[]
+  invitationsSent Invitation[] @relation("InvitationInviter")
 
   @@map("users")
 }
@@ -25,14 +27,52 @@ model Tenant {
   id           String       @id @default(uuid())
   name         String
   baseCurrency String       @default("COP") @map("base_currency")
+  /// A separate, throwaway household filled with invented Colombian sample
+  /// data so a person can see Plinto working without touching their real
+  /// data. Created and deleted on demand; never mixed with a real tenant.
+  isDemo       Boolean      @default(false) @map("is_demo")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  memberships Membership[]
-  sessions    Session[]
-  auditEvents AuditEvent[]
+  memberships  Membership[]
+  invitations  Invitation[]
+  sessions     Session[]
+  auditEvents  AuditEvent[]
+  accounts     Account[]
+  transactions Transaction[]
+  transfers    Transfer[]
+  recurringRules RecurringTransactionRule[]
+  recurringExecutions RecurringTransactionExecution[]
+  categories   Category[]
+  obligationInstances ObligationInstance[]
+  obligationPayments  ObligationPayment[]
+  debtSchedules       DebtSchedule[]
+  creditLines         CreditLine[]
+  creditLineStatements CreditLineStatement[]
 
   @@map("tenants")
+}
+
+model Account {
+  id        String      @id @default(uuid())
+  tenantId  String      @map("tenant_id")
+  name       String
+  type       AccountType
+  currency   String
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  archivedAt DateTime?   @map("archived_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  transactions Transaction[]
+  transfersOut Transfer[]    @relation("TransferSource")
+  transfersIn  Transfer[]    @relation("TransferDestination")
+  recurringRules RecurringTransactionRule[]
+  debtSchedules  DebtSchedule[]
+
+  @@index([tenantId])
+  @@index([tenantId, archivedAt])
+  @@map("accounts")
 }
 
 model Membership {
@@ -48,6 +88,41 @@ model Membership {
 
   @@unique([tenantId, userId])
   @@map("memberships")
+}
+
+/// A standing offer to join a household, addressed to an email rather than to a
+/// user: a person does not exist in Plinto until the identity provider hands us
+/// their first login, so the household that wants them cannot reference a row
+/// that is not there yet.
+///
+/// Deliberately ephemeral. The row is deleted the moment it is accepted or
+/// revoked, and the history lives in `audit_events` instead. The alternative —
+/// keeping accepted rows and marking them — needs a UNIQUE that only applies to
+/// pending ones, and Postgres spells that as a partial index, which Prisma
+/// cannot express. A plain UNIQUE over kept rows would forbid ever re-inviting
+/// someone who once left.
+model Invitation {
+  id              String         @id @default(uuid())
+  tenantId        String         @map("tenant_id")
+  /// Always stored lower-cased by the repository, so the unique below is a
+  /// real "one pending invitation per person" and not one per spelling.
+  email           String
+  role            MembershipRole
+  invitedByUserId String         @map("invited_by_user_id")
+  expiresAt       DateTime       @map("expires_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  /// Restrict, not Cascade: an invitation records who extended it, and deleting
+  /// the inviter must not silently erase that. Users are not deleted today, so
+  /// this never fires — it is stated so the intent survives the day they are.
+  invitedBy User   @relation("InvitationInviter", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, email])
+  /// Claiming at login looks invitations up by email across every household.
+  @@index([email])
+  @@map("invitations")
 }
 
 model Session {
@@ -84,10 +159,406 @@ model AuditEvent {
   @@map("audit_events")
 }
 
+model Transaction {
+  id          String          @id @default(uuid())
+  tenantId    String          @map("tenant_id")
+  accountId   String          @map("account_id")
+  type        TransactionType
+  amountMinor Int             @map("amount_minor")
+  currency    String
+  description String?
+  occurredAt  DateTime        @map("occurred_at")
+  transferId  String?         @map("transfer_id")
+  categoryId  String?         @map("category_id")
+  source      TransactionSource @default(manual)
+  recurringRuleId String?     @map("recurring_rule_id")
+  recurringPeriod String?     @map("recurring_period")
+  idempotencyKey String?      @map("idempotency_key")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  account  Account  @relation(fields: [accountId], references: [id])
+  transfer Transfer? @relation(fields: [transferId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recurringRule RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id])
+  recurringExecution RecurringTransactionExecution?
+  obligationPayment ObligationPayment?
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([transferId])
+  @@index([recurringRuleId])
+  @@index([tenantId, source])
+  @@index([tenantId, categoryId])
+  @@map("transactions")
+}
+
+model RecurringTransactionRule {
+  id        String      @id @default(uuid())
+  tenantId  String      @map("tenant_id")
+  accountId String      @map("account_id")
+  name      String
+  type      TransactionType
+  amountMinor Int       @map("amount_minor")
+  currency  String
+  frequency RecurringTransactionFrequency @default(monthly)
+  dayOfMonth Int        @map("day_of_month")
+  startDate DateTime    @map("start_date")
+  status    RecurringRuleStatus @default(active)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  tenant       Tenant      @relation(fields: [tenantId], references: [id])
+  account      Account     @relation(fields: [accountId], references: [id])
+  transactions Transaction[]
+  executions   RecurringTransactionExecution[]
+  obligationInstances ObligationInstance[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("recurring_transaction_rules")
+}
+
+model RecurringTransactionExecution {
+  id        String      @id @default(uuid())
+  tenantId  String      @map("tenant_id")
+  ruleId    String      @map("rule_id")
+  period    String
+  idempotencyKey String  @map("idempotency_key")
+  transactionId String   @unique @map("transaction_id")
+  status    RecurringExecutionStatus @default(success)
+  jobId     String?     @map("job_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  rule        RecurringTransactionRule @relation(fields: [ruleId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+
+  @@unique([tenantId, idempotencyKey])
+  @@unique([ruleId, period])
+  @@index([tenantId])
+  @@map("recurring_transaction_executions")
+}
+
+/// One obligation for one period: what the household is expected to pay, and
+/// when. Deliberately stores only facts — expected amount, due date, origin.
+/// The lifecycle state (pending / partial / paid / overdue) is DERIVED from
+/// the linked payments and the due date, never stored, so it cannot contradict
+/// the payments that back it and no job is needed to age instances.
+model ObligationInstance {
+  id                  String   @id @default(uuid())
+  tenantId            String   @map("tenant_id")
+  sourceType          ObligationSourceType @map("source_type")
+  recurringRuleId     String?  @map("recurring_rule_id")
+  debtScheduleId      String?  @map("debt_schedule_id")
+  /// Set only when `sourceType` is `credit_line`. Unique rather than paired
+  /// with `period`, which is what lets a line bill twice inside one calendar
+  /// month — see PRD-011. Postgres treats NULLs as distinct, so this
+  /// constrains only the rows that carry one.
+  creditLineStatementId String? @unique @map("credit_line_statement_id")
+  period              String
+  dueDate             DateTime @map("due_date")
+  name                String
+  expectedAmountMinor Int      @map("expected_amount_minor")
+  currency            String
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant                    @relation(fields: [tenantId], references: [id])
+
+  /// Restrict is explicit because Prisma would otherwise infer SetNull for an
+  /// optional relation, and nulling `recurringRuleId` violates the
+  /// `obligation_instances_source_matches_reference` CHECK, which demands a rule
+  /// reference whenever `sourceType` is `recurring_rule`. Rules are archived and
+  /// never deleted, so this never fires — it is stated so the schema agrees with
+  /// the migration and `migrate dev` reports no drift to "repair".
+  recurringRule RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id], onDelete: Restrict)
+  /// Restrict for the same reason as the rule above: a cancelled schedule is
+  /// cancelled, never deleted, so the instances it produced keep pointing at
+  /// what produced them.
+  debtSchedule  DebtSchedule?             @relation(fields: [debtScheduleId], references: [id], onDelete: Restrict)
+  /// Restrict for the same reason as the two above: a statement is a fact the
+  /// lender issued, so it is never deleted and the obligation it produced
+  /// keeps pointing at it.
+  creditLineStatement CreditLineStatement? @relation(fields: [creditLineStatementId], references: [id], onDelete: Restrict)
+  payments      ObligationPayment[]
+
+  /// Idempotency of generation. Postgres treats NULLs as distinct, so this
+  /// blocks a second instance for the same (rule, period) while still allowing
+  /// any number of one-off obligations inside the same period.
+  @@unique([recurringRuleId, period])
+  /// The same idempotency the rules have: one obligation per (schedule,
+  /// period), so re-running generation never duplicates an installment.
+  @@unique([debtScheduleId, period])
+  @@index([tenantId, period])
+  @@map("obligation_instances")
+}
+
+/// Links a transaction to the obligation it pays. Several payments may settle
+/// one obligation (rent paid in two transfers), but `transactionId` is unique
+/// across the whole table, which is what makes "a transaction cannot reconcile
+/// two obligations" a guarantee of the engine rather than a check somebody has
+/// to remember to write.
+model ObligationPayment {
+  id                   String   @id @default(uuid())
+  tenantId             String   @map("tenant_id")
+  obligationInstanceId String   @map("obligation_instance_id")
+  transactionId        String   @unique @map("transaction_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  obligationInstance ObligationInstance @relation(fields: [obligationInstanceId], references: [id])
+  transaction        Transaction        @relation(fields: [transactionId], references: [id])
+
+  @@unique([obligationInstanceId, transactionId])
+  @@index([tenantId])
+  @@index([obligationInstanceId])
+  @@map("obligation_payments")
+}
+
+/// A fixed plan of installments against a liability account: what the `ADDI`
+/// sheet holds per row. See PRD-007.
+///
+/// `principalMinor` is the total that will be repaid, interest included — not
+/// what the goods cost. Interest is recorded rather than calculated, because
+/// retail financing is quoted as a total, a count and an installment, and the
+/// rate is never one of the three.
+model DebtSchedule {
+  id               String             @id @default(uuid())
+  tenantId         String             @map("tenant_id")
+  accountId        String             @map("account_id")
+  name             String
+  /// Total to be repaid across every installment.
+  principalMinor   Int                @map("principal_minor")
+  /// What each installment charges. The last one absorbs the difference, so
+  /// the schedule always sums to exactly `principalMinor` — lenders quote
+  /// numbers that do not multiply out, and the sheet this replaces is full of
+  /// them.
+  installmentMinor Int                @map("installment_minor")
+  installmentCount Int                @map("installment_count")
+  firstDueDate     DateTime           @map("first_due_date")
+  currency         String
+  status           DebtScheduleStatus @default(active)
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+  obligationInstances ObligationInstance[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("debt_schedules")
+}
+
+/// A revolving credit line: a card, or a rotating line such as ADDI. See
+/// PRD-011.
+///
+/// Deliberately NOT an `Account`. Available credit derived from an account
+/// balance only moves when every purchase is posted as a transaction, and a
+/// household that records the monthly bill rather than the purchases behind it
+/// would see its full limit reported as available every day. The declared
+/// statement is the source of truth instead, so what this row holds is only
+/// what does not change between statements.
+///
+/// It carries no cutoff day, due day or billing cycle. Those existed to project
+/// a statement that had not arrived; the projection is a view over the last
+/// statement, not a row, so nothing here needs to know whether the lender bills
+/// monthly, every fourteen days, or irregularly.
+model CreditLine {
+  id         String           @id @default(uuid())
+  tenantId   String           @map("tenant_id")
+  name       String
+  /// The ceiling as it stands today. What a past statement was measured
+  /// against lives on that statement, not here.
+  limitMinor Int              @map("limit_minor")
+  currency   String
+  status     CreditLineStatus @default(active)
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  tenant     Tenant                @relation(fields: [tenantId], references: [id])
+  statements CreditLineStatement[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("credit_lines")
+}
+
+/// One statement a credit line issued: what is owed in total, what must be
+/// paid, and by when. See PRD-011.
+///
+/// This is the unit of truth for a revolving balance. The household does not
+/// record the purchases behind it, so the figure the issuer declares is the
+/// only one that can be trusted — and it is a fact, entered once, rather than
+/// a total accumulated from movements.
+///
+/// It carries its own dates and its own limit rather than reading them off the
+/// line. Issuers move cutoffs and raise ceilings, and a past statement
+/// recomputed against today's limit would silently restate what that month's
+/// available credit had been.
+model CreditLineStatement {
+  id                  String   @id @default(uuid())
+  tenantId            String   @map("tenant_id")
+  creditLineId        String   @map("credit_line_id")
+  /// `YYYY-MM`. Grouping only — never identity. Two statements may share it.
+  period              String
+  cutoffDate          DateTime @map("cutoff_date")
+  dueDate             DateTime @map("due_date")
+  /// Total owed as the issuer declares it. Drives available credit.
+  closingBalanceMinor Int      @map("closing_balance_minor")
+  /// What must be paid against this statement.
+  amountDueMinor      Int      @map("amount_due_minor")
+  /// The ceiling at this cutoff, frozen. See the note above.
+  limitMinorSnapshot  Int      @map("limit_minor_snapshot")
+  currency            String
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  creditLine CreditLine @relation(fields: [creditLineId], references: [id], onDelete: Restrict)
+  obligationInstance ObligationInstance?
+
+  /// A lender does not issue two statements closing on the same day for the
+  /// same line. Keyed on the cutoff rather than the period so biweekly billing
+  /// fits, while a double submission of the same statement still cannot.
+  @@unique([creditLineId, cutoffDate])
+  @@index([tenantId])
+  @@index([tenantId, period])
+  @@index([creditLineId, cutoffDate])
+  @@map("credit_line_statements")
+}
+
+model Transfer {
+  id                   String    @id @default(uuid())
+  tenantId             String    @map("tenant_id")
+  sourceAccountId      String    @map("source_account_id")
+  destinationAccountId String    @map("destination_account_id")
+  sourceAmountMinor    Int       @map("source_amount_minor")
+  destinationAmountMinor Int     @map("destination_amount_minor")
+  sourceCurrency       String    @map("source_currency")
+  destinationCurrency  String    @map("destination_currency")
+  fxRate               Decimal?  @map("fx_rate") @db.Decimal(20, 8)
+  feeMinor             Int?      @map("fee_minor")
+  rateSource           String?   @map("rate_source")
+  /// Client-supplied via the `Idempotency-Key` request header — not the same
+  /// concern as `Transaction.idempotencyKey` or
+  /// `RecurringTransactionExecution.idempotencyKey`, which the recurring
+  /// engine generates itself to dedupe its own runs. This one is optional and
+  /// caller-chosen, so a resubmit of the same transfer request can be told
+  /// apart from a new one.
+  idempotencyKey       String?   @map("idempotency_key")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  tenant             Tenant        @relation(fields: [tenantId], references: [id])
+  sourceAccount      Account       @relation("TransferSource", fields: [sourceAccountId], references: [id])
+  destinationAccount Account       @relation("TransferDestination", fields: [destinationAccountId], references: [id])
+  transactions       Transaction[]
+
+  @@index([tenantId])
+  @@index([sourceAccountId])
+  @@index([destinationAccountId])
+  /// Postgres treats NULLs as distinct, so a caller that never sends the
+  /// header keeps today's behavior untouched — any number of transfers with a
+  /// null key are allowed — while a caller that does send one gets a repeat
+  /// request rejected by this index rather than by a read-then-write check
+  /// that two concurrent retries could both pass.
+  @@unique([tenantId, idempotencyKey])
+  @@map("transfers")
+}
+
+model Category {
+  id        String          @id @default(uuid())
+  tenantId  String          @map("tenant_id")
+  name      String
+  type      TransactionType
+  color     String?
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  transactions Transaction[]
+
+  @@index([tenantId])
+  @@map("categories")
+}
+
+enum TransactionType {
+  income
+  expense
+}
+
+enum TransactionSource {
+  manual
+  job
+}
+
+enum RecurringTransactionFrequency {
+  monthly
+}
+
+/// Single lifecycle state per rule. Replaces the former `active` boolean so
+/// that "paused" and "archived" cannot be asserted at the same time, and so a
+/// rule may only materialize money under one predicate: status = 'active'.
+enum RecurringRuleStatus {
+  active
+  paused
+  archived
+}
+
+enum RecurringExecutionStatus {
+  success
+}
+
+/// Origin of an obligation instance. PRD-007 will add `debt_schedule` together
+/// with its own nullable foreign key; a CHECK constraint keeps the declared
+/// origin and the populated reference in agreement, so "exactly one origin" is
+/// enforced by the database rather than by convention.
+enum ObligationSourceType {
+  recurring_rule
+  manual
+  /// An installment of a debt schedule (PRD-007).
+  debt_schedule
+  /// The payment a credit-line statement demands (PRD-011). Unlike the three
+  /// above, one of these is never projected ahead of time: it exists because
+  /// the lender issued a statement, which nothing can predict.
+  credit_line
+}
+
+/// Only the two states somebody decides. Settlement is derived from the
+/// schedule's own installments and their payments, the same way obligation
+/// status is derived from its payments — a stored "settled" could contradict
+/// them, and nothing in the system would be able to say which to believe.
+enum DebtScheduleStatus {
+  active
+  cancelled
+}
+
+/// Only the two states somebody decides, for the same reason
+/// `DebtScheduleStatus` has two. A line is open, or the household closed it.
+/// Whether it is paid off is derived from its last statement.
+enum CreditLineStatus {
+  active
+  closed
+}
+
 enum MembershipRole {
   owner
   member
   viewer
+}
+
+enum AccountType {
+  cash
+  bank
+  credit
+  savings
+  /// Money owed to a lender: a loan taken, or a purchase financed in
+  /// installments. Its balance is normally negative — what is still owed.
+  /// See PRD-007.
+  debt
 }
 
 enum AuditSource {

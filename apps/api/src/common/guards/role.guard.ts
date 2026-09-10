@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { RequestContext } from '../types/request-context'
-import { MembershipRepository } from '../../modules/memberships/infrastructure/membership.repository'
+import { MembershipRepository } from '../../modules/memberships/domain/membership.repository'
 import { AuthorizationPolicy, Permission } from '../auth/authorization-policy'
 
 export const PERMISSION_KEY = 'permission'

@@ -6,6 +6,7 @@ describe('TenantSchema', () => {
     id: 'tenant-1',
     name: 'Acme Corp',
     baseCurrency: 'COP',
+    isDemo: false,
     createdAt: '2024-01-01T00:00:00.000Z',
   }
 
@@ -38,6 +39,12 @@ describe('TenantSchema', () => {
 
   it('rejects missing createdAt', () => {
     const { createdAt: _ca, ...rest } = validTenant
+    const result = TenantSchema.safeParse(rest)
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing isDemo', () => {
+    const { isDemo: _isDemo, ...rest } = validTenant
     const result = TenantSchema.safeParse(rest)
     expect(result.success).toBe(false)
   })

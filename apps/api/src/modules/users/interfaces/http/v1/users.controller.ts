@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Req,
   UseGuards,
   UsePipes,
@@ -11,15 +12,15 @@ import { RequestContext } from '../../../../../common/types/request-context'
 import { AuthGuard } from '../../../../../common/guards/auth.guard'
 import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pipe'
 import { UpdateProfileSchema } from '../../../../../common/shared-schemas'
-import { UserRepository } from '../../../infrastructure/user.repository'
-import { MembershipRepository } from '../../../../memberships/infrastructure/membership.repository'
+import { UserProfileService } from '../../../application/user-profile.service'
+import { MembershipRepository } from '../../../../memberships/domain/membership.repository'
 import { SessionService } from '../../../../sessions/application/session.service'
 
 @Controller('me')
 @UseGuards(AuthGuard)
 export class UsersController {
   constructor(
-    private readonly userRepository: UserRepository,
+    private readonly userProfileService: UserProfileService,
     private readonly membershipRepository: MembershipRepository,
     private readonly sessionService: SessionService,
   ) {}
@@ -27,7 +28,7 @@ export class UsersController {
   @Get()
   async getMe(@Req() req: RequestContext) {
     const userId = req.user?.id ?? ''
-    const user = await this.userRepository.findById(userId)
+    const user = await this.userProfileService.getProfile(userId)
     const memberships = await this.membershipRepository.listByUserId(userId)
     let activeTenantId = await this.sessionService.getActiveTenant(userId)
     if (!activeTenantId) {
@@ -50,7 +51,21 @@ export class UsersController {
     @Body() body: { name: string },
   ) {
     const userId = req.user?.id ?? ''
-    const user = await this.userRepository.updateName(userId, body.name)
+    const user = await this.userProfileService.updateProfile({
+      userId,
+      name: body.name,
+      correlationId: req.requestId ?? 'unknown',
+    })
+    return { data: user }
+  }
+
+  @Post('onboarding-tour/seen')
+  async markOnboardingTourSeen(@Req() req: RequestContext) {
+    const userId = req.user?.id ?? ''
+    const user = await this.userProfileService.markOnboardingTourSeen({
+      userId,
+      correlationId: req.requestId ?? 'unknown',
+    })
     return { data: user }
   }
 }

@@ -1,0 +1,585 @@
+/**
+ * Tests for apps/web/src/app/(auth)/callback/route.ts
+ *
+ * GET /callback?code=...&state=...:
+ *  1. Redirects to /login when state or verifier cookie is missing.
+ *  2. Redirects to /login when claims.sub or claims.email are missing.
+ *  3. Redirects to /login when the session API returns a non-ok status.
+ *  4. Redirects to /login when sessionId or user is missing from API response.
+ *  5. Throws when API env vars are missing.
+ *  6. On success: sets plinto_session and plinto_refresh_token, deletes OIDC
+ *     state/verifier cookies, and redirects to the correct path.
+ *  7. Redirect target logic: /onboarding, /, /select-tenant.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// ---- env stubs (before imports) ----
+vi.stubEnv('JWT_SECRET', 'test-secret-cb')
+vi.stubEnv('NODE_ENV', 'test')
+vi.stubEnv('OIDC_REDIRECT_URI', 'https://app.example.com/callback')
+vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://localhost:3001')
+vi.stubEnv('INTERNAL_API_KEY', 'test-internal-key')
+
+// ---- Next.js mocks ----
+
+const mockCookiesGet = vi.fn()
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() => ({ get: mockCookiesGet })),
+}))
+
+vi.mock('next/server', () => ({
+  NextResponse: {
+    redirect: vi.fn(),
+    json: vi.fn(),
+  },
+}))
+
+// ---- BFF auth mocks ----
+// Use the path as seen from THIS test file
+
+vi.mock('../../../../lib/auth/oidc-client', () => ({
+  getOidcClient: vi.fn(),
+}))
+
+vi.mock('../../../../lib/auth/jwt', () => ({
+  createPlintoJwt: vi.fn().mockReturnValue('mocked-jwt-token'),
+  JWT_TTL_SECONDS: 60 * 60 * 8,
+}))
+
+// ---- actual imports (after mocks) ----
+
+import { NextResponse } from 'next/server'
+import { getOidcClient } from '../../../../lib/auth/oidc-client'
+import { createPlintoJwt } from '../../../../lib/auth/jwt'
+import { GET } from '../route'
+
+const mockNextResponseRedirect = vi.mocked(NextResponse.redirect)
+const mockGetOidcClient = vi.mocked(getOidcClient)
+const mockCreatePlintoJwt = vi.mocked(createPlintoJwt)
+
+// ---- fetch mock ----
+const globalFetch = vi.fn()
+
+// ---- helpers ----
+
+type MockRedirectResponse = {
+  _redirectUrl: string
+  _status: number
+  cookies: {
+    set: ReturnType<typeof vi.fn>
+    delete: ReturnType<typeof vi.fn>
+    _store: Record<string, { value: string; options: Record<string, unknown> }>
+    _deleted: string[]
+  }
+}
+
+function makeMockRedirectResponse(pathname: string): MockRedirectResponse {
+  const cookieStore: Record<string, { value: string; options: Record<string, unknown> }> = {}
+  const deletedCookies: string[] = []
+
+  return {
+    _redirectUrl: pathname,
+    _status: 302,
+    cookies: {
+      set: vi.fn((name: string, value: string, options: Record<string, unknown> = {}) => {
+        cookieStore[name] = { value, options }
+      }),
+      delete: vi.fn((name: string) => {
+        deletedCookies.push(name)
+      }),
+      _store: cookieStore,
+      _deleted: deletedCookies,
+    },
+  }
+}
+
+function makeOidcClient(overrides?: {
+  callbackParams?: ReturnType<typeof vi.fn>
+  callback?: ReturnType<typeof vi.fn>
+}) {
+  return {
+    callbackParams: overrides?.callbackParams ??
+      vi.fn().mockReturnValue({ code: 'authcode', state: 'abc-state' }),
+    callback: overrides?.callback ?? vi.fn().mockResolvedValue({
+      refresh_token: 'oidc-refresh-token',
+      claims: () => ({
+        sub: 'idp|user-sub',
+        email: 'user@example.com',
+        name: 'Test User',
+      }),
+    }),
+  }
+}
+
+const defaultSessionApiResponse = {
+  ok: true,
+  json: () =>
+    Promise.resolve({
+      data: {
+        sessionId: 'session-123',
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        activeTenantId: 'tenant-1',
+        needsOnboarding: false,
+        user: {
+          id: 'user-1',
+          idpSub: 'idp|user-sub',
+        },
+      },
+    }),
+}
+
+const BASE_URL = 'http://localhost:3000'
+const CALLBACK_URL = `${BASE_URL}/callback?code=authcode&state=abc-state`
+
+function makeRequest(url = CALLBACK_URL) {
+  return new Request(url)
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+
+  vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://localhost:3001')
+  vi.stubEnv('INTERNAL_API_KEY', 'test-internal-key')
+  vi.stubEnv('OIDC_REDIRECT_URI', 'https://app.example.com/callback')
+
+  // Default: both OIDC cookies present
+  mockCookiesGet.mockImplementation((name: string) => {
+    if (name === 'plinto_oidc_state') return { value: 'abc-state' }
+    if (name === 'plinto_oidc_verifier') return { value: 'pkce-verifier' }
+    return undefined
+  })
+
+  mockGetOidcClient.mockResolvedValue(makeOidcClient() as any)
+  mockCreatePlintoJwt.mockReturnValue('mocked-jwt-token')
+
+  globalFetch.mockResolvedValue(defaultSessionApiResponse)
+  vi.stubGlobal('fetch', globalFetch)
+
+  // Default redirect: capture the pathname from the URL passed to NextResponse.redirect
+  mockNextResponseRedirect.mockImplementation((url: URL) => {
+    return makeMockRedirectResponse(url.pathname) as any
+  })
+})
+
+// ---- tests ----
+
+describe('GET /callback', () => {
+
+  // ---------- missing OIDC cookies ----------
+
+  it('redirects to /login when plinto_oidc_state cookie is missing', async () => {
+    mockCookiesGet.mockImplementation((name: string) => {
+      if (name === 'plinto_oidc_verifier') return { value: 'verifier' }
+      return undefined
+    })
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when plinto_oidc_verifier cookie is missing', async () => {
+    mockCookiesGet.mockImplementation((name: string) => {
+      if (name === 'plinto_oidc_state') return { value: 'state' }
+      return undefined
+    })
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  // ---------- missing claims ----------
+
+  it('redirects to /login when claims.sub is missing', async () => {
+    mockGetOidcClient.mockResolvedValue(makeOidcClient({
+      callback: vi.fn().mockResolvedValue({
+        refresh_token: 'rt',
+        claims: () => ({ sub: null, email: 'u@e.com' }),
+      }),
+    }) as any)
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when claims.email is missing', async () => {
+    mockGetOidcClient.mockResolvedValue(makeOidcClient({
+      callback: vi.fn().mockResolvedValue({
+        refresh_token: 'rt',
+        claims: () => ({ sub: 'idp|sub', email: null }),
+      }),
+    }) as any)
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  // ---------- API errors ----------
+
+  it('falls back to the default API base and completes the flow when NEXT_PUBLIC_API_BASE_URL is not set', async () => {
+    // resolveApiBase() (lib/api/api-base.ts) always resolves to something —
+    // it has a localhost:3001 default — so a missing NEXT_PUBLIC_API_BASE_URL
+    // alone is no longer a "missing API configuration" error, unlike a
+    // missing INTERNAL_API_KEY below (which has no such default).
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
+    vi.stubEnv('INTERNAL_API_KEY', 'key')
+    const redirectResp = makeMockRedirectResponse('/dashboard')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(globalFetch).toHaveBeenCalledWith(
+      'http://localhost:3001/api/auth/session',
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('redirects to /login instead of throwing when INTERNAL_API_KEY is not set', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://localhost:3001')
+    vi.stubEnv('INTERNAL_API_KEY', '')
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when neither API_INTERNAL_URL nor NEXT_PUBLIC_API_BASE_URL is set in production', async () => {
+    // resolveApiBase() always resolves to something (a localhost:3001
+    // default), so this can no longer be caught by "apiBase is falsy" — a
+    // deployed (production) instance with neither var set is misconfigured
+    // and must fail here, not silently talk to localhost:3001.
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('API_INTERNAL_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
+    vi.stubEnv('INTERNAL_API_KEY', 'key')
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+    expect(globalFetch).not.toHaveBeenCalled()
+
+    // Restore for subsequent tests in this file — vi.stubEnv persists across
+    // tests unless explicitly reset, and nothing else here re-stubs NODE_ENV.
+    vi.stubEnv('NODE_ENV', 'test')
+  })
+
+  it('does not require API_INTERNAL_URL or NEXT_PUBLIC_API_BASE_URL outside production (local dev default)', async () => {
+    vi.stubEnv('NODE_ENV', 'test')
+    vi.stubEnv('API_INTERNAL_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '')
+    vi.stubEnv('INTERNAL_API_KEY', 'key')
+    const redirectResp = makeMockRedirectResponse('/dashboard')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(globalFetch).toHaveBeenCalledWith(
+      'http://localhost:3001/api/auth/session',
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  // ---------- unhandled exceptions (fix under test) ----------
+  //
+  // Every one of these used to escape as a raw Next.js 500. They must now
+  // be caught and redirect to /login, exactly like the pre-existing
+  // non-throwing failure branches above.
+
+  it('redirects to /login when client.callback throws (replayed authorization code)', async () => {
+    const mockCallback = vi.fn().mockRejectedValue(new Error('checks.state argument is missing'))
+    mockGetOidcClient.mockResolvedValue(makeOidcClient({ callback: mockCallback }) as any)
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('clears the OIDC state/verifier cookies when client.callback throws', async () => {
+    const mockCallback = vi.fn().mockRejectedValue(new Error('invalid_grant'))
+    mockGetOidcClient.mockResolvedValue(makeOidcClient({ callback: mockCallback }) as any)
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response.cookies._deleted).toContain('plinto_oidc_state')
+    expect(response.cookies._deleted).toContain('plinto_oidc_verifier')
+  })
+
+  it('redirects to /login when getOidcClient throws (IdP discovery/network failure)', async () => {
+    mockGetOidcClient.mockRejectedValue(new Error('discovery failed'))
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when fetch rejects (network failure calling the session API)', async () => {
+    globalFetch.mockRejectedValue(new TypeError('fetch failed'))
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when sessionResponse.json() throws (malformed body)', async () => {
+    globalFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+    })
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('does not leak the thrown error and still redirects for an unexpected non-Error throw', async () => {
+    mockGetOidcClient.mockImplementation(() => {
+      throw 'unexpected string throw'
+    })
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when session API returns non-ok', async () => {
+    globalFetch.mockResolvedValue({ ok: false, status: 500 })
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when sessionId is missing from session response', async () => {
+    globalFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: { user: { id: 'u-1' }, sessionId: null } }),
+    })
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  it('redirects to /login when user is missing from session response', async () => {
+    globalFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: { sessionId: 'sess-1', user: null } }),
+    })
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/login')
+  })
+
+  // ---------- session API call ----------
+
+  it('POSTs to the correct session endpoint with idpSub, email, and name', async () => {
+    const redirectResp = makeMockRedirectResponse('/')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(globalFetch).toHaveBeenCalledWith(
+      'http://localhost:3001/auth/session',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'x-internal-key': 'test-internal-key',
+        }),
+        body: expect.stringContaining('"idpSub"'),
+      }),
+    )
+
+    const body = JSON.parse(globalFetch.mock.calls[0][1].body)
+    expect(body.idpSub).toBe('idp|user-sub')
+    expect(body.email).toBe('user@example.com')
+    expect(body.name).toBe('Test User')
+  })
+
+  it('builds absolute session URL when apiBase is a relative path', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '/api/v1')
+    const redirectResp = makeMockRedirectResponse('/')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    const calledUrl = globalFetch.mock.calls[0][0]
+    expect(calledUrl).toMatch(/\/api\/v1\/auth\/session$/)
+    expect(calledUrl).toMatch(/^http/)
+  })
+
+  // ---------- createPlintoJwt ----------
+
+  it('calls createPlintoJwt with the session claims from the API response', async () => {
+    const redirectResp = makeMockRedirectResponse('/')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(mockCreatePlintoJwt).toHaveBeenCalledWith({
+      sub: 'user-1',
+      idp_sub: 'idp|user-sub',
+      tenant_id: 'tenant-1',
+      session_id: 'session-123',
+    })
+  })
+
+  it('passes null as tenant_id when activeTenantId is absent from API response', async () => {
+    globalFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          data: {
+            sessionId: 'sess-1',
+            user: { id: 'u-1', idpSub: 'idp|sub' },
+            activeTenantId: undefined,
+            needsOnboarding: true,
+          },
+        }),
+    })
+    const redirectResp = makeMockRedirectResponse('/onboarding')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(mockCreatePlintoJwt).toHaveBeenCalledWith(
+      expect.objectContaining({ tenant_id: null }),
+    )
+  })
+
+  // ---------- cookie handling ----------
+
+  it('sets plinto_session cookie with the JWT token', async () => {
+    const redirectResp = makeMockRedirectResponse('/')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    const sessionCookie = redirectResp.cookies._store['plinto_session']
+    expect(sessionCookie).toBeDefined()
+    expect(sessionCookie.value).toBe('mocked-jwt-token')
+    expect(sessionCookie.options.httpOnly).toBe(true)
+    expect(sessionCookie.options.sameSite).toBe('lax')
+    expect(sessionCookie.options.path).toBe('/')
+  })
+
+  /**
+   * Plinto asks for `openid email profile` and nothing else, so a compliant
+   * provider issues no refresh token and there is nothing here to store. The
+   * branch that used to store one was removed rather than left dormant: it
+   * described a renewal Plinto does not perform, and reading it led straight
+   * to the wrong conclusion that sessions could be renewed and simply were
+   * not. Storing a thirty-day credential nobody reads is a liability, not a
+   * spare part.
+   *
+   * If a provider returns one anyway — some do, unasked — it is dropped here
+   * rather than written to the browser. See docs/delivery/oidc-providers.md.
+   */
+  it('never stores a refresh token, even when the provider returns one', async () => {
+    const redirectResp = makeMockRedirectResponse('/')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(redirectResp.cookies._store['plinto_refresh_token']).toBeUndefined()
+  })
+
+  it('deletes plinto_oidc_state cookie on success', async () => {
+    const redirectResp = makeMockRedirectResponse('/')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(redirectResp.cookies.delete).toHaveBeenCalledWith('plinto_oidc_state')
+  })
+
+  it('deletes plinto_oidc_verifier cookie on success', async () => {
+    const redirectResp = makeMockRedirectResponse('/')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(redirectResp.cookies.delete).toHaveBeenCalledWith('plinto_oidc_verifier')
+  })
+
+  // ---------- redirect target logic ----------
+
+  it('redirects to /onboarding when needsOnboarding is true', async () => {
+    globalFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          data: {
+            sessionId: 'sess-1',
+            user: { id: 'u-1', idpSub: 'idp|sub' },
+            activeTenantId: 'tenant-1',
+            needsOnboarding: true,
+          },
+        }),
+    })
+    const redirectResp = makeMockRedirectResponse('/onboarding')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/onboarding')
+  })
+
+  it('redirects to /dashboard when user has an active tenant and no onboarding needed', async () => {
+    const redirectResp = makeMockRedirectResponse('/dashboard')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/dashboard')
+  })
+
+  it('redirects to /select-tenant when activeTenantId is null and no onboarding needed', async () => {
+    globalFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          data: {
+            sessionId: 'sess-1',
+            user: { id: 'u-1', idpSub: 'idp|sub' },
+            activeTenantId: null,
+            needsOnboarding: false,
+          },
+        }),
+    })
+    const redirectResp = makeMockRedirectResponse('/select-tenant')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    const response = await GET(makeRequest()) as unknown as MockRedirectResponse
+
+    expect(response._redirectUrl).toBe('/select-tenant')
+  })
+
+  // ---------- oidc-client invocations ----------
+
+  it('calls client.callback with storedState, codeVerifier, and OIDC_REDIRECT_URI', async () => {
+    const mockCallback = vi.fn().mockResolvedValue({
+      refresh_token: 'rt',
+      claims: () => ({ sub: 'idp|sub', email: 'u@e.com', name: 'U' }),
+    })
+    mockGetOidcClient.mockResolvedValue(makeOidcClient({ callback: mockCallback }) as any)
+    const redirectResp = makeMockRedirectResponse('/')
+    mockNextResponseRedirect.mockReturnValue(redirectResp as any)
+
+    await GET(makeRequest())
+
+    expect(mockCallback).toHaveBeenCalledWith(
+      'https://app.example.com/callback',
+      expect.anything(),
+      expect.objectContaining({
+        state: 'abc-state',
+        code_verifier: 'pkce-verifier',
+      }),
+    )
+  })
+})
