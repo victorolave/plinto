@@ -133,7 +133,8 @@ export class CreditLineStatementService {
   async listStatements(
     creditLineId: string,
     tenantId: string,
-  ): Promise<CreditLineStatementView[]> {
+    pagination: { page: number; pageSize: number },
+  ): Promise<{ statements: CreditLineStatementView[]; total: number }> {
     const line = await this.creditLineRepository.findByIdForTenant(creditLineId, tenantId)
 
     if (!line) {
@@ -143,9 +144,15 @@ export class CreditLineStatementService {
       })
     }
 
-    const statements = await this.statementRepository.listForLine(creditLineId, tenantId)
+    const [statements, total] = await Promise.all([
+      this.statementRepository.listForLine(creditLineId, tenantId, {
+        skip: (pagination.page - 1) * pagination.pageSize,
+        take: pagination.pageSize,
+      }),
+      this.statementRepository.countForLine(creditLineId, tenantId),
+    ])
 
-    return statements.map(toView)
+    return { statements: statements.map(toView), total }
   }
 
   /**

@@ -94,11 +94,31 @@ export async function closeCreditLine(
   )
 }
 
+/**
+ * A page of the statements a line has issued, newest cutoff first.
+ *
+ * Paginated because a line issues one every month and none are ever deleted,
+ * so this list only grows. No screen reads it yet — the credit board shows each
+ * line's latest statement, not its history — but the endpoint it mirrors is
+ * public, and a client that ignored the page would quietly read only the first
+ * one the day a history view is built.
+ */
 export async function listStatements(
   creditLineId: string,
-): Promise<{ data: { statements: CreditLineStatement[] } }> {
-  return apiFetch<{ data: { statements: CreditLineStatement[] } }>(
-    `/credit-lines/${encodeURIComponent(creditLineId)}/statements`,
+  params?: { page?: number; pageSize?: number },
+): Promise<{
+  data: { statements: CreditLineStatement[] }
+  meta: { pagination: { page: number; pageSize: number; total: number; totalPages: number } }
+}> {
+  const query = new URLSearchParams()
+  if (params?.page !== undefined) query.set('page', String(params.page))
+  if (params?.pageSize !== undefined) query.set('pageSize', String(params.pageSize))
+
+  const queryString = query.toString()
+  return apiFetch(
+    `/credit-lines/${encodeURIComponent(creditLineId)}/statements${
+      queryString ? `?${queryString}` : ''
+    }`,
   )
 }
 
