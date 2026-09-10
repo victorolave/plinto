@@ -16,7 +16,7 @@ This is the operator's guide for running Plinto yourself with Docker Compose
 ## Quick path
 
 ```bash
-git clone https://github.com/<your-fork-or-upstream>/plinto.git
+git clone https://github.com/victorolave/plinto.git
 cd plinto
 cp deploy/self-host.env.example .env
 ```
