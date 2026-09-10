@@ -4,7 +4,7 @@ Every release, newest first. Plinto follows
 [Semantic Versioning](docs/versioning.md); an entry that needs manual steps
 says so in its first line.
 
-## [0.1.0] — not yet released
+## [0.1.0] — 2026-09-10
 
 First Community release. No manual steps: this is the starting point.
 
