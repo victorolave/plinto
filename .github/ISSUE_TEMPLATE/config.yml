@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/victorolave/plinto/security/advisories/new
+    about: Report privately. Never in a public issue — this application holds financial records.
+  - name: Self-hosting help
+    url: https://github.com/victorolave/plinto/blob/main/docs/delivery/self-host.md
+    about: The full operator guide, including the two things that usually go wrong (OIDC redirect URI and cookies on plain HTTP).

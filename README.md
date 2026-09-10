@@ -5,6 +5,12 @@
   </picture>
   
   <p><strong>An open-source household finance manager designed to replace spreadsheets with a structured, long-term solution.</strong></p>
+
+  <p>
+    <a href="https://github.com/victorolave/plinto/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/victorolave/plinto?color=%23111111"></a>
+    <a href="LICENSE"><img alt="License AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-%23111111"></a>
+    <a href="https://github.com/victorolave/plinto/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/victorolave/plinto/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  </p>
 </div>
 
 ---
@@ -14,13 +20,16 @@
 - [About](#-about)
 - [Why Plinto?](#-why-plinto)
 - [What does Plinto do?](#-what-does-plinto-do)
+- [Is Plinto for you?](#-is-plinto-for-you)
 - [Getting Started](#-getting-started)
+- [Upgrading](#-upgrading)
 - [Self-Hosting](#-self-hosting)
 - [Your data is yours](#-your-data-is-yours)
 - [What is not here yet](#-what-is-not-here-yet)
 - [Versions and releases](#-versions-and-releases)
 - [Contributing](#-contributing)
 - [Code of Conduct](#-code-of-conduct)
+- [Security](#-security)
 
 ---
 
@@ -75,6 +84,39 @@ The full list for the current release is in the
 
 ---
 
+## 🧩 Is Plinto for you?
+
+Open-source personal finance is a crowded shelf, and the honest answer is that
+Plinto is not the right pick for everyone. Three assumptions run through it,
+and if any of them is wrong for you, something else will serve you better.
+
+**It assumes a household, not a person.** Several people share the same
+accounts, obligations and categories, under one login each, with roles that
+decide who can see and who can change. One account can belong to more than one
+household — your own and your parents' — and switch between them without
+signing out. If you are tracking only your own money, that structure is
+overhead you do not need.
+
+**It assumes what you owe matters as much as what you spent.** Obligations are
+a first-class engine here, not a tag on a transaction: what is due this month,
+what is still pending, what a payment settled. Most tools model spending well
+and owing poorly. If your question is "where did the money go", other tools
+answer it at least as well. If your question is "what do we owe and did we pay
+it", that is what this was built for.
+
+**It assumes you already have an identity provider.** Plinto stores no
+passwords at all — sign-in is delegated to Auth0, Google, Keycloak, Authentik
+or anything else that speaks standard OpenID Connect. That is a real barrier if
+you just want a container and a login form, and a real advantage if you already
+run single sign-on for your household or your homelab.
+
+Worth looking at instead: **Firefly III** if you want a mature, feature-dense
+personal finance manager for one person; **Actual Budget** if what you want is
+envelope budgeting; **Ghostfolio** if you are tracking investments rather than
+household cash flow.
+
+---
+
 ## 🚧 Getting Started
 
 You need Docker Compose v2 and an OpenID Connect provider you control a client
@@ -97,7 +139,7 @@ docker compose ps    # wait for api, web and postgres to report "healthy"
 ```
 
 That pulls published images from GitHub Container Registry, so there is no
-build to sit through. Pin a version in production with `PLINTO_VERSION=0.1.0`
+build to sit through. Pin a version in production with `PLINTO_VERSION=0.2.0`
 in your `.env`; without it you get `latest`. To build from source instead, add
 `--build`.
 
@@ -106,9 +148,49 @@ has the full guide, including the two things that trip people up: the OIDC
 redirect URI must match character for character, and cookies on plain HTTP need
 `COOKIE_SECURE` turned off.
 
+**Do not start from an empty screen.** From **Settings**, create the example
+household: a populated set of accounts, movements, obligations and a credit
+line you can click through, and delete in one action when you are done. It is
+the fastest way to see whether Plinto fits how your household thinks before you
+type in a single real number.
+
 > ⚠️ **This is a `0.x` release.** It runs a real household's finances daily, but
 > the HTTP API is still gaining endpoints and an upgrade between minor versions
 > may ask you for a manual step. See [versioning](docs/versioning.md).
+
+### What it takes to run
+
+| | |
+|---|---|
+| Runtime | Docker Compose v2 — four containers: nginx, web, API, PostgreSQL 16 |
+| Download | 167 MB for the API image, 114 MB for the web image, compressed |
+| Architectures | `linux/amd64` and `linux/arm64`, so a Raspberry Pi or an ARM VPS works |
+| Identity | An OpenID Connect provider you control a client registration on |
+
+Memory and CPU figures are deliberately absent: nobody has benchmarked a
+deployment yet, and a number invented for a README is worse than no number. If
+you run Plinto somewhere small, [open an issue](https://github.com/victorolave/plinto/issues)
+and say what it needed — that is a genuinely useful contribution.
+
+---
+
+## ⬆️ Upgrading
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Database migrations run on their own, in the `migrate` service, before the API
+starts. Read the [changelog](CHANGELOG.md) entry for the version you are moving
+to first: while Plinto is `0.x`, an upgrade that needs a manual step says so in
+the first line of its entry.
+
+Back up before a version that touches the database:
+
+```bash
+./deploy/backup.sh
+```
 
 ---
 
@@ -187,6 +269,18 @@ your data are both yours.
 ## 📜 Code of Conduct
 
 This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md) version 3.0. By participating in this project, you are expected to uphold this code. Please report unacceptable behavior to victorolave1131@gmail.com.
+
+---
+
+## 🔒 Security
+
+Plinto holds financial records, so a vulnerability here is not an
+inconvenience. **Report one privately**, never in a public issue: use the
+*Report a vulnerability* button under the **Security** tab, or email
+victorolave1131@gmail.com with `SECURITY` in the subject.
+
+[SECURITY.md](SECURITY.md) says what is in scope, what to expect, and how long
+"a while" actually is for a project maintained by one person.
 
 ---
 

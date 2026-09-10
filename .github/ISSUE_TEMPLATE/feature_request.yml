@@ -1,0 +1,39 @@
+name: Feature request
+description: Something Plinto should do and does not
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [the roadmap](../blob/main/docs/roadmap.md) first — four things
+        are already known to be missing, with the reasoning for each. If yours
+        is one of them, comment there instead so the discussion stays in one
+        place.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: |
+        What are you trying to do that Plinto makes hard or impossible?
+        Describe the situation, not the solution — the best fix is often not the one either of us thought of first.
+      placeholder: |
+        Two of us pay the same bills from different accounts and I cannot tell who paid what this month.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do today instead
+      description: Even "I keep a note on my phone" is useful. It says how much the gap costs.
+    validations:
+      required: false
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you had in mind
+      description: Optional. If you already have a shape in mind, describe it — but the problem above matters more.
+    validations:
+      required: false
