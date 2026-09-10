@@ -135,3 +135,21 @@ To facilitate SaaS and self-host:
   - Reuse schemas to validate forms and payloads.
   - (Optional) Validate parsing of critical responses with Zod for resilience.
 
+
+---
+
+## Amendment (2026-09-10) — routes are unversioned
+
+This record reserves `/api/v1/...` for external consumers. The API serves
+everything under a bare `/api` prefix instead
+(`apps/api/src/main.ts`, `app.setGlobalPrefix('api')`).
+
+The deviation is deliberate and the code says so above that line: NestJS URI
+versioning can be switched on later, moving routes to `/api/v1/...` without
+breaking the unversioned contract in the meantime. Since the only consumer
+today is Plinto's own web app, adding a version segment now would buy nothing
+and appear in every path forever.
+
+Everything else in this record holds: contracts are Zod schemas in
+`packages/shared`, validated by a pipe on the way in, and responses carry the
+`data` / `error` envelope with `code`, `message`, `details` and `traceId`.

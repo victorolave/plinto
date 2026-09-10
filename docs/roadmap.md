@@ -97,6 +97,50 @@ honest numbers beat one invented one.
 
 ---
 
+## 5. Structured logs with correlation
+
+**Status:** specified in [ADR 0008](adr/0008-observability-audit-logs-traceability.md), half built
+
+The audit trail works: `AuditEvent` records who changed what, when, and under
+which correlation id. What does not work is following one operation through the
+logs while it happens. The API uses Nest's default text logger, and the
+`request_id` that reaches the response header never reaches a log line.
+
+For someone running this on their own server, the difference shows up on the
+worst day: you can reconstruct what happened afterwards from the audit table,
+but you cannot filter a log stream by request and watch it fail.
+
+**What lands:** JSON log output with `request_id` on every line of a request
+and `job_id` on every line of a scheduled job, as ADR 0008 already describes.
+
+---
+
+## 6. Idempotent transfers
+
+**Status:** a stated guarantee that does not hold — the highest-priority item here
+
+A transfer runs synchronously inside the request, in one database transaction,
+so it is atomic: both legs are written or neither is. What it is **not** is
+idempotent. `CreateTransferSchema` has no `idempotencyKey`, so a resubmitted
+request — a double-click, a retried fetch, a flaky connection — creates a
+second transfer.
+
+PRD-003 claimed the opposite until 2026-09-10. That is worse than the gap
+itself: a reader who trusted the document would have believed a retry was safe.
+
+**What lands:** an idempotency key accepted on the transfer endpoint and
+enforced by a unique index, so a repeat returns the original result instead of
+moving the money twice. The same discipline already protects obligation
+payments, where a unique index rejects a movement that settles two obligations.
+
+**Why it is not in `v0.1.0`:** it is a contract change on a financial endpoint
+and it deserves the same care as the rest, not a rushed commit before a tag.
+Until it ships, the mitigation is the interface: the transfer form disables
+itself on submit, so the realistic path to a duplicate is a deliberate retry
+rather than an accident.
+
+---
+
 ## Not on this roadmap
 
 **Billing and subscriptions.** Community is self-hosted and free, under

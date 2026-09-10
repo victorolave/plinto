@@ -85,15 +85,26 @@ Rules:
 
 Transfers:
 - are **critical financial operations**
-- are executed via **background jobs** (ADR 0006)
-- must be:
-  - idempotent
-  - transactional
-  - auditable
+- are **transactional** — both legs are written inside one database
+  transaction, or neither is
+- are **auditable**
 
-The HTTP request only:
-- validates input
-- enqueues the operation
+> **Amended 2026-09-10, and this one was a false guarantee, not a stale
+> sentence.** This section used to say transfers were executed via background
+> jobs, that the HTTP request "only validates and enqueues", and that
+> duplicates were avoided by idempotency. None of that is what the code does.
+>
+> A transfer runs **synchronously inside the request**, in a single Prisma
+> transaction. There is no queue. And `CreateTransferSchema` has no
+> `idempotencyKey` field, so **a double submission creates two transfers**.
+> The `idempotencyKey` that exists elsewhere belongs to stored transactions and
+> recurring rules, not to this endpoint.
+>
+> Synchronous execution is a defensible choice — the operation is short, and a
+> caller who gets a 200 knows the money moved. The idempotency claim is not
+> defensible, because someone reading this document would have believed a
+> retry was safe. Closing that gap is tracked in the
+> [roadmap](../roadmap.md#6-idempotent-transfers).
 
 ---
 
@@ -123,7 +134,8 @@ No special "transfers" view is introduced.
 2. User selects the destination account.
 3. Enters amount(s) and FX rate if applicable.
 4. Confirms the transfer.
-5. The system executes the operation in the background.
+5. The system writes both legs inside one database transaction, during the
+   request.
 6. Both accounts reflect the transfer.
 
 ---
@@ -133,7 +145,9 @@ No special "transfers" view is introduced.
 - Accounts must belong to the same tenant.
 - Inconsistent currencies are not allowed without explicit FX.
 - Insufficient funds (if validated).
-- Duplicates avoided by idempotency.
+- Duplicates are **not** currently prevented: a repeated submission creates a
+  second transfer. See §3 and the
+  [roadmap](../roadmap.md#6-idempotent-transfers).
 
 ---
 
@@ -143,7 +157,7 @@ No special "transfers" view is introduced.
 - [ ] Transfers between accounts in different currencies are supported.
 - [ ] Transfers create exactly two transactions.
 - [ ] Currencies are not mixed incorrectly.
-- [ ] Transfers are idempotent.
+- [ ] Transfers are idempotent. **Not met** — see §3.
 - [ ] Operations are audited.
 - [ ] No partial states exist.
 
@@ -160,6 +174,8 @@ No special "transfers" view is introduced.
 ## Technical Notes
 
 - Persistence and currency per ADR 0004.
-- Financial jobs per ADR 0006.
+- ~~Financial jobs per ADR 0006.~~ Transfers do not use the job runner; they
+  execute in-request. ADR 0006 governs the obligations engine and recurring
+  rules.
 - Audit per ADR 0008.
 - Authorization per ADR 0007.
