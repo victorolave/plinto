@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { RecurringModule } from '../recurring/recurring.module'
 import { DebtsModule } from '../debts/debts.module'
 import { TransactionsModule } from '../transactions/transactions.module'
+import { AccountsModule } from '../accounts/accounts.module'
 import { AuditModule } from '../audit/audit.module'
 import { MembershipsModule } from '../memberships/memberships.module'
 import { SessionsModule } from '../sessions/sessions.module'
@@ -24,6 +25,10 @@ import { ObligationsController } from './interfaces/http/v1/obligations.controll
     RecurringModule,
     DebtsModule,
     TransactionsModule,
+    // Recording a payment from the board creates the movement too, and the
+    // account it lands in decides that movement's currency — which has to
+    // match the obligation before anything is written.
+    AccountsModule,
     AuditModule,
     MembershipsModule,
     SessionsModule,

@@ -205,3 +205,79 @@ describe('CreateObligationSchema currency allow-list', () => {
     expect(result.success).toBe(true)
   })
 })
+
+/**
+ * Recording a payment used to mean "pick a movement that already exists",
+ * which is only convenient once the movement does. Paying a bill and writing
+ * it down are one act, so the contract now accepts the movement itself.
+ */
+describe('ReconcileObligationSchema', () => {
+  const newTransaction = {
+    accountId: 'account-1',
+    amountMinor: 120000,
+  }
+
+  it('accepts a movement already in the ledger', () => {
+    const result = ReconcileObligationSchema.safeParse({ transactionId: 'tx-1' })
+
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a movement recorded in the same request', () => {
+    const result = ReconcileObligationSchema.safeParse({ transaction: newTransaction })
+
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts the optional details of a new movement', () => {
+    const result = ReconcileObligationSchema.safeParse({
+      transaction: {
+        ...newTransaction,
+        description: 'Arriendo septiembre',
+        occurredAt: '2026-09-03T00:00:00.000Z',
+        categoryId: 'category-1',
+      },
+    })
+
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a request that settles nothing', () => {
+    expect(ReconcileObligationSchema.safeParse({}).success).toBe(false)
+  })
+
+  /**
+   * A caller sending both has not decided which movement paid the bill.
+   * Preferring one would link it and discard the other without saying so.
+   */
+  it('rejects a request that offers both', () => {
+    const result = ReconcileObligationSchema.safeParse({
+      transactionId: 'tx-1',
+      transaction: newTransaction,
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it.each([
+    ['a missing account', { amountMinor: 1000 }],
+    ['a zero amount', { accountId: 'account-1', amountMinor: 0 }],
+    ['a negative amount', { accountId: 'account-1', amountMinor: -500 }],
+    ['a fractional amount', { accountId: 'account-1', amountMinor: 12.5 }],
+  ])('rejects a new movement with %s', (_label, transaction) => {
+    expect(ReconcileObligationSchema.safeParse({ transaction }).success).toBe(false)
+  })
+
+  /**
+   * The type and the currency are decided by the obligation and the account,
+   * not by the caller. Accepting them would invite a request that says
+   * "income" and means the opposite.
+   */
+  it.each(['type', 'currency'])('rejects a new movement carrying its own %s', (field) => {
+    const result = ReconcileObligationSchema.safeParse({
+      transaction: { ...newTransaction, [field]: 'income' },
+    })
+
+    expect(result.success).toBe(false)
+  })
+})
