@@ -1,6 +1,7 @@
 # ADR 0008: Observability and Auditing (Logs, Traceability, and Audit Trail)
 
-- **Status**: Accepted
+- **Status**: Accepted — **partially implemented**. The audit trail is built;
+  structured logging is not. See the amendment at the end.
 - **Date**: 2025-12-30
 - **Deciders**: Plinto Maintainer(s)
 - **Context**: Traceability, debugging, and trust in a multi-tenant financial system
@@ -147,3 +148,34 @@ Retention policies may vary between SaaS and self-host, but the data model is th
 - Ensure propagation of `request_id` and `job_id`.
 - Avoid logging/auditing sensitive information.
 
+
+---
+
+## Amendment (2026-09-10) — what is built and what is not
+
+Audited against the code. The two halves of this ADR did not land together.
+
+### Built, and matching this record
+
+The **audit trail**. `AuditEvent` carries `tenant_id`, actor, action, source
+and `correlationId`, and financial operations write to it. This is the half
+that matters for answering "who changed this and when", and it works.
+
+`request_id` is generated per request (`apps/api/src/common/middleware/request-id.middleware.ts`),
+returned in the response header, and surfaced as `traceId` on error responses.
+
+### Not built
+
+**Logs are not structured.** The API uses Nest's default logger with
+interpolated text messages. There is no JSON output, and `request_id` and
+`job_id` are never attached to log lines — the correlation this document
+describes exists in the audit table and in error responses, but not in the
+logs themselves.
+
+The practical consequence for anyone operating a self-hosted instance: when
+something goes wrong, you can see *that* it went wrong and you can read the
+audit trail afterwards, but you cannot filter a log stream by request and
+follow one operation through it. That is a real gap in a system that moves
+money, and it is why this is recorded here rather than quietly dropped.
+
+Tracked in the [roadmap](../roadmap.md#5-structured-logs-with-correlation).

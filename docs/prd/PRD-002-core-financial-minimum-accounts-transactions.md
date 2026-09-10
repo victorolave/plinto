@@ -83,14 +83,24 @@ Rules:
 
 - List transactions by account.
 - Ordered by date (`occurred_at`).
-- Basic editing allowed:
+- Editing allowed:
   - amount
   - description
   - date
+  - category
+  - **account** — moving a movement to another account re-derives its currency
+    from the destination
+  - **type** — a movement can be corrected from income to expense and back
 
 Rules:
 - editing a transaction is a **financial operation**
 - it is recorded in audit logs (ADR 0008)
+
+> **Amended 2026-09-10.** Account and type were not in the original list. They
+> are the two corrections people actually need — money recorded against the
+> wrong account, or an income entered as an expense — and forcing a
+> delete-and-recreate for either would lose the audit chain that makes the
+> first rule above worth having.
 
 ---
 
