@@ -82,6 +82,19 @@ The full list for the current release is in the
 [changelog](CHANGELOG.md). What is deliberately absent is in
 [What is not here yet](#-what-is-not-here-yet).
 
+### What it looks like
+
+Every screen below is the **example household** — the one Plinto can build for
+you from Settings in a click. The numbers are invented, which is why the banner
+across the top says so.
+
+| | |
+|---|---|
+| <img src="docs/screenshots/dashboard.jpg" alt="Dashboard showing the available balance across all accounts, recent activity and a list of accounts" width="420"> | <img src="docs/screenshots/transactions.jpg" alt="Transaction ledger with per-account balances, income and expense tabs with counts, and search and date filters" width="420"> |
+| **Dashboard** — what the household has, and what just happened. | **Movements** — filtered and paginated on the server, so the tab counts describe every match and not just this page. |
+| <img src="docs/screenshots/obligations.jpg" alt="Obligations for September 2026 showing total, paid and outstanding, with three bills marked overdue or pending" width="420"> | <img src="docs/screenshots/credit.jpg" alt="Credit page showing total owed across cards, available credit, and a list of open credit lines with their limits and last statements" width="420"> |
+| **Obligations** — what is owed this month, what is paid, what is late. | **Credit** — cards and rotating lines, what is owed and what is still available. |
+
 ---
 
 ## 🧩 Is Plinto for you?

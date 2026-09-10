@@ -14,6 +14,8 @@ New capability, no manual steps: `docker compose pull && docker compose up -d`.
   Raspberry Pi, an ARM VPS or an Apple Silicon machine had to emulate or give
   up — on a project whose whole point is that you run it yourself. Both images
   now build for both architectures and Docker picks the right one.
+- Screenshots in the README, taken from the example household so every number
+  in them is invented.
 - Community documentation a self-hoster and a contributor both need:
   `SECURITY.md` with a private reporting channel and an honest response
   expectation, issue templates, and a README section saying plainly who Plinto
