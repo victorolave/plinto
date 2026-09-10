@@ -531,6 +531,7 @@
       "saveChanges": "Save changes"
     },
     "transferForm": {
+      "alreadyRecorded": "This transfer was already recorded — nothing new was created.",
       "amount": "Amount",
       "amountIn": "Amount ({currency})",
       "conversionPreview": "{from} → {to} at rate {rate}",
@@ -759,6 +760,7 @@
     "DEBT_ACCOUNT_NOT_A_LIABILITY": "That account is not a liability, so it cannot carry a debt.",
     "DEBT_SCHEDULE_NOT_FOUND": "That debt no longer exists.",
     "DEMO_TENANT_EXISTS": "You already have an example household. You can go to it or delete it from Settings.",
+    "IDEMPOTENCY_KEY_REUSED": "This request was already used for a different transfer. Try again to send this one as new.",
     "INVALID_PERIOD": "That period is not valid.",
     "INVITATION_EMAIL_REQUIRED": "An email address is required to send the invitation.",
     "INVITATION_NOT_FOUND": "That invitation no longer exists.",

@@ -531,6 +531,7 @@
       "saveChanges": "Guardar cambios"
     },
     "transferForm": {
+      "alreadyRecorded": "Esta transferencia ya había sido registrada — no se creó nada nuevo.",
       "amount": "Monto",
       "amountIn": "Monto ({currency})",
       "conversionPreview": "{from} → {to} a una tasa de {rate}",
@@ -759,6 +760,7 @@
     "DEBT_ACCOUNT_NOT_A_LIABILITY": "Esa cuenta no es un pasivo, así que no puede cargar una deuda.",
     "DEBT_SCHEDULE_NOT_FOUND": "Esa deuda ya no existe.",
     "DEMO_TENANT_EXISTS": "Ya tienes un hogar de ejemplo. Puedes ir a él o eliminarlo desde Ajustes.",
+    "IDEMPOTENCY_KEY_REUSED": "Esta solicitud ya se usó para otra transferencia diferente. Intenta de nuevo para enviar esta como una nueva.",
     "INVALID_PERIOD": "Ese período no es válido.",
     "INVITATION_EMAIL_REQUIRED": "Hace falta un correo para enviar la invitación.",
     "INVITATION_NOT_FOUND": "Esa invitación ya no existe.",
