@@ -135,18 +135,28 @@ export async function listBalances(): Promise<{ data: { balances: AccountBalance
   return apiFetch<{ data: { balances: AccountBalance[] } }>('/transactions/balances')
 }
 
-export async function createTransfer(input: {
-  sourceAccountId: string
-  destinationAccountId: string
-  sourceAmountMinor: number
-  destinationAmountMinor?: number
-  fxRate?: string
-  feeMinor?: number
-  description?: string
-  occurredAt?: string
-}): Promise<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }> {
+/**
+ * `idempotencyKey` travels as the `Idempotency-Key` header, never in the
+ * body — it is the client's own retry-identity for this submission, not a
+ * transfer field. Omitting it keeps today's behaviour: a resubmit creates a
+ * second transfer.
+ */
+export async function createTransfer(
+  input: {
+    sourceAccountId: string
+    destinationAccountId: string
+    sourceAmountMinor: number
+    destinationAmountMinor?: number
+    fxRate?: string
+    feeMinor?: number
+    description?: string
+    occurredAt?: string
+  },
+  idempotencyKey?: string,
+): Promise<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }> {
   return apiFetch<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }>('/transactions/transfers', {
     method: 'POST',
     body: JSON.stringify(input),
+    headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
   })
 }

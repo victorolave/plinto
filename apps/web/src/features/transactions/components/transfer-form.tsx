@@ -39,9 +39,19 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
   const [occurredAt, setOccurredAt] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
 
+  // One key per submission *intent*, not per request: it is created when the
+  // form opens (so it already exists for the first submit), reused across
+  // retries of that same submission (a double-click or a retried fetch must
+  // reuse it — a fresh key on every attempt would defeat the whole point),
+  // and rotated only after a success, so the next transfer is a new intent
+  // rather than an accidental repeat of the one that just settled.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+
   const transferMutation = useMutation({
-    mutationFn: (payload: Parameters<typeof createTransfer>[0]) => createTransfer(payload),
+    mutationFn: (payload: Parameters<typeof createTransfer>[0]) =>
+      createTransfer(payload, idempotencyKey),
     onSuccess: () => {
+      setIdempotencyKey(crypto.randomUUID())
       void onSaved()
     },
   })
