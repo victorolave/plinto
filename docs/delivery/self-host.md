@@ -45,7 +45,7 @@ upgrade is something you decide rather than something that happens the next
 time you recreate a container:
 
 ```bash
-PLINTO_VERSION=0.1.0
+PLINTO_VERSION=0.2.0
 ```
 
 To build from source instead of pulling — a fork, a patch, an architecture

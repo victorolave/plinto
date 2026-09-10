@@ -1,0 +1,65 @@
+name: Bug report
+description: Something behaves differently than it should
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. If this is a **security** issue, close this
+        and follow [SECURITY.md](../blob/main/SECURITY.md) instead — do not
+        describe a vulnerability in a public issue.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you saw, and what you expected instead.
+      placeholder: |
+        I recorded a payment from the obligation drawer and the balance did not change.
+        I expected the account balance to drop by the payment amount.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      description: The shortest path you know of. "It happens sometimes" is fine — say so rather than inventing steps.
+      placeholder: |
+        1. Open an obligation that is still pending
+        2. Choose "Register a payment"
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The image tag you are running, or the commit if you build from source.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how-running
+    attributes:
+      label: How are you running it
+      options:
+        - Docker Compose, published images
+        - Docker Compose, built from source
+        - Local development (pnpm dev)
+        - Something else — described below
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, if you have them
+      description: |
+        `docker compose logs api --tail 50` usually has what matters.
+        **Redact anything you would not post publicly** — account names, amounts, tokens, your OIDC client secret.
+      render: shell
+    validations:
+      required: false

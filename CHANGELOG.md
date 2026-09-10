@@ -4,6 +4,23 @@ Every release, newest first. Plinto follows
 [Semantic Versioning](docs/versioning.md); an entry that needs manual steps
 says so in its first line.
 
+## [0.2.0] — 2026-09-10
+
+New capability, no manual steps: `docker compose pull && docker compose up -d`.
+
+### Added
+
+- **Images for `linux/arm64`.** `v0.1.0` published `linux/amd64` only, so a
+  Raspberry Pi, an ARM VPS or an Apple Silicon machine had to emulate or give
+  up — on a project whose whole point is that you run it yourself. Both images
+  now build for both architectures and Docker picks the right one.
+- Screenshots in the README, taken from the example household so every number
+  in them is invented.
+- Community documentation a self-hoster and a contributor both need:
+  `SECURITY.md` with a private reporting channel and an honest response
+  expectation, issue templates, and a README section saying plainly who Plinto
+  is for and who is better served elsewhere.
+
 ## [0.1.0] — 2026-09-10
 
 First Community release. No manual steps: this is the starting point.
