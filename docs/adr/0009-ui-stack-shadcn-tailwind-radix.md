@@ -1,6 +1,8 @@
 # ADR 0009: Web UI Stack with shadcn/ui, Tailwind CSS, and Radix UI
 
-- **Status**: Accepted
+- **Status**: **Superseded in practice (2026-09-10)** — see the amendment at the
+  end. None of the three libraries below is installed; `apps/web` uses a
+  hand-written component library over CSS custom properties.
 - **Date**: 2026-01-01
 - **Deciders**: Plinto Maintainer(s)
 - **Context**: UI component strategy for `apps/web`
@@ -86,3 +88,44 @@ shadcn/ui components will be treated as **source code** in the repository (not a
 - shadcn/ui components will be vendored into the repo and treated as first-class source.
 - Radix UI packages will be used where interactive primitives are needed to ensure accessibility and consistency.
 
+
+---
+
+## Amendment (2026-09-10) — this decision was not carried out
+
+**None of the three libraries above is installed.** `apps/web/package.json`
+declares no Tailwind, no shadcn/ui and no Radix dependency, and no file under
+`apps/web/src` imports one. This was discovered by auditing the ADRs against
+the code, not by a decision to change course — the stack was replaced during
+implementation and this record was never updated. It stood for months telling
+contributors something false about the frontend.
+
+### What `apps/web` actually uses
+
+| Concern | Reality |
+|---------|---------|
+| Styling | Plain CSS with custom properties. Tokens in `apps/web/src/styles/tokens/`, everything else in `globals.css` |
+| Class naming | BEM-ish (`btn`, `btn--secondary`, `data-row`), written by hand |
+| Components | A local library in `apps/web/src/components/ui/` — button, card, modal, drawer, tabs, field, badge, amount, pagination and a few more |
+| Accessible behaviours | Implemented per component, not delegated to a primitives library |
+| Product components | Composed per feature under `apps/web/src/features/*/components/` |
+
+### Why the record is left standing rather than deleted
+
+The context and the alternatives it weighed are still the honest history of how
+the question was approached, and a deleted ADR teaches nobody anything. What
+follows the Decision heading describes a path not taken.
+
+### What this costs, stated plainly
+
+Radix was chosen for accessible behaviours — focus traps, roving tabindex,
+`aria` wiring for dialogs, menus and selects. Writing those by hand means each
+component carries that burden alone, and the burden is easy to get subtly
+wrong. Anyone touching a component that manages focus or keyboard navigation
+should assume it needs checking rather than assume a library handled it.
+
+### If the question is reopened
+
+Adopting a primitives library now would mean migrating the components listed
+above one at a time, not a rewrite. That is a real option and this amendment is
+not an argument against it — only a record of where things stand.

@@ -205,3 +205,26 @@ A more detailed audit log system is considered out of initial scope.
 - Validate currency when creating accounts and transactions.
 - Do not add caching or sharding at this stage.
 
+
+---
+
+## Amendment (2026-09-10) — two structures in this record do not exist
+
+Audited against `schema.prisma`.
+
+**No `exchange_rates` table.** Foreign-exchange data lives embedded in each
+`Transfer` — `fxRate`, `feeMinor` and `rateSource` — which makes an individual
+transfer fully auditable but leaves no queryable history of rates. Nothing can
+answer "what was the rate on this date" independently of a transfer that used
+it. This is the missing piece behind the deferred consolidated multi-currency
+view; see the [roadmap](../roadmap.md#4-consolidated-multi-currency-view).
+
+**No `deleted_at` anywhere.** Soft delete was written here as "considered for
+key entities" rather than decided, and it was not implemented. Deletions are
+real deletions, with the audit trail as the record that they happened.
+
+The core of this record does hold: amounts are integer minor units paired with
+a currency, every tenant-scoped table carries `tenant_id`, and currency is now
+validated against a closed allow-list
+(`packages/shared/money/supported-currencies.ts`) rather than a
+three-capitals pattern.

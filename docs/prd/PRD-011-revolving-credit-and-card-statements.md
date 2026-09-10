@@ -415,12 +415,18 @@ Not implemented:
 | Method | Path | Permission |
 | --- | --- | --- |
 | `GET` | `/api/credit-lines` | `credit:read` |
+| `GET` | `/api/credit-lines/summary` | `credit:read` |
+| `GET` | `/api/credit-lines/{id}` | `credit:read` |
 | `POST` | `/api/credit-lines` | `credit:write` |
 | `PATCH` | `/api/credit-lines/{id}` | `credit:write` |
 | `POST` | `/api/credit-lines/{id}/close` | `credit:write` |
 | `GET` | `/api/credit-lines/{id}/statements` | `credit:read` |
 | `POST` | `/api/credit-lines/{id}/statements` | `credit:write` |
 | `PATCH` | `/api/credit-lines/{id}/statements/{statementId}` | `credit:write` |
+
+The summary and single-line reads were added to this table on 2026-09-10; they
+existed in the code and fed the dashboard section described in §7 without
+appearing here.
 
 Statements are nested under their line because one never exists without it, and
 because `period` is not an identifier here — the flat route would have no
