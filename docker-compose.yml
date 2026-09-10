@@ -59,7 +59,7 @@ services:
   # start until this exits 0 (see its depends_on below) — migrations are
   # always applied before the API accepts traffic, never implicitly.
   migrate:
-    image: plinto-api:${PLINTO_VERSION:-local}
+    image: ghcr.io/victorolave/plinto-api:${PLINTO_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -75,7 +75,7 @@ services:
     restart: "no"
 
   api:
-    image: plinto-api:${PLINTO_VERSION:-local}
+    image: ghcr.io/victorolave/plinto-api:${PLINTO_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -95,7 +95,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: plinto-web:${PLINTO_VERSION:-local}
+    image: ghcr.io/victorolave/plinto-web:${PLINTO_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/web/Dockerfile

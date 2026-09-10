@@ -1,0 +1,106 @@
+name: Release
+
+# Fires on a version tag and does the two things a release is: publish the
+# images a self-hoster pulls, and publish the notes that tell them what
+# changed. Nothing here runs on a branch push — `ci.yml` covers that, and a
+# release must be a deliberate act, not a side effect of merging.
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  images:
+    name: Publish images
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - image: plinto-api
+            dockerfile: apps/api/Dockerfile
+          - image: plinto-web
+            dockerfile: apps/web/Dockerfile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # `v0.1.0` -> `0.1.0`. The tag carries the `v`, the image tag does not,
+      # per docs/versioning.md.
+      - name: Read the version from the tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Both the exact version and `latest`. Pinning the exact version in
+      # production is what docs/versioning.md tells operators to do; `latest`
+      # exists for the trial run that just wants the newest thing.
+      - name: Build and push ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:${{ steps.version.outputs.value }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  release:
+    name: Publish the GitHub release
+    runs-on: ubuntu-latest
+    # Notes for images nobody can pull would be worse than no release at all,
+    # so this waits rather than running alongside.
+    needs: images
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the version from the tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # Lifts this version's section out of CHANGELOG.md: everything between
+      # its own `## [x.y.z]` heading and the next `## [` heading. The
+      # changelog is where the notes are written and reviewed, so the release
+      # quotes it instead of keeping a second copy that can drift.
+      - name: Take the notes from the changelog
+        id: notes
+        run: |
+          set -euo pipefail
+          version='${{ steps.version.outputs.value }}'
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "CHANGELOG.md has no section for [$version]" >&2
+            exit 1
+          fi
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md

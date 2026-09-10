@@ -92,9 +92,14 @@ Fill in every `REPLACE_ME` in `.env`, point `PLINTO_PUBLIC_URL` at how you will
 reach the instance, and add your provider's credentials. Then:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 docker compose ps    # wait for api, web and postgres to report "healthy"
 ```
+
+That pulls published images from GitHub Container Registry, so there is no
+build to sit through. Pin a version in production with `PLINTO_VERSION=0.1.0`
+in your `.env`; without it you get `latest`. To build from source instead, add
+`--build`.
 
 Open the URL you configured. **[docs/delivery/self-host.md](docs/delivery/self-host.md)**
 has the full guide, including the two things that trip people up: the OIDC
