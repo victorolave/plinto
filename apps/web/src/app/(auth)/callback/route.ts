@@ -46,9 +46,6 @@ export async function GET(request: Request) {
       code_verifier: codeVerifier,
     })
 
-    // Store refresh token for session renewal
-    const refreshToken = tokenSet.refresh_token
-
     const claims = tokenSet.claims()
     const internalKey = process.env.INTERNAL_API_KEY
     const apiBaseConfigured = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL
@@ -131,16 +128,14 @@ export async function GET(request: Request) {
       maxAge: JWT_TTL_SECONDS,
     })
 
-    // Store refresh token if available
-    if (refreshToken) {
-      response.cookies.set('plinto_refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: isSecureCookie(),
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-      })
-    }
+    // `tokenSet.refresh_token` is deliberately dropped. Plinto requests
+    // `openid email profile` and nothing else (see /api/auth/login), so a
+    // compliant provider issues none — and a session here is renewed by the
+    // API sliding the database session on activity, not by returning to the
+    // IdP. Storing a thirty-day credential that nothing reads would be a
+    // liability, and the dormant branch that once did was worse than useless:
+    // it read as evidence that renewal existed. See
+    // docs/delivery/oidc-providers.md.
 
     response.cookies.delete(STATE_COOKIE)
     response.cookies.delete(VERIFIER_COOKIE)

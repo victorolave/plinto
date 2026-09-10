@@ -45,8 +45,11 @@ export async function POST(request: Request) {
     path: '/',
   }
   response.cookies.set('plinto_session', '', clearedCookie)
-  // Also clear the long-lived IdP refresh token cookie — it's a credential and
-  // must not outlive the session.
+  // Nothing sets `plinto_refresh_token` any more — the callback drops the
+  // provider's refresh token instead of storing it — but a browser that signed
+  // in against an older build still carries one, and it is a thirty-day
+  // credential. Evicting it costs a header and stops being needed on its own
+  // once those cookies age out.
   response.cookies.set('plinto_refresh_token', '', clearedCookie)
 
   return response

@@ -23,20 +23,26 @@ Plinto's web app (`apps/web/src/lib/auth/oidc-client.ts`) uses
 
 ### Refresh tokens: what their absence actually means
 
-The callback route stores a `plinto_refresh_token` cookie only `if
-(refreshToken)` is truthy (`callback/route.ts` lines 134–143) — a provider
-that returns no refresh token simply results in no cookie, not an error.
-More importantly: **nothing in this codebase currently reads that cookie to
-mint a new session.** It is set at login and deleted at logout
-(`apps/web/src/app/api/auth/logout/route.ts` line 50); there is no
-`/api/auth/refresh` route or equivalent that exchanges it for a fresh token.
+**Plinto does not store a refresh token at all.** The callback reads the
+token set and drops the refresh token with it; there is no
+`/api/auth/refresh` route, and nothing returns to your provider to renew a
+session. Whether your provider issues one makes no difference here.
 
-The practical consequence: your session's real lifetime is the internal
-Plinto JWT's TTL, `JWT_TTL_SECONDS` in `apps/web/src/lib/auth/jwt.ts` — **8
-hours**, hard ceiling — regardless of whether your provider ever issued a
-refresh token. After 8 hours you log in again. Whether the provider hands
-back a refresh token or not makes no difference to your day-to-day
-experience today.
+Sessions are renewed a different way: the API slides the database session's
+expiry every time you do something. So two limits decide how long you stay
+signed in, and whichever arrives first wins:
+
+| Limit | Value | Resets on |
+| --- | --- | --- |
+| Idle timeout | 30 minutes (`SESSION_TTL_MINUTES`, `apps/api/src/config/constants.ts`) | Any request — this is the sliding part |
+| Absolute ceiling | 8 hours (`JWT_TTL_SECONDS`, `apps/web/src/lib/auth/jwt.ts`) | Nothing. Signing in again is the only reset |
+
+In practice the idle timeout is the one you will meet: leave Plinto alone for
+half an hour and the next action sends you back to the login screen. That is
+deliberate — a household ledger left open on a shared laptop should not stay
+open — but both numbers are constants you can change when self-hosting, and
+the ceiling exists so that a revoked account cannot hold a session open
+indefinitely by staying active.
 
 ### The four environment variables
 
