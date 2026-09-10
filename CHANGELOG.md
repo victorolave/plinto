@@ -55,7 +55,9 @@ First Community release. No manual steps: this is the starting point.
 
 ### Running it yourself
 
-- `docker-compose.yml` with nginx, web, API and PostgreSQL.
+- `docker-compose.yml` with nginx, web, API and PostgreSQL, pulling published
+  images from `ghcr.io/victorolave` — no build step to sit through. Set
+  `PLINTO_VERSION` to pin a version, or pass `--build` to build from source.
 - Scheduled jobs for the obligations engine, in-process or through a workflow.
 - Audit log of financial operations.
 - Full guide in [docs/delivery/self-host.md](docs/delivery/self-host.md).

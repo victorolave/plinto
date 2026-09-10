@@ -34,9 +34,23 @@ Edit `.env`:
 Then:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 docker compose ps          # wait until api, web, postgres show "healthy"
 ```
+
+This pulls `ghcr.io/victorolave/plinto-api` and `plinto-web` from GitHub
+Container Registry — no build step. `PLINTO_VERSION` in your `.env` picks the
+tag; unset, you get `latest`. **Pin an exact version in production** so an
+upgrade is something you decide rather than something that happens the next
+time you recreate a container:
+
+```bash
+PLINTO_VERSION=0.1.0
+```
+
+To build from source instead of pulling — a fork, a patch, an architecture
+without a published image — add `--build` and the compose file will build both
+images locally under the same names.
 
 Open `http://localhost:8080` (or whatever `PLINTO_PUBLIC_URL` you set).
 

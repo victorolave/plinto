@@ -50,10 +50,16 @@ upgrade for a year without reading migration notes.
 | Artifact | Format | Example |
 |----------|--------|---------|
 | Git tag | `vMAJOR.MINOR.PATCH` | `v0.1.0` |
-| Docker image | `MAJOR.MINOR.PATCH` and `latest` | `plinto-api:0.1.0` |
+| Docker image | `MAJOR.MINOR.PATCH` and `latest` | `ghcr.io/victorolave/plinto-api:0.1.0` |
 
 `latest` always points at the newest release. Pin the exact version in
-production so an upgrade is something you decide, not something that happens.
+production with `PLINTO_VERSION` so an upgrade is something you decide, not
+something that happens.
+
+Images are published by `.github/workflows/release.yml`, which fires on the
+version tag. Tagging is therefore the whole release: it publishes the images
+and the notes together, and the notes are lifted from this version's section
+of the changelog rather than written twice.
 
 ## Every release has a changelog entry
 
