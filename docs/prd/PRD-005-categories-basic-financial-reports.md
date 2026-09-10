@@ -1,7 +1,8 @@
 # PRD 005: Categories and basic financial reports
 
 ## Status
-Draft (Ready for implementation)
+Implemented (categories and spending by category shipped; further reports are
+out of scope — see the [roadmap](../roadmap.md#3-reports-beyond-spending-by-category))
 
 ## Objective
 
