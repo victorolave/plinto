@@ -73,10 +73,20 @@ export class PrismaCreditLineStatementRepository extends CreditLineStatementRepo
   async listForLine(
     creditLineId: string,
     tenantId: string,
+    pagination?: { skip: number; take: number },
   ): Promise<CreditLineStatement[]> {
     return this.prisma.creditLineStatement.findMany({
       where: { creditLineId, tenantId },
       orderBy: { cutoffDate: 'desc' },
+      ...(pagination ? { skip: pagination.skip, take: pagination.take } : {}),
+    })
+  }
+
+  async countForLine(creditLineId: string, tenantId: string): Promise<number> {
+    // Same clause as `listForLine`, so the total always describes the page it
+    // is rendered beside.
+    return this.prisma.creditLineStatement.count({
+      where: { creditLineId, tenantId },
     })
   }
 

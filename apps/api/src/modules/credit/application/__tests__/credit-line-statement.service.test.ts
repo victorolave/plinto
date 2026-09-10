@@ -35,6 +35,7 @@ describe('CreditLineStatementService', () => {
     create: ReturnType<typeof vi.fn>
     findByIdForTenant: ReturnType<typeof vi.fn>
     listForLine: ReturnType<typeof vi.fn>
+    countForLine: ReturnType<typeof vi.fn>
     listLatestPerLine: ReturnType<typeof vi.fn>
     findWithPayment: ReturnType<typeof vi.fn>
     update: ReturnType<typeof vi.fn>
@@ -64,6 +65,7 @@ describe('CreditLineStatementService', () => {
       create: vi.fn().mockResolvedValue(statement()),
       findByIdForTenant: vi.fn().mockResolvedValue(statement()),
       listForLine: vi.fn().mockResolvedValue([statement()]),
+      countForLine: vi.fn().mockResolvedValue(0),
       listLatestPerLine: vi.fn().mockResolvedValue([]),
       findWithPayment: vi.fn().mockResolvedValue({ statement: statement(), paidMinor: 0 }),
       update: vi.fn().mockResolvedValue(statement()),
@@ -257,4 +259,45 @@ describe('CreditLineStatementService', () => {
       expect(audit.record).not.toHaveBeenCalled()
     })
   })
+
+  /**
+   * A line issues a statement every month and none of them are ever deleted,
+   * so this list only grows. Paging it keeps a card with years of history from
+   * loading its whole past to show the reader the last few months.
+   */
+  describe('listStatements', () => {
+    beforeEach(() => {
+      lines.findByIdForTenant.mockResolvedValue(line())
+      statements.listForLine.mockResolvedValue([statement()])
+      statements.countForLine.mockResolvedValue(37)
+    })
+
+    it('refuses a line that is not the tenant\'s', async () => {
+      lines.findByIdForTenant.mockResolvedValue(null)
+
+      await expect(
+        service.listStatements('line-addi', 'tenant-1', { page: 1, pageSize: 12 }),
+      ).rejects.toBeInstanceOf(NotFoundException)
+    })
+
+    it('asks the repository for the page the caller wants', async () => {
+      await service.listStatements('line-addi', 'tenant-1', { page: 3, pageSize: 12 })
+
+      expect(statements.listForLine).toHaveBeenCalledWith('line-addi', 'tenant-1', {
+        skip: 24,
+        take: 12,
+      })
+    })
+
+    it('reports the whole line total beside the page', async () => {
+      const result = await service.listStatements('line-addi', 'tenant-1', {
+        page: 1,
+        pageSize: 12,
+      })
+
+      expect(result.total).toBe(37)
+      expect(statements.countForLine).toHaveBeenCalledWith('line-addi', 'tenant-1')
+    })
+  })
+
 })

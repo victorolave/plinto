@@ -900,14 +900,34 @@ registry.registerPath({
   method: 'get',
   path: '/api/credit-lines/{id}/statements',
   tags: ['Credit'],
-  summary: 'List the statements a credit line has issued',
+  summary: 'List the statements a credit line has issued (paginated)',
   security: sessionCookieAuth,
-  request: { params: idParam },
+  request: {
+    params: idParam,
+    query: z.object({
+      page: z.string().optional(),
+      pageSize: z.string().optional(),
+    }),
+  },
   responses: {
-    200: dataResponse(
-      'Statements, newest cutoff first.',
-      z.object({ statements: z.array(CreditLineStatementSchemaRef) }),
-    ),
+    200: {
+      description: 'Statements, newest cutoff first.',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({ statements: z.array(CreditLineStatementSchemaRef) }),
+            meta: z.object({
+              pagination: z.object({
+                page: z.number().int(),
+                pageSize: z.number().int(),
+                total: z.number().int(),
+                totalPages: z.number().int(),
+              }),
+            }),
+          }),
+        },
+      },
+    },
     ...errorResponses,
   },
 })
