@@ -141,6 +141,23 @@ export async function listBalances(): Promise<{ data: { balances: AccountBalance
  * transfer field. Omitting it keeps today's behaviour: a resubmit creates a
  * second transfer.
  */
+export interface CreateTransferResponse {
+  data: {
+    transfer: Transfer
+    debit: Transaction
+    credit: Transaction
+    /**
+     * `true` when this Idempotency-Key was already used for the same
+     * transfer and nothing new was created — the API returns 200 for this
+     * case, but the status alone is not enough: `apiFetch` (see
+     * `lib/api/client.ts`) never surfaces the HTTP status to its caller, so
+     * this field is the only way `TransferForm` can tell a replay apart
+     * from a fresh creation and say so.
+     */
+    alreadyExisted: boolean
+  }
+}
+
 export async function createTransfer(
   input: {
     sourceAccountId: string
@@ -153,8 +170,8 @@ export async function createTransfer(
     occurredAt?: string
   },
   idempotencyKey?: string,
-): Promise<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }> {
-  return apiFetch<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }>('/transactions/transfers', {
+): Promise<CreateTransferResponse> {
+  return apiFetch<CreateTransferResponse>('/transactions/transfers', {
     method: 'POST',
     body: JSON.stringify(input),
     headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,

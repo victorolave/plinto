@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl'
 import { useFormattingLocale } from '../../../i18n/formatting'
 import { useErrorMessage } from '../../../lib/api/use-error-message'
 import { useValidationMessage } from '../../../lib/api/use-validation-message'
+import { isApiError } from '../../../lib/api/api-error'
+import { generateIdempotencyKey } from '../../../lib/idempotency-key'
 import { CreateTransferSchema, toMajorUnitsString, toMinorUnits } from '@plinto/shared'
 import type { Account } from '../../accounts/services/accounts'
 import { createTransfer } from '../services/transactions'
@@ -38,21 +40,51 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
   const [description, setDescription] = useState('')
   const [occurredAt, setOccurredAt] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
+  // Set when a submission comes back as a replay (alreadyExisted: true) —
+  // the server created nothing new, and the person needs to be told that
+  // instead of seeing what looks like an ordinary successful transfer. See
+  // `onSuccess` below.
+  const [replayNotice, setReplayNotice] = useState<string | null>(null)
 
   // One key per submission *intent*, not per request: it is created when the
   // form opens (so it already exists for the first submit), reused across
   // retries of that same submission (a double-click or a retried fetch must
   // reuse it — a fresh key on every attempt would defeat the whole point),
-  // and rotated only after a success, so the next transfer is a new intent
-  // rather than an accidental repeat of the one that just settled.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  // and rotated once the intent is resolved — by a fresh creation, by a
+  // confirmed replay of the same request, or by the server rejecting the key
+  // as reused for a DIFFERENT request (see `onError`) — so the next transfer
+  // is always a new intent.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => generateIdempotencyKey())
 
   const transferMutation = useMutation({
     mutationFn: (payload: Parameters<typeof createTransfer>[0]) =>
       createTransfer(payload, idempotencyKey),
-    onSuccess: () => {
-      setIdempotencyKey(crypto.randomUUID())
+    onSuccess: (response) => {
+      setIdempotencyKey(generateIdempotencyKey())
+
+      // A replay: the transfer already existed, so there is nothing new to
+      // show for it and nothing to invalidate. Reporting this exactly like a
+      // fresh creation is what let an edited resubmit look identical to a
+      // real duplicate-safe retry — the person is told instead, and the
+      // drawer stays open so they actually see it (closing it, the way a
+      // real success does, would hide the message the instant it appears).
+      if (response.data.alreadyExisted) {
+        setReplayNotice(t('alreadyRecorded'))
+        return
+      }
+
+      setReplayNotice(null)
       void onSaved()
+    },
+    onError: (mutationError) => {
+      // IDEMPOTENCY_KEY_REUSED means the key now belongs to a DIFFERENT
+      // transfer than the one just submitted — resubmitting with the same
+      // key would only 409 again. Every other error means nothing was
+      // created, so the key stays valid for a corrected resubmit of the same
+      // intent.
+      if (isApiError(mutationError) && mutationError.code === 'IDEMPOTENCY_KEY_REUSED') {
+        setIdempotencyKey(generateIdempotencyKey())
+      }
     },
   })
 
@@ -79,6 +111,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
+    setReplayNotice(null)
 
     if (!sourceAccountId || !destAccountId) {
       setValidationError(t('selectBothAccounts'))
@@ -269,6 +302,7 @@ export function TransferForm({ accounts, onSaved }: TransferFormProps) {
           />
         </Field>
 
+        {replayNotice ? <p className="muted">{replayNotice}</p> : null}
         {error ? <p className="error-text">{error}</p> : null}
       </div>
 
