@@ -38,7 +38,11 @@ export abstract class CreditLineStatementRepository {
   abstract listForLine(
     creditLineId: string,
     tenantId: string,
+    pagination?: { skip: number; take: number },
   ): Promise<CreditLineStatement[]>
+
+  /** Statements on the line, for the total shown beside a page of them. */
+  abstract countForLine(creditLineId: string, tenantId: string): Promise<number>
 
   /**
    * The most recent statement of each active line, which is what available
