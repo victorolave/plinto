@@ -1,7 +1,9 @@
 # PRD 003: Transfers between accounts and basic FX support
 
 ## Status
-Draft (Ready for implementation)
+Implemented (transfers between accounts, including across currencies, shipped;
+a consolidated multi-currency figure is out of scope — see the
+[roadmap](../roadmap.md#4-consolidated-multi-currency-view))
 
 ## Objective
 

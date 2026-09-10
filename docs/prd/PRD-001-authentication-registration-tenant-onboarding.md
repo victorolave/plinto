@@ -1,7 +1,8 @@
 # PRD 001: Authentication, Registration, and Tenant Onboarding
 
 ## Status
-Draft (Ready for implementation)
+Implemented (OIDC sign-in, sessions, household creation and onboarding
+all shipped; see the [changelog](../../CHANGELOG.md))
 
 ## Objective
 
