@@ -2,14 +2,17 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
   UsePipes,
 } from '@nestjs/common'
+import type { Response } from 'express'
 import { z } from 'zod'
 import { RequestContext } from '../../../../../common/types/request-context'
 import { AuthGuard } from '../../../../../common/guards/auth.guard'
@@ -19,6 +22,7 @@ import {
   RoleGuard,
 } from '../../../../../common/guards/role.guard'
 import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pipe'
+import { IdempotencyKeyPipe } from '../../../../../common/pipes/idempotency-key.pipe'
 import {
   CreateTransactionSchema,
   UpdateTransactionSchema,
@@ -103,12 +107,36 @@ export class TransactionsController {
     return { data: { transaction } }
   }
 
+  /**
+   * `Idempotency-Key` is an optional request header, not a body field — kept
+   * separate from `Transaction.idempotencyKey` / recurring execution's
+   * idempotency key, which the recurring engine generates for itself. Absent,
+   * behaviour is unchanged and this always responds `201`. Present and
+   * repeated for the SAME transfer (every material field must match — see
+   * `transferMatchesFingerprint`) for this tenant, no second transfer is
+   * created: the original is returned with `200` instead, and `data`
+   * carries `alreadyExisted: true` so a caller that cannot read the status
+   * code (this app's own web client included — see `apiFetch`, which
+   * discards it) can still tell a replay from a fresh creation. Repeated
+   * with a DIFFERENT transfer under the same key, this responds `409
+   * IDEMPOTENCY_KEY_REUSED` instead of guessing which one the caller meant.
+   *
+   * `@Headers()` in this Nest version has no pipe-applying overload (unlike
+   * `@Body`/`@Query`/`@Param`), so `IdempotencyKeyPipe` is applied by hand to
+   * the raw header rather than declared on the decorator. That header always
+   * arrives as `string | undefined` here, never an array: Express joins a
+   * repeated header into one comma-separated string rather than handing back
+   * a list (`set-cookie` is the one exception, and irrelevant to this one).
+   */
   @Post('transfers')
   @RequirePermission('transaction:write')
   async createTransfer(
     @Req() req: RequestContext,
     @Body(new ZodValidationPipe(CreateTransferSchema)) body: CreateTransferBody,
+    @Headers('idempotency-key') rawIdempotencyKey: string | undefined,
+    @Res({ passthrough: true }) res: Response,
   ) {
+    const idempotencyKey = new IdempotencyKeyPipe().transform(rawIdempotencyKey)
     const result = await this.transactionService.createTransfer({
       tenantId: req.tenantId as string,
       actorUserId: req.user?.id ?? null,
@@ -121,7 +149,9 @@ export class TransactionsController {
       feeMinor: body.feeMinor,
       description: body.description,
       occurredAt: body.occurredAt,
+      idempotencyKey,
     })
+    res.status(result.alreadyExisted ? 200 : 201)
     return { data: result }
   }
 

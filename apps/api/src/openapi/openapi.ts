@@ -14,6 +14,7 @@ import {
   UpdateTransactionSchema,
   CreateTransferSchema,
   TransferSchema,
+  IdempotencyKeySchema,
   AccountBalanceSchema,
   CategorySchema,
   CreateCategorySchema,
@@ -186,6 +187,13 @@ const TransferResultSchema = z
     transfer: TransferSchemaRef,
     debit: TransactionSchemaRef,
     credit: TransactionSchemaRef,
+    // Always present, not only inferable from the HTTP status: a caller
+    // that cannot read the status code (a proxy that normalizes it, this
+    // app's own web client — see apps/web's apiFetch, which discards it)
+    // must still be able to tell a replayed Idempotency-Key apart from a
+    // freshly created transfer. `false` for every endpoint that reuses this
+    // shape without idempotency (e.g. POST /loans).
+    alreadyExisted: z.boolean(),
   })
   .openapi('TransferResult')
 
@@ -513,11 +521,45 @@ registry.registerPath({
   path: '/api/transactions/transfers',
   tags: ['Transactions'],
   summary: 'Transfer funds between two accounts',
+  description:
+    'Optionally idempotent via the `Idempotency-Key` header. Omitted, behaviour ' +
+    'is unchanged and this always responds 201. Unrelated to the `idempotencyKey` ' +
+    'stored on `Transaction` or `RecurringTransactionExecution`, which the ' +
+    'recurring engine generates for itself.\n\n' +
+    'Sent, it must describe the SAME transfer every time it repeats: source and ' +
+    'destination accounts, both amounts, fxRate, feeMinor, occurredAt and ' +
+    'description are all compared against the transfer already recorded under ' +
+    'that key for this tenant (a field never sent is only compared against its ' +
+    'own default, e.g. omitted `occurredAt` is never checked, since it means ' +
+    '"now" and never matches an earlier "now"). Sent again unchanged, no second ' +
+    'transfer is created — the original is returned with 200 instead of 201, ' +
+    'and `alreadyExisted: true` in the response body says so explicitly, so a ' +
+    'caller that cannot read the HTTP status (a proxy that normalizes it, or ' +
+    'this project\'s own web client) can still tell a replay from a fresh ' +
+    'creation. Sent again with ANY material field changed, this responds 409 ' +
+    '`IDEMPOTENCY_KEY_REUSED` rather than silently returning whichever transfer ' +
+    'happened to be recorded first — the whole point of the header is that a ' +
+    'caller can trust what it gets back actually is the request it sent.',
   security: sessionCookieAuth,
   request: {
+    headers: z.object({
+      'Idempotency-Key': IdempotencyKeySchema.optional().openapi({
+        description:
+          'Client-chosen key identifying this transfer intent. Repeating it with ' +
+          'the exact same request returns the original transfer (200) instead of ' +
+          'creating a second one (201). Repeating it with a different request is ' +
+          'rejected (409 IDEMPOTENCY_KEY_REUSED). 1-200 characters; omit to opt out.',
+        example: 'a2f1c9e0-1b3d-4c9e-9b1a-8f2e6d4c5a6b',
+      }),
+    }),
     body: { content: { 'application/json': { schema: CreateTransferSchemaRef } } },
   },
   responses: {
+    200: dataResponse(
+      'Existing transfer for this Idempotency-Key was returned (alreadyExisted: ' +
+        'true in the body); no new transfer was created.',
+      TransferResultSchema,
+    ),
     201: dataResponse('Transfer created.', TransferResultSchema),
     ...errorResponses,
   },

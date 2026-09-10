@@ -30,6 +30,18 @@ export class PrismaTransactionRepository extends TransactionRepository {
     return this.prisma.transaction.create({ data })
   }
 
+  /**
+   * `idempotencyKey` (when present) is enforced by the `(tenantId,
+   * idempotencyKey)` unique index on `transfers`, not by checking first: the
+   * insert is attempted directly, and a `P2002` on that index — a concurrent
+   * retry that won the race — is caught below and resolved by loading what
+   * the winner created. A `findFirst`-then-insert check would let two
+   * concurrent retries both pass the check before either writes, which is
+   * exactly the double-transfer bug this closes.
+   *
+   * Whether the loaded transfer actually matches `input` is NOT decided
+   * here — see `TransactionRepository.createTransfer`'s doc.
+   */
   async createTransfer(input: {
     tenantId: string
     sourceAccountId: string
@@ -43,56 +55,149 @@ export class PrismaTransactionRepository extends TransactionRepository {
     rateSource: string | null
     description: string | null
     occurredAt: Date
-  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction }> {
-    return this.prisma.$transaction(async (tx) => {
-      const transfer = await tx.transfer.create({
-        data: {
-          tenantId: input.tenantId,
-          sourceAccountId: input.sourceAccountId,
-          destinationAccountId: input.destinationAccountId,
-          sourceAmountMinor: input.sourceAmountMinor,
-          destinationAmountMinor: input.destinationAmountMinor,
-          sourceCurrency: input.sourceCurrency,
-          destinationCurrency: input.destinationCurrency,
-          fxRate: input.fxRate ?? undefined,
-          feeMinor: input.feeMinor ?? undefined,
-          rateSource: input.rateSource ?? undefined,
-        },
-      })
+    idempotencyKey?: string | null
+  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction; alreadyExisted: boolean }> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const transfer = await tx.transfer.create({
+          data: {
+            tenantId: input.tenantId,
+            sourceAccountId: input.sourceAccountId,
+            destinationAccountId: input.destinationAccountId,
+            sourceAmountMinor: input.sourceAmountMinor,
+            destinationAmountMinor: input.destinationAmountMinor,
+            sourceCurrency: input.sourceCurrency,
+            destinationCurrency: input.destinationCurrency,
+            fxRate: input.fxRate ?? undefined,
+            feeMinor: input.feeMinor ?? undefined,
+            rateSource: input.rateSource ?? undefined,
+            idempotencyKey: input.idempotencyKey ?? undefined,
+          },
+        })
 
-      const debit = await tx.transaction.create({
-        data: {
-          tenantId: input.tenantId,
-          accountId: input.sourceAccountId,
-          type: 'expense',
-          amountMinor: input.sourceAmountMinor,
-          currency: input.sourceCurrency,
-          description: input.description,
-          occurredAt: input.occurredAt,
-          transferId: transfer.id,
-        },
-      })
+        const debit = await tx.transaction.create({
+          data: {
+            tenantId: input.tenantId,
+            accountId: input.sourceAccountId,
+            type: 'expense',
+            amountMinor: input.sourceAmountMinor,
+            currency: input.sourceCurrency,
+            description: input.description,
+            occurredAt: input.occurredAt,
+            transferId: transfer.id,
+          },
+        })
 
-      const credit = await tx.transaction.create({
-        data: {
-          tenantId: input.tenantId,
-          accountId: input.destinationAccountId,
-          type: 'income',
-          amountMinor: input.destinationAmountMinor,
-          currency: input.destinationCurrency,
-          description: input.description,
-          occurredAt: input.occurredAt,
-          transferId: transfer.id,
-        },
-      })
+        const credit = await tx.transaction.create({
+          data: {
+            tenantId: input.tenantId,
+            accountId: input.destinationAccountId,
+            type: 'income',
+            amountMinor: input.destinationAmountMinor,
+            currency: input.destinationCurrency,
+            description: input.description,
+            occurredAt: input.occurredAt,
+            transferId: transfer.id,
+          },
+        })
 
-      const transferEntity: Transfer = {
-        ...transfer,
-        fxRate: transfer.fxRate != null ? transfer.fxRate.toString() : null,
+        return { transfer: this.toTransferEntity(transfer), debit, credit, alreadyExisted: false }
+      })
+    } catch (error) {
+      if (input.idempotencyKey && this.isIdempotencyKeyConflict(error)) {
+        const existing = await this.findByIdempotencyKey(input.tenantId, input.idempotencyKey)
+        if (existing) {
+          return { ...existing, alreadyExisted: true }
+        }
       }
 
-      return { transfer: transferEntity, debit, credit }
+      throw error
+    }
+  }
+
+  async findByIdempotencyKey(
+    tenantId: string,
+    idempotencyKey: string,
+  ): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction } | null> {
+    const transfer = await this.prisma.transfer.findFirst({
+      where: { tenantId, idempotencyKey },
     })
+    if (!transfer) return null
+
+    const legs = await this.prisma.transaction.findMany({
+      where: { transferId: transfer.id },
+    })
+    const debit = legs.find((leg) => leg.type === 'expense')
+    const credit = legs.find((leg) => leg.type === 'income')
+    if (!debit || !credit) return null
+
+    return { transfer: this.toTransferEntity(transfer), debit, credit }
+  }
+
+  /**
+   * Maps a Prisma `transfer` row onto the domain `Transfer` entity by naming
+   * every field explicitly, rather than spreading the row. The row also
+   * carries `idempotencyKey` (a real column, needed to query it) and
+   * `tenantId`/timestamps as Prisma types — spreading it would leak
+   * `idempotencyKey` into the API response through nothing more than an
+   * unlisted field surviving a `{...row}`, with no schema or type declaring
+   * it as part of the contract.
+   */
+  private toTransferEntity(row: {
+    id: string
+    tenantId: string
+    sourceAccountId: string
+    destinationAccountId: string
+    sourceAmountMinor: number
+    destinationAmountMinor: number
+    sourceCurrency: string
+    destinationCurrency: string
+    fxRate: Prisma.Decimal | null
+    feeMinor: number | null
+    rateSource: string | null
+    createdAt: Date
+    updatedAt: Date
+  }): Transfer {
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      sourceAccountId: row.sourceAccountId,
+      destinationAccountId: row.destinationAccountId,
+      sourceAmountMinor: row.sourceAmountMinor,
+      destinationAmountMinor: row.destinationAmountMinor,
+      sourceCurrency: row.sourceCurrency,
+      destinationCurrency: row.destinationCurrency,
+      fxRate: row.fxRate != null ? row.fxRate.toString() : null,
+      feeMinor: row.feeMinor,
+      rateSource: row.rateSource,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }
+  }
+
+  /**
+   * True only for the unique-constraint violation on the `transfers`
+   * `(tenant_id, idempotency_key)` index specifically — not just any
+   * `P2002`. `error.meta.target` names the columns (or, depending on
+   * provider/version, the constraint) Postgres actually rejected on; without
+   * checking it, a FUTURE unique index added to `Transfer` or `Transaction`
+   * would have any conflict on IT silently reinterpreted as "this
+   * idempotency key already exists" and swallowed here instead of
+   * propagating as the real failure it is.
+   */
+  private isIdempotencyKeyConflict(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+      return false
+    }
+
+    const target = error.meta?.target
+    if (Array.isArray(target)) {
+      return target.includes('tenant_id') && target.includes('idempotency_key')
+    }
+    if (typeof target === 'string') {
+      return target.includes('idempotency_key')
+    }
+    return false
   }
 
   async findByIdForTenant(id: string, tenantId: string): Promise<Transaction | null> {

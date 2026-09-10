@@ -30,6 +30,7 @@ const makeTransaction = (overrides = {}) => ({
 const makeTransactionRepo = () => ({
   create: vi.fn(),
   createTransfer: vi.fn(),
+  findByIdempotencyKey: vi.fn(),
   findByIdForTenant: vi.fn(),
   updateForTenant: vi.fn(),
   list: vi.fn(),
@@ -469,6 +470,287 @@ describe('TransactionService', () => {
           metadata: expect.objectContaining({ direction: 'credit', fxRate: expect.stringMatching(/^4200(\.0+)?$/) }),
         }),
       )
+    })
+
+    describe('Idempotency-Key', () => {
+      it('with no header, behaves exactly as before: never looks the key up, passes idempotencyKey undefined, audits normally', async () => {
+        const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+        const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+        const transfer = makeTransfer()
+        const debitTx = makeDebitTx()
+        const creditTx = makeCreditTx()
+        accountRepository.findByIdForTenant
+          .mockResolvedValueOnce(sourceAccount)
+          .mockResolvedValueOnce(destAccount)
+        transactionRepository.createTransfer.mockResolvedValue({
+          transfer,
+          debit: debitTx,
+          credit: creditTx,
+          alreadyExisted: false,
+        })
+        auditService.record.mockResolvedValue(undefined)
+
+        const result = await service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+        })
+
+        expect(transactionRepository.findByIdempotencyKey).not.toHaveBeenCalled()
+        expect(transactionRepository.createTransfer).toHaveBeenCalledWith(
+          expect.objectContaining({ idempotencyKey: undefined }),
+        )
+        expect(auditService.record).toHaveBeenCalledTimes(2)
+        expect(result).toEqual({ transfer, debit: debitTx, credit: creditTx, alreadyExisted: false })
+      })
+
+      it('with a first-time key, checks it first (finds nothing), then passes it through and audits the new transfer', async () => {
+        const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+        const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+        const transfer = makeTransfer()
+        const debitTx = makeDebitTx()
+        const creditTx = makeCreditTx()
+        transactionRepository.findByIdempotencyKey.mockResolvedValue(null)
+        accountRepository.findByIdForTenant
+          .mockResolvedValueOnce(sourceAccount)
+          .mockResolvedValueOnce(destAccount)
+        transactionRepository.createTransfer.mockResolvedValue({
+          transfer,
+          debit: debitTx,
+          credit: creditTx,
+          alreadyExisted: false,
+        })
+        auditService.record.mockResolvedValue(undefined)
+
+        await service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          idempotencyKey: 'retry-key-1',
+        })
+
+        expect(transactionRepository.findByIdempotencyKey).toHaveBeenCalledWith('tenant-1', 'retry-key-1')
+        expect(transactionRepository.createTransfer).toHaveBeenCalledWith(
+          expect.objectContaining({ idempotencyKey: 'retry-key-1' }),
+        )
+        expect(auditService.record).toHaveBeenCalledTimes(2)
+      })
+
+      /**
+       * The fast path point 3 of the review asked for: a retry must not
+       * repeat validation it does not need. `accountRepository` is never
+       * called at all — proof the short-circuit happens before any account
+       * lookup, not just before the repository write.
+       */
+      it('with a repeated, matching key, short-circuits on the fast lookup: no account lookups, returns the original, audits a replay', async () => {
+        const transfer = makeTransfer()
+        const debitTx = makeDebitTx()
+        const creditTx = makeCreditTx()
+        transactionRepository.findByIdempotencyKey.mockResolvedValue({
+          transfer,
+          debit: debitTx,
+          credit: creditTx,
+        })
+        auditService.record.mockResolvedValue(undefined)
+
+        const result = await service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          idempotencyKey: 'retry-key-1',
+        })
+
+        expect(accountRepository.findByIdForTenant).not.toHaveBeenCalled()
+        expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
+        expect(result).toEqual({ transfer, debit: debitTx, credit: creditTx, alreadyExisted: true })
+        expect(auditService.record).toHaveBeenCalledTimes(1)
+        expect(auditService.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: 'transaction.transfer.replayed',
+            resourceId: debitTx.id,
+            metadata: expect.objectContaining({ transferId: transfer.id, idempotencyKey: 'retry-key-1' }),
+          }),
+        )
+      })
+
+      /**
+       * The defect this whole review round exists to close: a caller edits
+       * the amount and resubmits under the same key. The old behaviour
+       * returned the FIRST amount's transfer with a quiet 200 — the edit
+       * was silently discarded. This must reject instead.
+       */
+      it('with a repeated key but a DIFFERENT amount, rejects with 409 IDEMPOTENCY_KEY_REUSED rather than returning the original', async () => {
+        const transfer = makeTransfer({ sourceAmountMinor: 500000, destinationAmountMinor: 500000 })
+        const debitTx = makeDebitTx({ amountMinor: 500000 })
+        const creditTx = makeCreditTx({ amountMinor: 500000 })
+        transactionRepository.findByIdempotencyKey.mockResolvedValue({
+          transfer,
+          debit: debitTx,
+          credit: creditTx,
+        })
+
+        await expect(
+          service.createTransfer({
+            tenantId: 'tenant-1',
+            actorUserId: 'user-1',
+            correlationId: 'req-1',
+            sourceAccountId: 'account-1',
+            destinationAccountId: 'account-2',
+            sourceAmountMinor: 100000, // the edited amount, not the 500000 already recorded
+            idempotencyKey: 'retry-key-1',
+          }),
+        ).rejects.toMatchObject({
+          response: expect.objectContaining({ code: 'IDEMPOTENCY_KEY_REUSED' }),
+        })
+
+        expect(accountRepository.findByIdForTenant).not.toHaveBeenCalled()
+        expect(transactionRepository.createTransfer).not.toHaveBeenCalled()
+        expect(auditService.record).not.toHaveBeenCalled()
+      })
+
+      /**
+       * The fast lookup found nothing, but a concurrent request under the
+       * same key committed in between — the unique index caught it, not the
+       * lookup. This must get the same fingerprint treatment as the fast
+       * path: matching, it is a valid replay.
+       */
+      it('when createTransfer loses the P2002 race and the winner matches, returns it as a replay', async () => {
+        const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+        const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+        const transfer = makeTransfer()
+        const debitTx = makeDebitTx()
+        const creditTx = makeCreditTx()
+        transactionRepository.findByIdempotencyKey.mockResolvedValue(null)
+        accountRepository.findByIdForTenant
+          .mockResolvedValueOnce(sourceAccount)
+          .mockResolvedValueOnce(destAccount)
+        transactionRepository.createTransfer.mockResolvedValue({
+          transfer,
+          debit: debitTx,
+          credit: creditTx,
+          alreadyExisted: true,
+        })
+        auditService.record.mockResolvedValue(undefined)
+
+        const result = await service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          idempotencyKey: 'retry-key-1',
+        })
+
+        expect(result).toEqual({ transfer, debit: debitTx, credit: creditTx, alreadyExisted: true })
+        expect(auditService.record).toHaveBeenCalledWith(
+          expect.objectContaining({ action: 'transaction.transfer.replayed' }),
+        )
+      })
+
+      /**
+       * Same race, but the concurrent winner recorded a DIFFERENT transfer —
+       * an unlikely but real possibility (two truly concurrent requests that
+       * happen to reuse the same key for different intents). This must not
+       * be handed back as if it were this caller's own transfer.
+       */
+      it('when createTransfer loses the P2002 race and the winner does NOT match, rejects with 409', async () => {
+        const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+        const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+        const winnerTransfer = makeTransfer({ sourceAmountMinor: 999, destinationAmountMinor: 999 })
+        const winnerDebit = makeDebitTx({ amountMinor: 999 })
+        const winnerCredit = makeCreditTx({ amountMinor: 999 })
+        transactionRepository.findByIdempotencyKey.mockResolvedValue(null)
+        accountRepository.findByIdForTenant
+          .mockResolvedValueOnce(sourceAccount)
+          .mockResolvedValueOnce(destAccount)
+        transactionRepository.createTransfer.mockResolvedValue({
+          transfer: winnerTransfer,
+          debit: winnerDebit,
+          credit: winnerCredit,
+          alreadyExisted: true,
+        })
+
+        await expect(
+          service.createTransfer({
+            tenantId: 'tenant-1',
+            actorUserId: 'user-1',
+            correlationId: 'req-1',
+            sourceAccountId: 'account-1',
+            destinationAccountId: 'account-2',
+            sourceAmountMinor: 5000,
+            idempotencyKey: 'retry-key-1',
+          }),
+        ).rejects.toMatchObject({
+          response: expect.objectContaining({ code: 'IDEMPOTENCY_KEY_REUSED' }),
+        })
+      })
+
+      it('lets the same key succeed for two different tenants, scoping each lookup by its own tenantId', async () => {
+        const transferTenant1 = makeTransfer({ tenantId: 'tenant-1' })
+        const transferTenant2 = makeTransfer({ tenantId: 'tenant-2', id: 'transfer-uuid-2' })
+        const debitTx1 = makeDebitTx()
+        const creditTx1 = makeCreditTx()
+        const debitTx2 = makeDebitTx({ id: 'tx-debit-2', tenantId: 'tenant-2' })
+        const creditTx2 = makeCreditTx({ id: 'tx-credit-2', tenantId: 'tenant-2' })
+        transactionRepository.findByIdempotencyKey.mockResolvedValue(null)
+        accountRepository.findByIdForTenant.mockResolvedValue(makeAccount({ currency: 'COP' }))
+        transactionRepository.createTransfer
+          .mockResolvedValueOnce({
+            transfer: transferTenant1,
+            debit: debitTx1,
+            credit: creditTx1,
+            alreadyExisted: false,
+          })
+          .mockResolvedValueOnce({
+            transfer: transferTenant2,
+            debit: debitTx2,
+            credit: creditTx2,
+            alreadyExisted: false,
+          })
+        auditService.record.mockResolvedValue(undefined)
+
+        const first = await service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          idempotencyKey: 'shared-key',
+        })
+        const second = await service.createTransfer({
+          tenantId: 'tenant-2',
+          actorUserId: 'user-2',
+          correlationId: 'req-2',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          idempotencyKey: 'shared-key',
+        })
+
+        expect(transactionRepository.findByIdempotencyKey).toHaveBeenNthCalledWith(1, 'tenant-1', 'shared-key')
+        expect(transactionRepository.findByIdempotencyKey).toHaveBeenNthCalledWith(2, 'tenant-2', 'shared-key')
+        expect(transactionRepository.createTransfer).toHaveBeenNthCalledWith(
+          1,
+          expect.objectContaining({ tenantId: 'tenant-1', idempotencyKey: 'shared-key' }),
+        )
+        expect(transactionRepository.createTransfer).toHaveBeenNthCalledWith(
+          2,
+          expect.objectContaining({ tenantId: 'tenant-2', idempotencyKey: 'shared-key' }),
+        )
+        expect(first.alreadyExisted).toBe(false)
+        expect(second.alreadyExisted).toBe(false)
+      })
     })
   })
 

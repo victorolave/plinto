@@ -135,18 +135,45 @@ export async function listBalances(): Promise<{ data: { balances: AccountBalance
   return apiFetch<{ data: { balances: AccountBalance[] } }>('/transactions/balances')
 }
 
-export async function createTransfer(input: {
-  sourceAccountId: string
-  destinationAccountId: string
-  sourceAmountMinor: number
-  destinationAmountMinor?: number
-  fxRate?: string
-  feeMinor?: number
-  description?: string
-  occurredAt?: string
-}): Promise<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }> {
-  return apiFetch<{ data: { transfer: Transfer; debit: Transaction; credit: Transaction } }>('/transactions/transfers', {
+/**
+ * `idempotencyKey` travels as the `Idempotency-Key` header, never in the
+ * body — it is the client's own retry-identity for this submission, not a
+ * transfer field. Omitting it keeps today's behaviour: a resubmit creates a
+ * second transfer.
+ */
+export interface CreateTransferResponse {
+  data: {
+    transfer: Transfer
+    debit: Transaction
+    credit: Transaction
+    /**
+     * `true` when this Idempotency-Key was already used for the same
+     * transfer and nothing new was created — the API returns 200 for this
+     * case, but the status alone is not enough: `apiFetch` (see
+     * `lib/api/client.ts`) never surfaces the HTTP status to its caller, so
+     * this field is the only way `TransferForm` can tell a replay apart
+     * from a fresh creation and say so.
+     */
+    alreadyExisted: boolean
+  }
+}
+
+export async function createTransfer(
+  input: {
+    sourceAccountId: string
+    destinationAccountId: string
+    sourceAmountMinor: number
+    destinationAmountMinor?: number
+    fxRate?: string
+    feeMinor?: number
+    description?: string
+    occurredAt?: string
+  },
+  idempotencyKey?: string,
+): Promise<CreateTransferResponse> {
+  return apiFetch<CreateTransferResponse>('/transactions/transfers', {
     method: 'POST',
     body: JSON.stringify(input),
+    headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
   })
 }

@@ -24,6 +24,9 @@ First Community release. No manual steps: this is the starting point.
 - **Movements** — income and expenses, transfers between accounts including
   across currencies, and categories. The ledger is filtered and paginated on
   the server, so a household past a hundred movements searches all of them.
+- **Idempotent transfers** — `POST /transactions/transfers` accepts an
+  optional `Idempotency-Key` header. Repeat it for a retried submission and no
+  second transfer is created; the original is returned instead.
 - **Recurring rules** — define a monthly movement once and let it record
   itself.
 - **Obligations** — what the household owes this month, generated from rules,
