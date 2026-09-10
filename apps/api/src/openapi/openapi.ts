@@ -1341,14 +1341,19 @@ registry.registerPath({
   method: 'post',
   path: '/api/obligations/{id}/payments',
   tags: ['Obligations'],
-  summary: 'Reconcile an obligation with an existing transaction',
+  summary: 'Reconcile an obligation, with an existing or a new transaction',
   description:
-    'Declares that a transaction settles (part of) the obligation. The ' +
-    'transaction must belong to the same tenant, be an expense, and carry the ' +
-    'obligation currency. A transaction that already settles another ' +
-    'obligation is rejected with 409 — enforced by a unique index, so a ' +
-    'concurrent caller cannot slip past the check. Several payments may ' +
-    'settle one obligation.',
+    'Declares which movement settles (part of) the obligation, in one of two ' +
+    'ways. Send `transactionId` to link a movement already in the ledger: it ' +
+    'must belong to the same tenant, be an expense, and carry the obligation ' +
+    'currency, and one that already settles another obligation is rejected ' +
+    'with 409 — enforced by a unique index, so a concurrent caller cannot ' +
+    'slip past the check. Send `transaction` instead to record the movement ' +
+    'here: its type is forced to expense and its currency comes from the ' +
+    'account, so neither can be given, and an account in another currency is ' +
+    'rejected with 409 before anything is written. Sending both is rejected ' +
+    'rather than resolved by precedence. Several payments may settle one ' +
+    'obligation.',
   security: sessionCookieAuth,
   request: {
     params: idParam,

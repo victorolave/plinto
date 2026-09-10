@@ -13,6 +13,8 @@ import {
   removeObligationPayment,
 } from '../services/obligations'
 import { listTransactions } from '../../transactions/services/transactions'
+import { listAccounts } from '../../accounts/services/accounts'
+import { listCategories } from '../../categories/services/categories'
 import { currentPeriod, formatPeriod, shiftPeriod } from '../lib/period'
 import { queryKeys } from '../../../lib/api/query-keys'
 import { ObligationSummary } from './obligation-summary'
@@ -40,6 +42,15 @@ const STATUS_TONE: Record<ObligationStatus, 'success' | 'warning' | 'danger' | '
 
 type ActiveDrawer = 'create' | 'reconcile' | null
 
+/**
+ * What the reconcile picker needs from the ledger.
+ *
+ * Declared once so the cache key and the request cannot drift: keying a
+ * hundred-row expense query as if it were the default page would let it serve,
+ * and be served by, a completely different slice of the ledger.
+ */
+const RECONCILE_PICKER_QUERY = { type: 'expense' as const, pageSize: 100 }
+
 export function ObligationsPanel() {
   const t = useTranslations('obligations')
   const toErrorMessage = useErrorMessage()
@@ -60,10 +71,26 @@ export function ObligationsPanel() {
   })
 
   // Only needed to populate the reconcile picker; the board itself reads
-  // nothing from the ledger.
+  // nothing from the ledger. Asking for expenses only is what the picker then
+  // shows, so the cap below buys as many usable rows as it can.
+  //
+  // It is still a cap: a household with more than this many expenses has some
+  // that the picker cannot offer. Creating the movement from the payment
+  // drawer is the fix for that, not a larger number here.
   const transactionsQuery = useQuery({
-    queryKey: queryKeys.transactions(),
-    queryFn: async () => listTransactions({ pageSize: 100 }),
+    queryKey: queryKeys.transactions(RECONCILE_PICKER_QUERY),
+    queryFn: async () => listTransactions(RECONCILE_PICKER_QUERY),
+  })
+
+  // Recording a payment writes a movement, so the drawer needs somewhere to
+  // put it and something to file it under.
+  const accountsQuery = useQuery({
+    queryKey: queryKeys.accounts(),
+    queryFn: async () => (await listAccounts()).data.accounts,
+  })
+  const categoriesQuery = useQuery({
+    queryKey: queryKeys.categories,
+    queryFn: async () => (await listCategories()).data.categories,
   })
 
   const obligations = obligationsQuery.data ?? []
@@ -108,6 +135,13 @@ export function ObligationsPanel() {
 
   const handleSaved = () => {
     invalidatePeriod()
+    // Settling can now create the movement itself, so the ledger and the
+    // balances it feeds are stale too. Invalidating the ['transactions']
+    // prefix covers the reconcile picker and the dashboard's recent activity
+    // alike; keying only this panel's query would leave both showing a
+    // household that is missing an expense it just recorded.
+    void queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.balances })
     closeDrawer()
   }
 
@@ -254,6 +288,8 @@ export function ObligationsPanel() {
           <ReconcileForm
             obligation={reconciling}
             transactions={transactions}
+            accounts={accountsQuery.data ?? []}
+            categories={categoriesQuery.data ?? []}
             onSaved={handleSaved}
           />
         ) : null}
