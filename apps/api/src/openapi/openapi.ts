@@ -14,6 +14,7 @@ import {
   UpdateTransactionSchema,
   CreateTransferSchema,
   TransferSchema,
+  IdempotencyKeySchema,
   AccountBalanceSchema,
   CategorySchema,
   CreateCategorySchema,
@@ -513,11 +514,31 @@ registry.registerPath({
   path: '/api/transactions/transfers',
   tags: ['Transactions'],
   summary: 'Transfer funds between two accounts',
+  description:
+    'Optionally idempotent via the `Idempotency-Key` header. Omitted, behaviour ' +
+    'is unchanged and this always responds 201. Sent and repeated for the same ' +
+    'tenant, no second transfer is created: the original is returned with 200 ' +
+    'instead of 201. Unrelated to the `idempotencyKey` stored on `Transaction` ' +
+    'or `RecurringTransactionExecution`, which the recurring engine generates ' +
+    'for itself.',
   security: sessionCookieAuth,
   request: {
+    headers: z.object({
+      'Idempotency-Key': IdempotencyKeySchema.optional().openapi({
+        description:
+          'Client-chosen key identifying this transfer intent. Repeating it for ' +
+          'the same tenant returns the original transfer (200) instead of ' +
+          'creating a second one (201). 1-200 characters; omit to opt out.',
+        example: 'a2f1c9e0-1b3d-4c9e-9b1a-8f2e6d4c5a6b',
+      }),
+    }),
     body: { content: { 'application/json': { schema: CreateTransferSchemaRef } } },
   },
   responses: {
+    200: dataResponse(
+      'Existing transfer for this Idempotency-Key was returned; no new transfer was created.',
+      TransferResultSchema,
+    ),
     201: dataResponse('Transfer created.', TransferResultSchema),
     ...errorResponses,
   },

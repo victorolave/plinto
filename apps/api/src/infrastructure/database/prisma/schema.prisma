@@ -442,6 +442,13 @@ model Transfer {
   fxRate               Decimal?  @map("fx_rate") @db.Decimal(20, 8)
   feeMinor             Int?      @map("fee_minor")
   rateSource           String?   @map("rate_source")
+  /// Client-supplied via the `Idempotency-Key` request header — not the same
+  /// concern as `Transaction.idempotencyKey` or
+  /// `RecurringTransactionExecution.idempotencyKey`, which the recurring
+  /// engine generates itself to dedupe its own runs. This one is optional and
+  /// caller-chosen, so a resubmit of the same transfer request can be told
+  /// apart from a new one.
+  idempotencyKey       String?   @map("idempotency_key")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
@@ -453,6 +460,12 @@ model Transfer {
   @@index([tenantId])
   @@index([sourceAccountId])
   @@index([destinationAccountId])
+  /// Postgres treats NULLs as distinct, so a caller that never sends the
+  /// header keeps today's behavior untouched — any number of transfers with a
+  /// null key are allowed — while a caller that does send one gets a repeat
+  /// request rejected by this index rather than by a read-then-write check
+  /// that two concurrent retries could both pass.
+  @@unique([tenantId, idempotencyKey])
   @@map("transfers")
 }
 

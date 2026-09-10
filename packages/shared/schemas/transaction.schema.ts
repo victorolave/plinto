@@ -123,6 +123,23 @@ export const CreateTransferSchema = z.object({
   validationIssue(VALIDATION_CODE.ACCOUNTS_MUST_DIFFER, ['destinationAccountId']),
 )
 
+/**
+ * The `Idempotency-Key` header a client may send with `POST /transactions/transfers`.
+ *
+ * Trimmed and bounded, same as any other client-supplied string field. This
+ * is deliberately unrelated to `TransactionSchema.idempotencyKey` and
+ * `RecurringTransactionExecution.idempotencyKey`, which the recurring engine
+ * generates itself to dedupe its own runs — this one is caller-chosen and
+ * travels as a header, never in the body.
+ */
+export const IDEMPOTENCY_KEY_MAX_LENGTH = 200
+
+export const IdempotencyKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(IDEMPOTENCY_KEY_MAX_LENGTH)
+
 export const TransferSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
