@@ -310,9 +310,10 @@ describe('TransactionsController', () => {
       idempotencyKey: undefined,
     })
     expect(res.status).toHaveBeenCalledWith(201)
-    expect(result).toEqual({
-      data: { transfer: { id: 'transfer-uuid' }, debit: { id: 'tx-debit' }, credit: { id: 'tx-credit' } },
-    })
+    // `alreadyExisted` travels in the body too, not only as the status code:
+    // apps/web's own apiFetch discards the status, so the body is the only
+    // place a caller that cannot read it can tell a replay from a creation.
+    expect(result).toEqual({ data: transferResult })
   })
 
   it('forwards the Idempotency-Key header to the service', async () => {
@@ -370,8 +371,6 @@ describe('TransactionsController', () => {
     )
 
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(result).toEqual({
-      data: { transfer: { id: 'transfer-uuid' }, debit: { id: 'tx-debit' }, credit: { id: 'tx-credit' } },
-    })
+    expect(result).toEqual({ data: transferResult })
   })
 })
