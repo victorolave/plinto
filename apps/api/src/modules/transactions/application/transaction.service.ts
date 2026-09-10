@@ -1,9 +1,16 @@
-import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common'
 import { TransactionFilters, TransactionRepository } from '../domain/transaction.repository'
 import { AccountRepository } from '../../accounts/domain/account.repository'
 import { AuditService } from '../../audit/application/audit.service'
 import { CategoryRepository } from '../../categories/domain/category.repository'
 import { Transaction, TransactionType, AccountBalance, Transfer } from '../domain/transaction.entity'
+import { transferMatchesFingerprint } from '../domain/transfer-fingerprint'
 
 @Injectable()
 export class TransactionService {
@@ -123,6 +130,25 @@ export class TransactionService {
      */
     idempotencyKey?: string
   }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction; alreadyExisted: boolean }> {
+    // Fast path for a retry: look up the key BEFORE repeating any
+    // validation a first attempt already did. A legitimate retry must not
+    // fail because, say, an account got archived in between — the transfer
+    // it is retrying already exists and none of that validation is relevant
+    // to returning it. This does not reopen the race `createTransfer`'s
+    // insert-then-catch closes below: that unique index is still what
+    // decides a genuine concurrent collision. This is only the fast path for
+    // the far more common case — the caller already succeeded once and is
+    // asking again.
+    if (params.idempotencyKey) {
+      const existing = await this.transactionRepository.findByIdempotencyKey(
+        params.tenantId,
+        params.idempotencyKey,
+      )
+      if (existing) {
+        return this.resolveIdempotentReplay(params, existing)
+      }
+    }
+
     if (params.sourceAccountId === params.destinationAccountId) {
       throw new UnprocessableEntityException({
         code: 'TRANSFER_SAME_ACCOUNT',
@@ -188,7 +214,7 @@ export class TransactionService {
       feeMinor = params.feeMinor ?? null
     }
 
-    const { transfer, debit, credit, alreadyExisted } = await this.transactionRepository.createTransfer({
+    const created = await this.transactionRepository.createTransfer({
       tenantId: params.tenantId,
       sourceAccountId: params.sourceAccountId,
       destinationAccountId: params.destinationAccountId,
@@ -204,14 +230,16 @@ export class TransactionService {
       idempotencyKey: params.idempotencyKey,
     })
 
-    // A repeat of the same Idempotency-Key: nothing new was created (the
-    // repository resolved this via the unique index, not a read-then-write
-    // check), so there is nothing new to audit either — recording an event
-    // against the original debit/credit here would fabricate a second
-    // "transaction.transfer" for an operation that only happened once.
-    if (alreadyExisted) {
-      return { transfer, debit, credit, alreadyExisted }
+    // Lost the race: a concurrent request under the same key committed
+    // between the fast-path lookup above (which found nothing) and this
+    // insert. The unique index is what caught it, not a check — see
+    // `resolveIdempotentReplay` for why it still gets the same fingerprint
+    // treatment as the fast path before being handed back as a replay.
+    if (created.alreadyExisted) {
+      return this.resolveIdempotentReplay(params, created)
     }
+
+    const { transfer, debit, credit } = created
 
     await this.auditService.record({
       tenantId: params.tenantId,
@@ -255,7 +283,69 @@ export class TransactionService {
       },
     })
 
-    return { transfer, debit, credit, alreadyExisted }
+    return { transfer, debit, credit, alreadyExisted: false }
+  }
+
+  /**
+   * Applies the `Idempotency-Key` contract once a transfer already recorded
+   * under the caller's key has been found — whether by the fast lookup at
+   * the top of `createTransfer` (the common case: a prior attempt already
+   * committed and the caller is asking again) or by `createTransfer` losing
+   * a `P2002` race to a concurrent request under the same key. Either way,
+   * "the key coincided with an existing transfer" is the same situation and
+   * gets the same rule: return the original ONLY if `params` describes the
+   * exact same transfer; otherwise this is a different request that reused
+   * a key it should not have, and gets rejected rather than silently
+   * resolved to someone else's transfer.
+   */
+  private async resolveIdempotentReplay(
+    params: {
+      tenantId: string
+      actorUserId: string | null
+      correlationId: string
+      sourceAccountId: string
+      destinationAccountId: string
+      sourceAmountMinor: number
+      destinationAmountMinor?: number
+      fxRate?: string
+      feeMinor?: number
+      description?: string
+      occurredAt?: string
+      idempotencyKey?: string
+    },
+    existing: { transfer: Transfer; debit: Transaction; credit: Transaction },
+  ): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction; alreadyExisted: true }> {
+    if (!transferMatchesFingerprint(existing, params)) {
+      throw new ConflictException({
+        code: 'IDEMPOTENCY_KEY_REUSED',
+        message: 'This Idempotency-Key was already used for a transfer with different details',
+      })
+    }
+
+    // A durable trace of the replay, distinct from `transaction.transfer`:
+    // nothing new was created, so recording that action again would
+    // fabricate a second movement that never happened. This is the "someone
+    // resent key K and got the original back" event a support or compliance
+    // question about this transfer will need.
+    await this.auditService.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'transaction.transfer.replayed',
+      resourceType: 'transaction',
+      resourceId: existing.debit.id,
+      correlationId: params.correlationId,
+      metadata: {
+        transferId: existing.transfer.id,
+        idempotencyKey: params.idempotencyKey,
+      },
+    })
+
+    return {
+      transfer: existing.transfer,
+      debit: existing.debit,
+      credit: existing.credit,
+      alreadyExisted: true,
+    }
   }
 
   async updateTransaction(params: {

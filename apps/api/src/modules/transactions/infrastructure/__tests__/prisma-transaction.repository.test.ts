@@ -22,6 +22,17 @@ const makePrisma = () => ({
 const duplicateKeyError = new Prisma.PrismaClientKnownRequestError('Unique constraint', {
   code: 'P2002',
   clientVersion: '5.22.0',
+  meta: { target: ['tenant_id', 'idempotency_key'] },
+})
+
+// A P2002 that is NOT the idempotency index — the case `isIdempotencyKeyConflict`
+// exists for. A future `@@unique` on `Transfer` or `Transaction` would raise
+// this shape, and it must propagate as the real failure it is rather than get
+// reinterpreted as "this idempotency key already exists".
+const duplicateKeyOnOtherIndexError = new Prisma.PrismaClientKnownRequestError('Unique constraint', {
+  code: 'P2002',
+  clientVersion: '5.22.0',
+  meta: { target: ['some_other_column'] },
 })
 
 const otherPrismaError = new Prisma.PrismaClientKnownRequestError('Foreign key violation', {
@@ -210,7 +221,26 @@ describe('PrismaTransactionRepository', () => {
 
     it('creates the transfer and both legs inside $transaction, reporting alreadyExisted: false', async () => {
       const tx = makeTx()
-      const transferRow = { id: 'transfer-1', tenantId: 'tenant-1', fxRate: null }
+      // A real row carries `idempotencyKey` as an actual column — included
+      // here on purpose, so the assertion below proves it does NOT survive
+      // into the returned `transfer` (see the `toTransferEntity` contract
+      // test further down).
+      const transferRow = {
+        id: 'transfer-1',
+        tenantId: 'tenant-1',
+        sourceAccountId: 'account-1',
+        destinationAccountId: 'account-2',
+        sourceAmountMinor: 5000,
+        destinationAmountMinor: 5000,
+        sourceCurrency: 'COP',
+        destinationCurrency: 'COP',
+        fxRate: null,
+        feeMinor: null,
+        rateSource: null,
+        idempotencyKey: 'retry-key-1',
+        createdAt: new Date('2026-09-10T00:00:00.000Z'),
+        updatedAt: new Date('2026-09-10T00:00:00.000Z'),
+      }
       tx.transfer.create.mockResolvedValue(transferRow)
       tx.transaction.create
         .mockResolvedValueOnce({ id: 'tx-debit', type: 'expense' })
@@ -228,11 +258,29 @@ describe('PrismaTransactionRepository', () => {
         }),
       )
       expect(result).toEqual({
-        transfer: { ...transferRow, fxRate: null },
+        transfer: {
+          id: 'transfer-1',
+          tenantId: 'tenant-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          destinationAmountMinor: 5000,
+          sourceCurrency: 'COP',
+          destinationCurrency: 'COP',
+          fxRate: null,
+          feeMinor: null,
+          rateSource: null,
+          createdAt: transferRow.createdAt,
+          updatedAt: transferRow.updatedAt,
+        },
         debit: { id: 'tx-debit', type: 'expense' },
         credit: { id: 'tx-credit', type: 'income' },
         alreadyExisted: false,
       })
+      // The contract this whole test exists to pin: a client-supplied key is
+      // stored and queryable, but never echoed back as part of the domain
+      // `Transfer` — nothing declares it as part of the response contract.
+      expect(result.transfer).not.toHaveProperty('idempotencyKey')
     })
 
     it('never sets idempotencyKey when no header was sent, matching pre-existing behaviour', async () => {
@@ -258,6 +306,11 @@ describe('PrismaTransactionRepository', () => {
      * violation on `(tenantId, idempotencyKey)` is read as "a concurrent
      * retry already won" — never checked for beforehand, which is what would
      * let two concurrent retries both pass the check before either writes.
+     *
+     * Whether the loaded transfer actually MATCHES what this call was asked
+     * to create is not this layer's job — see transaction.service.test.ts's
+     * fingerprint coverage. This only proves existence is resolved via the
+     * index, not a preceding read.
      */
     it('on P2002, loads and returns the transfer the concurrent winner created (alreadyExisted: true)', async () => {
       prisma.$transaction.mockRejectedValue(duplicateKeyError)
@@ -300,6 +353,20 @@ describe('PrismaTransactionRepository', () => {
       expect(prisma.transfer.findFirst).not.toHaveBeenCalled()
     })
 
+    /**
+     * Point of `isIdempotencyKeyConflict`: a `P2002` on some OTHER unique
+     * index must not be reinterpreted as "this idempotency key already
+     * exists" just because its error code happens to match.
+     */
+    it('re-throws a P2002 on a different unique index, without querying for an existing transfer', async () => {
+      prisma.$transaction.mockRejectedValue(duplicateKeyOnOtherIndexError)
+
+      await expect(
+        repository.createTransfer({ ...createTransferInput, idempotencyKey: 'retry-key-1' }),
+      ).rejects.toBe(duplicateKeyOnOtherIndexError)
+      expect(prisma.transfer.findFirst).not.toHaveBeenCalled()
+    })
+
     it('re-throws P2002 if no matching transfer is found for the key (defensive: should not happen)', async () => {
       prisma.$transaction.mockRejectedValue(duplicateKeyError)
       prisma.transfer.findFirst.mockResolvedValue(null)
@@ -307,6 +374,51 @@ describe('PrismaTransactionRepository', () => {
       await expect(
         repository.createTransfer({ ...createTransferInput, idempotencyKey: 'retry-key-1' }),
       ).rejects.toBe(duplicateKeyError)
+    })
+  })
+
+  describe('findByIdempotencyKey', () => {
+    it('returns null when no transfer was ever recorded under the key', async () => {
+      prisma.transfer.findFirst.mockResolvedValue(null)
+
+      const result = await repository.findByIdempotencyKey('tenant-1', 'retry-key-1')
+
+      expect(result).toBeNull()
+      expect(prisma.transaction.findMany).not.toHaveBeenCalled()
+    })
+
+    it('returns the transfer with both legs, scoped to tenantId and the key', async () => {
+      const existingTransfer = { id: 'transfer-1', tenantId: 'tenant-1', fxRate: null }
+      prisma.transfer.findFirst.mockResolvedValue(existingTransfer)
+      prisma.transaction.findMany.mockResolvedValue([
+        { id: 'tx-debit', type: 'expense', transferId: 'transfer-1' },
+        { id: 'tx-credit', type: 'income', transferId: 'transfer-1' },
+      ])
+
+      const result = await repository.findByIdempotencyKey('tenant-1', 'retry-key-1')
+
+      expect(prisma.transfer.findFirst).toHaveBeenCalledWith({
+        where: { tenantId: 'tenant-1', idempotencyKey: 'retry-key-1' },
+      })
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith({
+        where: { transferId: 'transfer-1' },
+      })
+      expect(result).toEqual({
+        transfer: { ...existingTransfer, fxRate: null },
+        debit: { id: 'tx-debit', type: 'expense', transferId: 'transfer-1' },
+        credit: { id: 'tx-credit', type: 'income', transferId: 'transfer-1' },
+      })
+    })
+
+    it('returns null (defensive) if the transfer row exists but a leg does not', async () => {
+      prisma.transfer.findFirst.mockResolvedValue({ id: 'transfer-1', tenantId: 'tenant-1', fxRate: null })
+      prisma.transaction.findMany.mockResolvedValue([
+        { id: 'tx-debit', type: 'expense', transferId: 'transfer-1' },
+      ])
+
+      const result = await repository.findByIdempotencyKey('tenant-1', 'retry-key-1')
+
+      expect(result).toBeNull()
     })
   })
 

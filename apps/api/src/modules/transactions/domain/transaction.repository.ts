@@ -41,8 +41,14 @@ export abstract class TransactionRepository {
    * engine generates itself. When it collides with a prior transfer for the
    * same tenant, the adapter must resolve the conflict via the
    * `(tenantId, idempotencyKey)` unique index rather than a preceding read,
-   * and report that in `alreadyExisted` so callers return `200` with the
-   * original transfer instead of `201` with a new one.
+   * and report that in `alreadyExisted` so callers know to treat the result
+   * as a replay rather than a fresh creation.
+   *
+   * This layer resolves EXISTENCE only — whether a transfer is already
+   * recorded under this key. It does not compare `input` against what it
+   * finds; that policy (is this truly the same request, or a reused key with
+   * different details) belongs to `TransactionService`, which has the
+   * caller's original, pre-resolution request to compare against.
    */
   abstract createTransfer(input: {
     tenantId: string
@@ -59,6 +65,20 @@ export abstract class TransactionRepository {
     occurredAt: Date
     idempotencyKey?: string | null
   }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction; alreadyExisted: boolean }>
+
+  /**
+   * Looks up a transfer already recorded under `idempotencyKey` for
+   * `tenantId`, with both legs, or `null` if the key has not been used yet.
+   *
+   * Two callers: `TransactionService.createTransfer`'s fast path, checking
+   * BEFORE repeating account/currency validation a retry does not need to
+   * repeat; and `createTransfer` here, resolving a `P2002` on the same key
+   * from a concurrent request that won the race.
+   */
+  abstract findByIdempotencyKey(
+    tenantId: string,
+    idempotencyKey: string,
+  ): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction } | null>
 
   abstract findByIdForTenant(id: string, tenantId: string): Promise<Transaction | null>
 

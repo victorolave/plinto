@@ -15,10 +15,19 @@ describe('IdempotencyKeyPipe', () => {
     expect(pipe.transform('  retry-1  ')).toBe('retry-1')
   })
 
-  it('takes the first value when the header repeated', () => {
+  /**
+   * Express never hands this pipe an array: it joins a repeated header into
+   * one comma-separated string (`set-cookie` is one of the few exceptions,
+   * and irrelevant here). A prior version of this pipe branched on
+   * `Array.isArray(value)` and took the "first" element — a path the real
+   * app can never reach, exercised only by a test that fed it an array
+   * nothing produces. This asserts what Express actually delivers instead:
+   * one string, treated as one opaque value, not silently split.
+   */
+  it('treats a repeated header, as Express joins it, as one opaque string', () => {
     const pipe = new IdempotencyKeyPipe()
 
-    expect(pipe.transform(['retry-1', 'retry-2'])).toBe('retry-1')
+    expect(pipe.transform('retry-1, retry-2')).toBe('retry-1, retry-2')
   })
 
   it('rejects a blank header with the standard VALIDATION_ERROR shape', () => {
