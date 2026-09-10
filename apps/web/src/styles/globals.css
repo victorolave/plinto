@@ -1666,12 +1666,26 @@
   font-size: var(--text-xs);
   color: var(--text-subtle);
   margin-top: 1px;
+  /* Wrap instead of overflowing. A flex item will not shrink below its longest
+     word, so on a phone "30/8/2026 · Bancolombia Ahorros" is wider than the
+     column and the spans spill right — under the amount, which reads as
+     "$ 7.800.000" printed across "Bancolombia". Wrapping moves the account to
+     its own line; `min-width: 0` lets a long name break rather than push. */
+  flex-wrap: wrap;
+}
+.tx-meta > * {
+  min-width: 0;
 }
 .tx-right {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   margin-left: auto;
+  /* Never shrink below the amount: the figure is `white-space: nowrap`, so a
+     narrower column would not clip it, only let the digits spill left. The
+     description column absorbs the difference instead — it is `min-width: 0`
+     precisely so it can. */
+  flex-shrink: 0;
 }
 
 /* table-like rows for plain lists */
@@ -1686,6 +1700,13 @@
   gap: var(--space-4);
   padding: var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--border-hair);
+}
+/* The figure-and-actions side of every one of these rows, which is always the
+   last child. Its amount is `white-space: nowrap`, so letting the column
+   shrink does not clip it — the digits spill left, over the name beside them.
+   The naming side carries `min-width: 0` and absorbs the difference instead. */
+.data-row > :last-child {
+  flex-shrink: 0;
 }
 .data-row:last-child {
   border-bottom: none;
