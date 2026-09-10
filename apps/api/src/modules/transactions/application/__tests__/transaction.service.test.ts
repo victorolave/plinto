@@ -470,6 +470,161 @@ describe('TransactionService', () => {
         }),
       )
     })
+
+    describe('Idempotency-Key', () => {
+      it('with no header, behaves exactly as before: passes idempotencyKey undefined and audits normally', async () => {
+        const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+        const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+        const transfer = makeTransfer()
+        const debitTx = makeDebitTx()
+        const creditTx = makeCreditTx()
+        accountRepository.findByIdForTenant
+          .mockResolvedValueOnce(sourceAccount)
+          .mockResolvedValueOnce(destAccount)
+        transactionRepository.createTransfer.mockResolvedValue({
+          transfer,
+          debit: debitTx,
+          credit: creditTx,
+          alreadyExisted: false,
+        })
+        auditService.record.mockResolvedValue(undefined)
+
+        const result = await service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+        })
+
+        expect(transactionRepository.createTransfer).toHaveBeenCalledWith(
+          expect.objectContaining({ idempotencyKey: undefined }),
+        )
+        expect(auditService.record).toHaveBeenCalledTimes(2)
+        expect(result).toEqual({ transfer, debit: debitTx, credit: creditTx, alreadyExisted: false })
+      })
+
+      it('with a first-time key, passes it through and audits the new transfer', async () => {
+        const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+        const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+        const transfer = makeTransfer()
+        const debitTx = makeDebitTx()
+        const creditTx = makeCreditTx()
+        accountRepository.findByIdForTenant
+          .mockResolvedValueOnce(sourceAccount)
+          .mockResolvedValueOnce(destAccount)
+        transactionRepository.createTransfer.mockResolvedValue({
+          transfer,
+          debit: debitTx,
+          credit: creditTx,
+          alreadyExisted: false,
+        })
+        auditService.record.mockResolvedValue(undefined)
+
+        await service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          idempotencyKey: 'retry-key-1',
+        })
+
+        expect(transactionRepository.createTransfer).toHaveBeenCalledWith(
+          expect.objectContaining({ idempotencyKey: 'retry-key-1' }),
+        )
+        expect(auditService.record).toHaveBeenCalledTimes(2)
+      })
+
+      it('with a repeated key, returns the original transfer and records no audit event', async () => {
+        const sourceAccount = makeAccount({ id: 'account-1', currency: 'COP' })
+        const destAccount = makeAccount({ id: 'account-2', currency: 'COP' })
+        accountRepository.findByIdForTenant
+          .mockResolvedValueOnce(sourceAccount)
+          .mockResolvedValueOnce(destAccount)
+        const transfer = makeTransfer()
+        const debitTx = makeDebitTx()
+        const creditTx = makeCreditTx()
+        // The repository resolved this via the unique index (P2002), not a
+        // preceding read — the service never learns *how* it was resolved,
+        // only that nothing new was created.
+        transactionRepository.createTransfer.mockResolvedValue({
+          transfer,
+          debit: debitTx,
+          credit: creditTx,
+          alreadyExisted: true,
+        })
+
+        const result = await service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          idempotencyKey: 'retry-key-1',
+        })
+
+        expect(result).toEqual({ transfer, debit: debitTx, credit: creditTx, alreadyExisted: true })
+        expect(auditService.record).not.toHaveBeenCalled()
+      })
+
+      it('lets the same key succeed for two different tenants, scoping each call by its own tenantId', async () => {
+        const transferTenant1 = makeTransfer({ tenantId: 'tenant-1' })
+        const transferTenant2 = makeTransfer({ tenantId: 'tenant-2', id: 'transfer-uuid-2' })
+        const debitTx1 = makeDebitTx()
+        const creditTx1 = makeCreditTx()
+        const debitTx2 = makeDebitTx({ id: 'tx-debit-2', tenantId: 'tenant-2' })
+        const creditTx2 = makeCreditTx({ id: 'tx-credit-2', tenantId: 'tenant-2' })
+        accountRepository.findByIdForTenant.mockResolvedValue(makeAccount({ currency: 'COP' }))
+        transactionRepository.createTransfer
+          .mockResolvedValueOnce({
+            transfer: transferTenant1,
+            debit: debitTx1,
+            credit: creditTx1,
+            alreadyExisted: false,
+          })
+          .mockResolvedValueOnce({
+            transfer: transferTenant2,
+            debit: debitTx2,
+            credit: creditTx2,
+            alreadyExisted: false,
+          })
+        auditService.record.mockResolvedValue(undefined)
+
+        const first = await service.createTransfer({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          correlationId: 'req-1',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          idempotencyKey: 'shared-key',
+        })
+        const second = await service.createTransfer({
+          tenantId: 'tenant-2',
+          actorUserId: 'user-2',
+          correlationId: 'req-2',
+          sourceAccountId: 'account-1',
+          destinationAccountId: 'account-2',
+          sourceAmountMinor: 5000,
+          idempotencyKey: 'shared-key',
+        })
+
+        expect(transactionRepository.createTransfer).toHaveBeenNthCalledWith(
+          1,
+          expect.objectContaining({ tenantId: 'tenant-1', idempotencyKey: 'shared-key' }),
+        )
+        expect(transactionRepository.createTransfer).toHaveBeenNthCalledWith(
+          2,
+          expect.objectContaining({ tenantId: 'tenant-2', idempotencyKey: 'shared-key' }),
+        )
+        expect(first.alreadyExisted).toBe(false)
+        expect(second.alreadyExisted).toBe(false)
+      })
+    })
   })
 
   describe('updateTransaction', () => {

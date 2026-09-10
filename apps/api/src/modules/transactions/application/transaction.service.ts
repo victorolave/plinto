@@ -116,7 +116,13 @@ export class TransactionService {
     feeMinor?: number
     description?: string
     occurredAt?: string
-  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction }> {
+    /**
+     * Client-supplied via the `Idempotency-Key` header (validated and trimmed
+     * upstream by `IdempotencyKeyPipe`). Unrelated to the recurring engine's
+     * own `idempotencyKey` — see `TransactionRepository.createTransfer`.
+     */
+    idempotencyKey?: string
+  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction; alreadyExisted: boolean }> {
     if (params.sourceAccountId === params.destinationAccountId) {
       throw new UnprocessableEntityException({
         code: 'TRANSFER_SAME_ACCOUNT',
@@ -182,7 +188,7 @@ export class TransactionService {
       feeMinor = params.feeMinor ?? null
     }
 
-    const { transfer, debit, credit } = await this.transactionRepository.createTransfer({
+    const { transfer, debit, credit, alreadyExisted } = await this.transactionRepository.createTransfer({
       tenantId: params.tenantId,
       sourceAccountId: params.sourceAccountId,
       destinationAccountId: params.destinationAccountId,
@@ -195,7 +201,17 @@ export class TransactionService {
       rateSource,
       description,
       occurredAt,
+      idempotencyKey: params.idempotencyKey,
     })
+
+    // A repeat of the same Idempotency-Key: nothing new was created (the
+    // repository resolved this via the unique index, not a read-then-write
+    // check), so there is nothing new to audit either — recording an event
+    // against the original debit/credit here would fabricate a second
+    // "transaction.transfer" for an operation that only happened once.
+    if (alreadyExisted) {
+      return { transfer, debit, credit, alreadyExisted }
+    }
 
     await this.auditService.record({
       tenantId: params.tenantId,
@@ -239,7 +255,7 @@ export class TransactionService {
       },
     })
 
-    return { transfer, debit, credit }
+    return { transfer, debit, credit, alreadyExisted }
   }
 
   async updateTransaction(params: {

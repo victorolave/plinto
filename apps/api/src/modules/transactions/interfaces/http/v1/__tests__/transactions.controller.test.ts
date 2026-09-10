@@ -271,16 +271,18 @@ describe('TransactionsController', () => {
     expect(permission).toBe('transaction:write')
   })
 
-  it('creates a transfer using the resolved tenant context', async () => {
+  it('creates a transfer using the resolved tenant context, responding 201 with no Idempotency-Key', async () => {
     const transferResult = {
       transfer: { id: 'transfer-uuid' },
       debit: { id: 'tx-debit' },
       credit: { id: 'tx-credit' },
+      alreadyExisted: false,
     }
     const transactionService = {
       createTransfer: vi.fn().mockResolvedValue(transferResult),
     }
     const controller = new TransactionsController(transactionService as any)
+    const res = { status: vi.fn() }
 
     const result = await controller.createTransfer(
       { tenantId: 'tenant-1', user: { id: 'user-1' }, requestId: 'req-1' } as any,
@@ -289,6 +291,8 @@ describe('TransactionsController', () => {
         destinationAccountId: 'account-2',
         sourceAmountMinor: 5000,
       },
+      undefined,
+      res as any,
     )
 
     expect(transactionService.createTransfer).toHaveBeenCalledWith({
@@ -303,7 +307,71 @@ describe('TransactionsController', () => {
       feeMinor: undefined,
       description: undefined,
       occurredAt: undefined,
+      idempotencyKey: undefined,
     })
-    expect(result).toEqual({ data: transferResult })
+    expect(res.status).toHaveBeenCalledWith(201)
+    expect(result).toEqual({
+      data: { transfer: { id: 'transfer-uuid' }, debit: { id: 'tx-debit' }, credit: { id: 'tx-credit' } },
+    })
+  })
+
+  it('forwards the Idempotency-Key header to the service', async () => {
+    const transferResult = {
+      transfer: { id: 'transfer-uuid' },
+      debit: { id: 'tx-debit' },
+      credit: { id: 'tx-credit' },
+      alreadyExisted: false,
+    }
+    const transactionService = {
+      createTransfer: vi.fn().mockResolvedValue(transferResult),
+    }
+    const controller = new TransactionsController(transactionService as any)
+    const res = { status: vi.fn() }
+
+    await controller.createTransfer(
+      { tenantId: 'tenant-1', user: { id: 'user-1' }, requestId: 'req-1' } as any,
+      {
+        sourceAccountId: 'account-1',
+        destinationAccountId: 'account-2',
+        sourceAmountMinor: 5000,
+      },
+      'retry-key-1',
+      res as any,
+    )
+
+    expect(transactionService.createTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'retry-key-1' }),
+    )
+    expect(res.status).toHaveBeenCalledWith(201)
+  })
+
+  it('responds 200 with the original transfer on a repeated Idempotency-Key', async () => {
+    const transferResult = {
+      transfer: { id: 'transfer-uuid' },
+      debit: { id: 'tx-debit' },
+      credit: { id: 'tx-credit' },
+      alreadyExisted: true,
+    }
+    const transactionService = {
+      createTransfer: vi.fn().mockResolvedValue(transferResult),
+    }
+    const controller = new TransactionsController(transactionService as any)
+    const res = { status: vi.fn() }
+
+    const result = await controller.createTransfer(
+      { tenantId: 'tenant-1', user: { id: 'user-1' }, requestId: 'req-1' } as any,
+      {
+        sourceAccountId: 'account-1',
+        destinationAccountId: 'account-2',
+        sourceAmountMinor: 5000,
+      },
+      'retry-key-1',
+      res as any,
+    )
+
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(result).toEqual({
+      data: { transfer: { id: 'transfer-uuid' }, debit: { id: 'tx-debit' }, credit: { id: 'tx-credit' } },
+    })
   })
 })

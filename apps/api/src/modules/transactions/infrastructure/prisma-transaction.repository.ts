@@ -30,6 +30,15 @@ export class PrismaTransactionRepository extends TransactionRepository {
     return this.prisma.transaction.create({ data })
   }
 
+  /**
+   * `idempotencyKey` (when present) is enforced by the `(tenantId,
+   * idempotencyKey)` unique index on `transfers`, not by checking first: the
+   * insert is attempted directly, and a `P2002` on that index — a concurrent
+   * retry that won the race — is caught below and resolved by loading what
+   * the winner created. A `findFirst`-then-insert check would let two
+   * concurrent retries both pass the check before either writes, which is
+   * exactly the double-transfer bug this closes.
+   */
   async createTransfer(input: {
     tenantId: string
     sourceAccountId: string
@@ -43,56 +52,109 @@ export class PrismaTransactionRepository extends TransactionRepository {
     rateSource: string | null
     description: string | null
     occurredAt: Date
-  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction }> {
-    return this.prisma.$transaction(async (tx) => {
-      const transfer = await tx.transfer.create({
-        data: {
-          tenantId: input.tenantId,
-          sourceAccountId: input.sourceAccountId,
-          destinationAccountId: input.destinationAccountId,
-          sourceAmountMinor: input.sourceAmountMinor,
-          destinationAmountMinor: input.destinationAmountMinor,
-          sourceCurrency: input.sourceCurrency,
-          destinationCurrency: input.destinationCurrency,
-          fxRate: input.fxRate ?? undefined,
-          feeMinor: input.feeMinor ?? undefined,
-          rateSource: input.rateSource ?? undefined,
-        },
-      })
+    idempotencyKey?: string | null
+  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction; alreadyExisted: boolean }> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const transfer = await tx.transfer.create({
+          data: {
+            tenantId: input.tenantId,
+            sourceAccountId: input.sourceAccountId,
+            destinationAccountId: input.destinationAccountId,
+            sourceAmountMinor: input.sourceAmountMinor,
+            destinationAmountMinor: input.destinationAmountMinor,
+            sourceCurrency: input.sourceCurrency,
+            destinationCurrency: input.destinationCurrency,
+            fxRate: input.fxRate ?? undefined,
+            feeMinor: input.feeMinor ?? undefined,
+            rateSource: input.rateSource ?? undefined,
+            idempotencyKey: input.idempotencyKey ?? undefined,
+          },
+        })
 
-      const debit = await tx.transaction.create({
-        data: {
-          tenantId: input.tenantId,
-          accountId: input.sourceAccountId,
-          type: 'expense',
-          amountMinor: input.sourceAmountMinor,
-          currency: input.sourceCurrency,
-          description: input.description,
-          occurredAt: input.occurredAt,
-          transferId: transfer.id,
-        },
-      })
+        const debit = await tx.transaction.create({
+          data: {
+            tenantId: input.tenantId,
+            accountId: input.sourceAccountId,
+            type: 'expense',
+            amountMinor: input.sourceAmountMinor,
+            currency: input.sourceCurrency,
+            description: input.description,
+            occurredAt: input.occurredAt,
+            transferId: transfer.id,
+          },
+        })
 
-      const credit = await tx.transaction.create({
-        data: {
-          tenantId: input.tenantId,
-          accountId: input.destinationAccountId,
-          type: 'income',
-          amountMinor: input.destinationAmountMinor,
-          currency: input.destinationCurrency,
-          description: input.description,
-          occurredAt: input.occurredAt,
-          transferId: transfer.id,
-        },
-      })
+        const credit = await tx.transaction.create({
+          data: {
+            tenantId: input.tenantId,
+            accountId: input.destinationAccountId,
+            type: 'income',
+            amountMinor: input.destinationAmountMinor,
+            currency: input.destinationCurrency,
+            description: input.description,
+            occurredAt: input.occurredAt,
+            transferId: transfer.id,
+          },
+        })
 
-      const transferEntity: Transfer = {
-        ...transfer,
-        fxRate: transfer.fxRate != null ? transfer.fxRate.toString() : null,
+        const transferEntity: Transfer = {
+          ...transfer,
+          fxRate: transfer.fxRate != null ? transfer.fxRate.toString() : null,
+        }
+
+        return { transfer: transferEntity, debit, credit, alreadyExisted: false }
+      })
+    } catch (error) {
+      const existing = input.idempotencyKey
+        ? await this.findTransferByIdempotencyKey(input.tenantId, input.idempotencyKey, error)
+        : null
+
+      if (existing) {
+        return { ...existing, alreadyExisted: true }
       }
 
-      return { transfer: transferEntity, debit, credit }
+      throw error
+    }
+  }
+
+  /**
+   * Resolves the "already exists" side of `createTransfer`'s race: only
+   * treats `error` as "someone else just created this" when it is the
+   * specific unique-constraint violation (`P2002`) Prisma raises for the
+   * `(tenantId, idempotencyKey)` index — anything else (a bad FK, a closed
+   * connection) is a real failure and must keep propagating, not get
+   * swallowed into a false "already exists".
+   */
+  private async findTransferByIdempotencyKey(
+    tenantId: string,
+    idempotencyKey: string,
+    error: unknown,
+  ): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction } | null> {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+      return null
+    }
+
+    const transfer = await this.prisma.transfer.findFirst({
+      where: { tenantId, idempotencyKey },
     })
+    if (!transfer) return null
+
+    const legs = await this.prisma.transaction.findMany({
+      where: { transferId: transfer.id },
+    })
+    const debit = legs.find((leg) => leg.type === 'expense')
+    const credit = legs.find((leg) => leg.type === 'income')
+    if (!debit || !credit) return null
+
+    return {
+      transfer: {
+        ...transfer,
+        fxRate: transfer.fxRate != null ? transfer.fxRate.toString() : null,
+      },
+      debit,
+      credit,
+    }
   }
 
   async findByIdForTenant(id: string, tenantId: string): Promise<Transaction | null> {

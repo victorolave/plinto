@@ -35,6 +35,15 @@ export abstract class TransactionRepository {
     categoryId?: string | null
   }): Promise<Transaction>
 
+  /**
+   * `idempotencyKey` is optional and client-supplied (the `Idempotency-Key`
+   * header) — unrelated to `Transaction.idempotencyKey`, which the recurring
+   * engine generates itself. When it collides with a prior transfer for the
+   * same tenant, the adapter must resolve the conflict via the
+   * `(tenantId, idempotencyKey)` unique index rather than a preceding read,
+   * and report that in `alreadyExisted` so callers return `200` with the
+   * original transfer instead of `201` with a new one.
+   */
   abstract createTransfer(input: {
     tenantId: string
     sourceAccountId: string
@@ -48,7 +57,8 @@ export abstract class TransactionRepository {
     rateSource: string | null
     description: string | null
     occurredAt: Date
-  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction }>
+    idempotencyKey?: string | null
+  }): Promise<{ transfer: Transfer; debit: Transaction; credit: Transaction; alreadyExisted: boolean }>
 
   abstract findByIdForTenant(id: string, tenantId: string): Promise<Transaction | null>
 

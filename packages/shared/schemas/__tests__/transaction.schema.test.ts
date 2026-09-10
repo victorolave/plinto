@@ -6,6 +6,8 @@ import {
   CreateTransactionSchema,
   UpdateTransactionSchema,
   CreateTransferSchema,
+  IdempotencyKeySchema,
+  IDEMPOTENCY_KEY_MAX_LENGTH,
 } from '../transaction.schema'
 
 describe('TransactionSchema', () => {
@@ -448,5 +450,35 @@ describe('TransactionListQuerySchema', () => {
       dateFrom: '2026-01-01',
       dateTo: '2026-12-31',
     })
+  })
+})
+
+describe('IdempotencyKeySchema', () => {
+  it('accepts an ordinary key', () => {
+    const result = IdempotencyKeySchema.safeParse('a2f1c9e0-1b3d-4c9e-9b1a-8f2e6d4c5a6b')
+    expect(result.success).toBe(true)
+  })
+
+  it('trims surrounding whitespace', () => {
+    const result = IdempotencyKeySchema.safeParse('  retry-1  ')
+    expect(result.success && result.data).toBe('retry-1')
+  })
+
+  it('rejects an empty string', () => {
+    expect(IdempotencyKeySchema.safeParse('').success).toBe(false)
+  })
+
+  it('rejects a string that is only whitespace', () => {
+    expect(IdempotencyKeySchema.safeParse('   ').success).toBe(false)
+  })
+
+  it(`accepts a key at exactly ${IDEMPOTENCY_KEY_MAX_LENGTH} characters`, () => {
+    const result = IdempotencyKeySchema.safeParse('a'.repeat(IDEMPOTENCY_KEY_MAX_LENGTH))
+    expect(result.success).toBe(true)
+  })
+
+  it(`rejects a key over ${IDEMPOTENCY_KEY_MAX_LENGTH} characters`, () => {
+    const result = IdempotencyKeySchema.safeParse('a'.repeat(IDEMPOTENCY_KEY_MAX_LENGTH + 1))
+    expect(result.success).toBe(false)
   })
 })
