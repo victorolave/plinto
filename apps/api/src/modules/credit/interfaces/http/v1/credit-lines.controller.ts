@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   UsePipes,
@@ -14,6 +15,7 @@ import { RequestContext } from '../../../../../common/types/request-context'
 import { AuthGuard } from '../../../../../common/guards/auth.guard'
 import { TenantGuard } from '../../../../../common/guards/tenant.guard'
 import { RequirePermission, RoleGuard } from '../../../../../common/guards/role.guard'
+import { PaginationQuerySchema } from '../../../../../common/shared-schemas'
 import { ZodValidationPipe } from '../../../../../common/pipes/zod-validation.pipe'
 import {
   CreateCreditLineSchema,
@@ -147,10 +149,27 @@ export class CreditLinesController {
 
   @Get(':id/statements')
   @RequirePermission('credit:read')
-  async listStatements(@Req() req: RequestContext, @Param('id') id: string) {
-    const views = await this.statementService.listStatements(id, req.tenantId as string)
+  async listStatements(
+    @Req() req: RequestContext,
+    @Param('id') id: string,
+    @Query() query: Record<string, string | undefined>,
+  ) {
+    const { page, pageSize } = new ZodValidationPipe(PaginationQuerySchema).transform(
+      query,
+    ) as { page: number; pageSize: number }
 
-    return { data: { statements: views.map(toStatementDto) } }
+    const { statements, total } = await this.statementService.listStatements(
+      id,
+      req.tenantId as string,
+      { page, pageSize },
+    )
+
+    return {
+      data: { statements: statements.map(toStatementDto) },
+      meta: {
+        pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+      },
+    }
   }
 
   /**
