@@ -91,20 +91,22 @@ Transfers:
 
 > **Amended 2026-09-10, and this one was a false guarantee, not a stale
 > sentence.** This section used to say transfers were executed via background
-> jobs, that the HTTP request "only validates and enqueues", and that
-> duplicates were avoided by idempotency. None of that is what the code does.
+> jobs and that the HTTP request "only validates and enqueues". Neither is
+> what the code does: a transfer runs **synchronously inside the request**, in
+> a single Prisma transaction. There is no queue. Synchronous execution is a
+> defensible choice — the operation is short, and a caller who gets a 201
+> knows the money moved.
 >
-> A transfer runs **synchronously inside the request**, in a single Prisma
-> transaction. There is no queue. And `CreateTransferSchema` has no
-> `idempotencyKey` field, so **a double submission creates two transfers**.
-> The `idempotencyKey` that exists elsewhere belongs to stored transactions and
-> recurring rules, not to this endpoint.
->
-> Synchronous execution is a defensible choice — the operation is short, and a
-> caller who gets a 200 knows the money moved. The idempotency claim is not
-> defensible, because someone reading this document would have believed a
-> retry was safe. Closing that gap is tracked in the
-> [roadmap](../roadmap.md#6-idempotent-transfers).
+> The amendment also said duplicates were not prevented. That gap is now
+> closed: `POST /transactions/transfers` accepts an optional client-supplied
+> `Idempotency-Key` header, distinct from the `idempotencyKey` stored on
+> `Transaction` and `RecurringTransactionExecution`, which the recurring
+> engine generates for itself. Sent once, the transfer is created as before
+> (`201`). Sent again with the same key for the same tenant, no second
+> transfer is created — the original is returned instead, with `200`. A
+> `(tenantId, idempotencyKey)` unique index is what decides this, not a
+> preceding read, so two concurrent retries cannot both slip past a check and
+> both write.
 
 ---
 
@@ -145,9 +147,10 @@ No special "transfers" view is introduced.
 - Accounts must belong to the same tenant.
 - Inconsistent currencies are not allowed without explicit FX.
 - Insufficient funds (if validated).
-- Duplicates are **not** currently prevented: a repeated submission creates a
-  second transfer. See §3 and the
-  [roadmap](../roadmap.md#6-idempotent-transfers).
+- A repeated submission with the same `Idempotency-Key` does **not** create a
+  second transfer; see §3. Without that header, a repeated submission still
+  creates a second transfer — the header is optional, not inferred from the
+  request body.
 
 ---
 
@@ -157,7 +160,8 @@ No special "transfers" view is introduced.
 - [ ] Transfers between accounts in different currencies are supported.
 - [ ] Transfers create exactly two transactions.
 - [ ] Currencies are not mixed incorrectly.
-- [ ] Transfers are idempotent. **Not met** — see §3.
+- [ ] Transfers are idempotent when the caller sends an `Idempotency-Key`
+      header. See §3.
 - [ ] Operations are audited.
 - [ ] No partial states exist.
 
