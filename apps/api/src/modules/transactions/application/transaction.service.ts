@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common'
-import { TransactionRepository } from '../domain/transaction.repository'
+import { TransactionFilters, TransactionRepository } from '../domain/transaction.repository'
 import { AccountRepository } from '../../accounts/domain/account.repository'
 import { AuditService } from '../../audit/application/audit.service'
 import { CategoryRepository } from '../../categories/domain/category.repository'
@@ -375,24 +375,30 @@ export class TransactionService {
 
   async listTransactions(
     tenantId: string,
-    params: { accountId?: string; page: number; pageSize: number },
-  ): Promise<{ transactions: Transaction[]; total: number }> {
-    const skip = (params.page - 1) * params.pageSize
-    const take = params.pageSize
+    params: TransactionFilters & { page: number; pageSize: number },
+  ): Promise<{
+    transactions: Transaction[]
+    total: number
+    counts: { income: number; expense: number }
+  }> {
+    const { page, pageSize, ...filters } = params
 
-    if (params.accountId) {
-      const [transactions, total] = await Promise.all([
-        this.transactionRepository.listByAccountId(tenantId, params.accountId, { skip, take }),
-        this.transactionRepository.countByAccountId(tenantId, params.accountId),
-      ])
-      return { transactions, total }
-    }
-
-    const [transactions, total] = await Promise.all([
-      this.transactionRepository.listByTenantId(tenantId, { skip, take }),
-      this.transactionRepository.countByTenantId(tenantId),
+    const [transactions, counts] = await Promise.all([
+      this.transactionRepository.list(tenantId, filters, {
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      // Deliberately given the *whole* filter set including `type`: the
+      // repository drops it, because the income/expense tabs those counts
+      // label are what sets it.
+      this.transactionRepository.countByType(tenantId, filters),
     ])
-    return { transactions, total }
+
+    // The page total is a slice of the same aggregate, so it can never
+    // disagree with the tabs beside it.
+    const total = filters.type ? counts[filters.type] : counts.income + counts.expense
+
+    return { transactions, total, counts }
   }
 
   async getBalances(tenantId: string): Promise<AccountBalance[]> {

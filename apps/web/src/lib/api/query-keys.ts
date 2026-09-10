@@ -8,7 +8,22 @@ export const queryKeys = {
   categories: ['categories'] as const,
   accounts: (includeArchived = false) => ['accounts', { includeArchived }] as const,
   balances: ['balances'] as const,
-  transactions: (accountId?: string) => ['transactions', { accountId: accountId ?? null }] as const,
+  // Keyed by the whole query, not just the account: the ledger is paginated
+  // and filtered on the server, so page 2 of a search is a different result
+  // set from page 1 of the same search, and must not be served from it.
+  // Invalidation still works because every mutation invalidates the bare
+  // ['transactions'] prefix, which covers every variation below it.
+  transactions: (
+    query: {
+      accountId?: string
+      type?: string
+      dateFrom?: string
+      dateTo?: string
+      search?: string
+      page?: number
+      pageSize?: number
+    } = {},
+  ) => ['transactions', 'list', query] as const,
   // Separate key from `transactions()`: the dashboard only loads a small page
   // (pageSize: 6) for the "recent activity" widget, while `transactions()` loads
   // up to 100 rows for the ledger panel. Sharing one key would let a 30s-stale

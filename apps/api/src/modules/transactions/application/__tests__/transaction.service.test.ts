@@ -32,10 +32,8 @@ const makeTransactionRepo = () => ({
   createTransfer: vi.fn(),
   findByIdForTenant: vi.fn(),
   updateForTenant: vi.fn(),
-  listByTenantId: vi.fn(),
-  listByAccountId: vi.fn(),
-  countByTenantId: vi.fn(),
-  countByAccountId: vi.fn(),
+  list: vi.fn(),
+  countByType: vi.fn(),
   sumByAccount: vi.fn(),
 })
 
@@ -602,51 +600,113 @@ describe('TransactionService', () => {
   })
 
   describe('listTransactions', () => {
-    it('returns all transactions for a tenant when no accountId filter, with pagination applied', async () => {
+    const counts = (income: number, expense: number) => ({ income, expense })
+
+    it('returns a page of the whole household when nothing is filtered', async () => {
       const transactions = [makeTransaction(), makeTransaction({ id: 'tx-2', accountId: 'account-2' })]
-      transactionRepository.listByTenantId.mockResolvedValue(transactions)
-      transactionRepository.countByTenantId.mockResolvedValue(2)
+      transactionRepository.list.mockResolvedValue(transactions)
+      transactionRepository.countByType.mockResolvedValue(counts(1, 1))
 
       const result = await service.listTransactions('tenant-1', { page: 1, pageSize: 50 })
 
-      expect(transactionRepository.listByTenantId).toHaveBeenCalledWith('tenant-1', {
-        skip: 0,
-        take: 50,
-      })
-      expect(transactionRepository.countByTenantId).toHaveBeenCalledWith('tenant-1')
-      expect(result).toEqual({ transactions, total: 2 })
-    })
-
-    it('filters transactions by accountId at the repository level when provided', async () => {
-      const tx1 = makeTransaction({ id: 'tx-1', accountId: 'account-1' })
-      transactionRepository.listByAccountId.mockResolvedValue([tx1])
-      transactionRepository.countByAccountId.mockResolvedValue(1)
-
-      const result = await service.listTransactions('tenant-1', {
-        accountId: 'account-1',
-        page: 1,
-        pageSize: 50,
-      })
-
-      expect(transactionRepository.listByAccountId).toHaveBeenCalledWith('tenant-1', 'account-1', {
-        skip: 0,
-        take: 50,
-      })
-      expect(transactionRepository.countByAccountId).toHaveBeenCalledWith('tenant-1', 'account-1')
-      expect(transactionRepository.listByTenantId).not.toHaveBeenCalled()
-      expect(result).toEqual({ transactions: [tx1], total: 1 })
+      expect(transactionRepository.list).toHaveBeenCalledWith('tenant-1', {}, { skip: 0, take: 50 })
+      expect(result).toEqual({ transactions, total: 2, counts: counts(1, 1) })
     })
 
     it('computes skip from page and pageSize for later pages', async () => {
-      transactionRepository.listByTenantId.mockResolvedValue([])
-      transactionRepository.countByTenantId.mockResolvedValue(0)
+      transactionRepository.list.mockResolvedValue([])
+      transactionRepository.countByType.mockResolvedValue(counts(0, 0))
 
       await service.listTransactions('tenant-1', { page: 3, pageSize: 20 })
 
-      expect(transactionRepository.listByTenantId).toHaveBeenCalledWith('tenant-1', {
-        skip: 40,
-        take: 20,
+      expect(transactionRepository.list).toHaveBeenCalledWith('tenant-1', {}, { skip: 40, take: 20 })
+    })
+
+    it('passes every narrowing straight through to the repository', async () => {
+      transactionRepository.list.mockResolvedValue([])
+      transactionRepository.countByType.mockResolvedValue(counts(0, 0))
+
+      await service.listTransactions('tenant-1', {
+        page: 1,
+        pageSize: 50,
+        accountId: 'account-1',
+        type: 'expense',
+        dateFrom: '2026-01-01',
+        dateTo: '2026-01-31',
+        search: 'mercado',
       })
+
+      expect(transactionRepository.list).toHaveBeenCalledWith(
+        'tenant-1',
+        {
+          accountId: 'account-1',
+          type: 'expense',
+          dateFrom: '2026-01-01',
+          dateTo: '2026-01-31',
+          search: 'mercado',
+        },
+        { skip: 0, take: 50 },
+      )
+    })
+
+    /**
+     * The total labels the page ("1-50 of N"). With a type filter open it must
+     * describe that type alone, or the reader is offered pages that do not
+     * exist.
+     */
+    it('totals only the filtered type when one is chosen', async () => {
+      transactionRepository.list.mockResolvedValue([])
+      transactionRepository.countByType.mockResolvedValue(counts(30, 70))
+
+      const result = await service.listTransactions('tenant-1', {
+        page: 1,
+        pageSize: 50,
+        type: 'expense',
+      })
+
+      expect(result.total).toBe(70)
+    })
+
+    it('totals both types when none is chosen', async () => {
+      transactionRepository.list.mockResolvedValue([])
+      transactionRepository.countByType.mockResolvedValue(counts(30, 70))
+
+      const result = await service.listTransactions('tenant-1', { page: 1, pageSize: 50 })
+
+      expect(result.total).toBe(100)
+    })
+
+    /**
+     * The tabs are what sets the type filter, so their labels have to survive
+     * it: opening "expense" must not report zero income.
+     */
+    it('counts both types through the other filters, ignoring the type filter', async () => {
+      transactionRepository.list.mockResolvedValue([])
+      transactionRepository.countByType.mockResolvedValue(counts(30, 70))
+
+      const result = await service.listTransactions('tenant-1', {
+        page: 1,
+        pageSize: 50,
+        type: 'expense',
+        search: 'mercado',
+      })
+
+      expect(transactionRepository.countByType).toHaveBeenCalledWith('tenant-1', {
+        type: 'expense',
+        search: 'mercado',
+      })
+      expect(result.counts).toEqual(counts(30, 70))
+    })
+
+    it('does not pass pagination itself as a filter', async () => {
+      transactionRepository.list.mockResolvedValue([])
+      transactionRepository.countByType.mockResolvedValue(counts(0, 0))
+
+      await service.listTransactions('tenant-1', { page: 2, pageSize: 10 })
+
+      const [, filters] = transactionRepository.list.mock.calls[0]
+      expect(filters).not.toHaveProperty('page')
+      expect(filters).not.toHaveProperty('pageSize')
     })
   })
 

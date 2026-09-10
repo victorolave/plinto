@@ -7,6 +7,21 @@ import { Transaction, TransactionType, Transfer } from './transaction.entity'
  * ORM can be swapped by binding a different adapter without touching business
  * logic.
  */
+/**
+ * How a caller narrows the ledger. Dates are calendar days (`YYYY-MM-DD`)
+ * compared against the UTC date of `occurredAt`, matching how a row renders.
+ */
+export interface TransactionFilters {
+  accountId?: string
+  type?: TransactionType
+  /** Inclusive lower bound, as a calendar day. */
+  dateFrom?: string
+  /** Inclusive upper bound, as a calendar day. */
+  dateTo?: string
+  /** Case-insensitive substring of the description or the account name. */
+  search?: string
+}
+
 export abstract class TransactionRepository {
   abstract create(data: {
     tenantId: string
@@ -51,20 +66,32 @@ export abstract class TransactionRepository {
     }>,
   ): Promise<Transaction | null>
 
-  abstract listByTenantId(
+  /**
+   * Narrowing the ledger. Every field is optional and absent means "no filter",
+   * so `{}` is the whole household.
+   *
+   * These used to be applied in the browser over whatever had been fetched.
+   * That is only defensible while the list is unpaginated: with pages, a
+   * search that reads one page is not a search. `list` and `count` therefore
+   * take the same filters, so the total shown beside a page always describes
+   * the same rows the page came from.
+   */
+  abstract list(
     tenantId: string,
+    filters: TransactionFilters,
     pagination?: { skip: number; take: number },
   ): Promise<Transaction[]>
 
-  abstract listByAccountId(
+  /**
+   * Income and expense totals for `filters`, ignoring any `type` among them.
+   *
+   * The list's own total is a sum of these, so one aggregate serves both the
+   * page count and the tab labels.
+   */
+  abstract countByType(
     tenantId: string,
-    accountId: string,
-    pagination?: { skip: number; take: number },
-  ): Promise<Transaction[]>
-
-  abstract countByTenantId(tenantId: string): Promise<number>
-
-  abstract countByAccountId(tenantId: string, accountId: string): Promise<number>
+    filters: TransactionFilters,
+  ): Promise<{ income: number; expense: number }>
 
   /**
    * Aggregates signed movement totals per account and type in SQL, so balances
