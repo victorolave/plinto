@@ -22,10 +22,14 @@
    elevation and motion. See docs/design/foundation.md. */
 @import '@plinto/design-tokens';
 
-/* Static app-UI mockups (mk- prefixed), ported from apps/web's real
-   component classes so the landing can animate a faithful reproduction
-   of the dashboard. See src/styles/mockups.css for provenance notes. */
-@import './mockups.css';
+/* Static app-UI mockups (m- prefixed), ported verbatim from the approved
+   Claude Design landing (landing.dc.html). See src/styles/design.css for
+   provenance notes. */
+@import './design.css';
+
+/* Marketing CTA buttons — the real app's own .btn component (see
+   src/styles/buttons.css for provenance notes). */
+@import './buttons.css';
 
 @import 'tailwindcss';
 
