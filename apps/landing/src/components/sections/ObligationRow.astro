@@ -13,14 +13,17 @@ import type { ObligationRow } from '../../data/landing-content'
 interface Props {
   o: ObligationRow
   variant: 'full' | 'compact' | 'plain'
+  revealIndex?: number
 }
 
-const { o, variant } = Astro.props
+const { o, variant, revealIndex } = Astro.props
+const revealStyle = revealIndex === undefined ? undefined : `--reveal-i:${revealIndex};`
+const revealAttr = revealIndex === undefined ? undefined : true
 ---
 
 {
   variant === 'compact' ? (
-    <div class="m-row">
+    <div class="m-row" data-reveal={revealAttr} style={revealStyle}>
       <div class="m-row-main">
         <div class="m-name">{o.name}</div>
         <div class="m-meta">{o.meta}</div>
@@ -33,7 +36,7 @@ const { o, variant } = Astro.props
       </div>
     </div>
   ) : (
-    <div class="m-row">
+    <div class="m-row" data-reveal={revealAttr} style={revealStyle}>
       <div class="m-row-main">
         <div class="m-name">
           {o.name}

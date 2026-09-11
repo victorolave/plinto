@@ -16,16 +16,16 @@ const t = getDictionary(locale).landing
 <!-- ================= DESKTOP ================= -->
 <div class="hidden lg:block">
 <section id="oss" style="padding:104px 40px; border-top:2px solid var(--rule-strong); display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px;">
-  <div style="grid-column:1 / span 5;">
+  <div data-reveal style="--reveal-i:0; grid-column:1 / span 5;">
     <span class="plinto-eyebrow" style="margin-bottom:24px;">07 · {t.oss_eyebrow}</span>
     <h2 style="font-size:48px; line-height:1.04; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0; text-wrap:balance;">{t.oss_title}</h2>
   </div>
   <div style="grid-column:7 / span 6; display:flex; flex-direction:column; gap:32px;">
-    <p style="font-size:20px; line-height:1.45; color:var(--text-body); margin:0;">{t.oss_body}</p>
+    <p data-reveal style="--reveal-i:1; font-size:20px; line-height:1.45; color:var(--text-body); margin:0;">{t.oss_body}</p>
     <div style="display:flex; flex-direction:column;">
-      <a href="#" style="display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-strong); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link1}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">github.com/plinto</span></a>
-      <a href="#" style="display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-hair); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link2}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">AGPL-3.0</span></a>
-      <a href="#" style="display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-hair); border-bottom:1px solid var(--rule-hair); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link3}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">CONTRIBUTING.md</span></a>
+      <a href="#" data-reveal style="--reveal-i:2; display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-strong); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link1}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">github.com/plinto</span></a>
+      <a href="#" data-reveal style="--reveal-i:3; display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-hair); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link2}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">AGPL-3.0</span></a>
+      <a href="#" data-reveal style="--reveal-i:4; display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-hair); border-bottom:1px solid var(--rule-hair); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link3}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">CONTRIBUTING.md</span></a>
     </div>
   </div>
 </section>
@@ -34,15 +34,15 @@ const t = getDictionary(locale).landing
 <!-- ================= MOBILE ================= -->
 <div class="lg:hidden">
 <section style="padding:56px 20px; border-top:2px solid var(--rule-strong); display:flex; flex-direction:column; gap:24px;">
-  <div>
+  <div data-reveal style="--reveal-i:0;">
     <span class="plinto-eyebrow" style="margin-bottom:16px;">07 · {t.oss_eyebrow}</span>
     <h2 style="font-size:32px; line-height:1.05; letter-spacing:-0.03em; font-weight:500; color:var(--text-strong); margin:0;">{t.oss_title}</h2>
   </div>
-  <p style="font-size:16px; line-height:1.45; color:var(--text-body); margin:0;">{t.oss_body}</p>
+  <p data-reveal style="--reveal-i:1; font-size:16px; line-height:1.45; color:var(--text-body); margin:0;">{t.oss_body}</p>
   <div style="display:flex; flex-direction:column;">
-    <a href="#" style="display:flex; justify-content:space-between; padding:14px 0; border-top:1px solid var(--rule-strong); font-size:15px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link1}</span><span class="plinto-money" style="font-size:12px; color:var(--text-muted);">GitHub</span></a>
-    <a href="#" style="display:flex; justify-content:space-between; padding:14px 0; border-top:1px solid var(--rule-hair); font-size:15px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link2}</span><span class="plinto-money" style="font-size:12px; color:var(--text-muted);">AGPL-3.0</span></a>
-    <a href="#" style="display:flex; justify-content:space-between; padding:14px 0; border-top:1px solid var(--rule-hair); border-bottom:1px solid var(--rule-hair); font-size:15px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link3}</span><span class="plinto-money" style="font-size:12px; color:var(--text-muted);">→</span></a>
+    <a href="#" data-reveal style="--reveal-i:2; display:flex; justify-content:space-between; padding:14px 0; border-top:1px solid var(--rule-strong); font-size:15px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link1}</span><span class="plinto-money" style="font-size:12px; color:var(--text-muted);">GitHub</span></a>
+    <a href="#" data-reveal style="--reveal-i:3; display:flex; justify-content:space-between; padding:14px 0; border-top:1px solid var(--rule-hair); font-size:15px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link2}</span><span class="plinto-money" style="font-size:12px; color:var(--text-muted);">AGPL-3.0</span></a>
+    <a href="#" data-reveal style="--reveal-i:4; display:flex; justify-content:space-between; padding:14px 0; border-top:1px solid var(--rule-hair); border-bottom:1px solid var(--rule-hair); font-size:15px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link3}</span><span class="plinto-money" style="font-size:12px; color:var(--text-muted);">→</span></a>
   </div>
 </section>
 

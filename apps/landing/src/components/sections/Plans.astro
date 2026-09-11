@@ -53,14 +53,14 @@ const { compare } = getLandingContent(locale)
       <div style="padding:20px 16px 24px; border-left:1px solid var(--rule-hair); position:relative;">
         <span style="position:absolute; top:-2px; left:-1px; right:0; height:2px; background:var(--red-500);"></span>
         <span class="plinto-eyebrow" style="margin-bottom:8px;">Cloud</span>
-        <span class="m-badge m-badge--neutral" style="margin-top:4px;">{t.cloud_soon}</span>
+        <span class="m-badge m-badge--neutral" data-reveal style={`--reveal-i:${compare.length * 2 + 2}; margin-top:4px;`}>{t.cloud_soon}</span>
       </div>
     </div>
-    {compare.map((c) => (
-      <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr; border-top:1px solid var(--rule-hair);">
+    {compare.map((c, i) => (
+      <div data-reveal style={`--reveal-i:${i * 2}; display:grid; grid-template-columns:1.4fr 1fr 1fr; border-top:1px solid var(--rule-hair);`}>
         <div style="padding:14px 0; font-size:15px; color:var(--text-strong);">{c.f}</div>
-        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span style={`width:10px; height:10px; display:block; background:${c.cBg}; border:1px solid ${c.cBd};`}></span></div>
-        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span style={`width:10px; height:10px; display:block; background:${c.lBg}; border:1px solid ${c.lBd};`}></span></div>
+        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span data-reveal style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; background:${c.cBg}; border:1px solid ${c.cBd};`}></span></div>
+        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span data-reveal style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; background:${c.lBg}; border:1px solid ${c.lBd};`}></span></div>
       </div>
     ))}
     <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr; border-top:1px solid var(--rule-strong);">
@@ -91,14 +91,14 @@ const { compare } = getLandingContent(locale)
       <div style="padding:12px 8px 16px; border-left:1px solid var(--rule-hair); position:relative;">
         <span style="position:absolute; top:-2px; left:-1px; right:0; height:2px; background:var(--red-500);"></span>
         <span class="plinto-eyebrow" style="margin-bottom:6px;">Cloud</span>
-        <span class="m-badge m-badge--neutral" style="margin-top:2px;">{t.cloud_soon}</span>
+        <span class="m-badge m-badge--neutral" data-reveal style={`--reveal-i:${compare.length * 2 + 2}; margin-top:2px;`}>{t.cloud_soon}</span>
       </div>
     </div>
-    {compare.map((c) => (
-      <div style="display:grid; grid-template-columns:1.3fr 1fr 1fr; border-top:1px solid var(--rule-hair);">
+    {compare.map((c, i) => (
+      <div data-reveal style={`--reveal-i:${i * 2}; display:grid; grid-template-columns:1.3fr 1fr 1fr; border-top:1px solid var(--rule-hair);`}>
         <div style="padding:12px 0; font-size:14px; color:var(--text-strong);">{c.f}</div>
-        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span style={`width:10px; height:10px; display:block; background:${c.cBg}; border:1px solid ${c.cBd};`}></span></div>
-        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span style={`width:10px; height:10px; display:block; background:${c.lBg}; border:1px solid ${c.lBd};`}></span></div>
+        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span data-reveal style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; background:${c.cBg}; border:1px solid ${c.cBd};`}></span></div>
+        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span data-reveal style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; background:${c.lBg}; border:1px solid ${c.lBd};`}></span></div>
       </div>
     ))}
     <div style="border-top:1px solid var(--rule-strong); padding-top:16px; display:flex; flex-direction:column; gap:10px;">
