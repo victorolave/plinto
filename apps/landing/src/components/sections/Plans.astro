@@ -35,9 +35,13 @@ const t = getDictionary(locale).landing
 const { compare } = getLandingContent(locale)
 ---
 
+<!-- The anchor lives on this wrapper, not on the desktop <section>:
+     that one is display:none below 1024px, so #plans had no box to
+     scroll to on a phone and every deep link silently did nothing. -->
+<div id="plans">
 <!-- ================= DESKTOP ================= -->
 <div class="hidden lg:block">
-<section id="plans" style="padding:104px 40px; border-top:2px solid var(--rule-strong); display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; row-gap:56px;">
+<section style="padding:104px 40px; border-top:2px solid var(--rule-strong); display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; row-gap:56px;">
   <div style="grid-column:1 / span 5;">
     <span class="plinto-eyebrow" style="margin-bottom:24px;">05 · {t.plans_eyebrow}</span>
     <h2 style="font-size:48px; line-height:1.04; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0;">{t.plans_title}</h2>
@@ -60,8 +64,8 @@ const { compare } = getLandingContent(locale)
     {compare.map((c, i) => (
       <div data-reveal style={`--reveal-i:${i * 2}; display:grid; grid-template-columns:1.4fr 1fr 1fr; border-top:1px solid var(--rule-hair);`}>
         <div style="padding:14px 0; font-size:15px; color:var(--text-strong);">{c.f}</div>
-        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span data-reveal style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; background:${c.cBg}; border:1px solid ${c.cBd};`}></span></div>
-        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span data-reveal style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; background:${c.lBg}; border:1px solid ${c.lBd};`}></span></div>
+        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center; gap:10px;"><span data-reveal aria-hidden="true" style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; flex:none; background:${c.cBg}; border:1px solid ${c.cBd};`}></span><span style="font-size:13px; color:var(--text-muted); line-height:1.3;">{c.cText}</span></div>
+        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center; gap:10px;"><span data-reveal aria-hidden="true" style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; flex:none; background:${c.lBg}; border:1px solid ${c.lBd};`}></span><span style="font-size:13px; color:var(--text-muted); line-height:1.3;">{c.lText}</span></div>
       </div>
     ))}
     <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr; border-top:1px solid var(--rule-strong);">
@@ -98,8 +102,8 @@ const { compare } = getLandingContent(locale)
     {compare.map((c, i) => (
       <div data-reveal style={`--reveal-i:${i * 2}; display:grid; grid-template-columns:1.3fr 1fr 1fr; border-top:1px solid var(--rule-hair);`}>
         <div style="padding:12px 0; font-size:14px; color:var(--text-strong);">{c.f}</div>
-        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span data-reveal style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; background:${c.cBg}; border:1px solid ${c.cBd};`}></span></div>
-        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center;"><span data-reveal style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; background:${c.lBg}; border:1px solid ${c.lBd};`}></span></div>
+        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center; gap:10px;"><span data-reveal aria-hidden="true" style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; flex:none; background:${c.cBg}; border:1px solid ${c.cBd};`}></span><span style="font-size:12px; color:var(--text-muted); line-height:1.3;">{c.cText}</span></div>
+        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center; gap:10px;"><span data-reveal aria-hidden="true" style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; flex:none; background:${c.lBg}; border:1px solid ${c.lBd};`}></span><span style="font-size:12px; color:var(--text-muted); line-height:1.3;">{c.lText}</span></div>
       </div>
     ))}
     <div style="border-top:1px solid var(--rule-strong); padding-top:16px; display:flex; flex-direction:column; gap:10px;">
@@ -108,4 +112,5 @@ const { compare } = getLandingContent(locale)
   </div>
 </section>
 
+</div>
 </div>

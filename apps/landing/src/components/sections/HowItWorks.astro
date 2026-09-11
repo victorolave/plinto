@@ -31,9 +31,13 @@ const chevronDown = (
 )
 ---
 
+<!-- The anchor lives on this wrapper, not on the desktop <section>:
+     that one is display:none below 1024px, so #how had no box to
+     scroll to on a phone and every deep link silently did nothing. -->
+<div id="how">
 <!-- ================= DESKTOP ================= -->
 <div class="hidden lg:block">
-<section id="how" style="padding:104px 40px 40px; border-top:2px solid var(--rule-strong); display:flex; flex-direction:column; gap:64px;">
+<section style="padding:104px 40px 40px; border-top:2px solid var(--rule-strong); display:flex; flex-direction:column; gap:64px;">
   <div style="display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px;">
     <div style="grid-column:1 / span 6;">
       <span class="plinto-eyebrow" style="margin-bottom:24px;">03 · {t.how_eyebrow}</span>
@@ -181,4 +185,5 @@ const chevronDown = (
   </div>
 </section>
 
+</div>
 </div>
