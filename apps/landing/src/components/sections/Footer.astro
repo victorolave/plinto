@@ -1,8 +1,9 @@
 ---
-// Footer. The GitHub / "Plinto Cloud" links point at real in-page anchors
-// on desktop (#oss, #plans) but at bare "#" on mobile — that is how the
-// design itself wrote it, ported as-is rather than "fixed".
+// Footer. The design shipped these as dead "#" placeholders; they now point
+// at real destinations from src/data/links.ts. "Plinto Cloud" stays an
+// in-page anchor because Cloud does not exist yet.
 import { getDictionary, type Locale } from '../../i18n'
+import { LINKS } from '../../data/links'
 
 interface Props {
   locale: Locale
@@ -17,10 +18,10 @@ const t = getDictionary(locale).landing
 <footer style="background:var(--surface-ink); color:var(--text-on-ink); padding:64px 40px 40px; display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; row-gap:64px;">
   <div data-reveal style="--reveal-i:0; grid-column:1 / span 4;"><img src="/horizontal-white.png" alt="Plinto" width="131" height="40" style="height:40px; width:auto;" /></div>
   <div data-reveal style="--reveal-i:1; grid-column:7 / span 6; display:flex; gap:40px; font-size:14px;">
-    <a href="#" style="color:var(--text-on-ink);">{t.foot_docs}</a>
-    <a href="#oss" style="color:var(--text-on-ink);">GitHub</a>
-    <a href="#" style="color:var(--text-on-ink);">{t.foot_license}</a>
-    <a href="#plans" style="color:var(--text-on-ink);">Plinto Cloud</a>
+    <a href={LINKS.docs} style="color:var(--text-on-ink);">{t.foot_docs}</a>
+    <a href={LINKS.repo} style="color:var(--text-on-ink);">GitHub</a>
+    <a href={LINKS.license} style="color:var(--text-on-ink);">{t.foot_license}</a>
+    <a href={LINKS.cloud} style="color:var(--text-on-ink);">Plinto Cloud</a>
   </div>
   <div data-reveal style="--reveal-i:2; grid-column:1 / span 12; border-top:1px solid rgba(255,255,255,.2); padding-top:20px; display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.6;">
     <span>{t.foot_tm}</span><span>© 2026 Plinto</span>
@@ -33,7 +34,7 @@ const t = getDictionary(locale).landing
 <footer style="background:var(--surface-ink); color:var(--text-on-ink); padding:40px 20px 28px; display:flex; flex-direction:column; gap:32px;">
   <img data-reveal style="--reveal-i:0; height:40px; width:131px; align-self:flex-start;" src="/horizontal-white.png" alt="Plinto" width="131" height="40" />
   <div data-reveal style="--reveal-i:1; display:flex; flex-wrap:wrap; gap:20px; font-size:14px;">
-    <a href="#" style="color:var(--text-on-ink);">{t.foot_docs}</a><a href="#" style="color:var(--text-on-ink);">GitHub</a><a href="#" style="color:var(--text-on-ink);">{t.foot_license}</a><a href="#" style="color:var(--text-on-ink);">Plinto Cloud</a>
+    <a href={LINKS.docs} style="color:var(--text-on-ink);">{t.foot_docs}</a><a href={LINKS.repo} style="color:var(--text-on-ink);">GitHub</a><a href={LINKS.license} style="color:var(--text-on-ink);">{t.foot_license}</a><a href={LINKS.cloud} style="color:var(--text-on-ink);">Plinto Cloud</a>
   </div>
   <div data-reveal style="--reveal-i:2; border-top:1px solid rgba(255,255,255,.2); padding-top:16px; font-family:var(--font-mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.6; line-height:1.6;">{t.foot_tm}<br />© 2026 Plinto</div>
 </footer>

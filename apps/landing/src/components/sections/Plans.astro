@@ -24,6 +24,7 @@
 //     'AGPL-3.0 · docker compose up'") consistently across breakpoints.
 import { getDictionary, type Locale } from '../../i18n'
 import { getLandingContent } from '../../data/landing-content'
+import { LINKS } from '../../data/links'
 
 interface Props {
   locale: Locale
@@ -65,7 +66,7 @@ const { compare } = getLandingContent(locale)
     ))}
     <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr; border-top:1px solid var(--rule-strong);">
       <div style="padding:20px 0;"></div>
-      <div style="padding:20px 16px; border-left:1px solid var(--rule-hair);"><a href="#" class="btn btn--secondary btn--block">{t.cta_install}</a></div>
+      <div style="padding:20px 16px; border-left:1px solid var(--rule-hair);"><a href={LINKS.selfHost} class="btn btn--secondary btn--block">{t.cta_install}</a></div>
       <div style="padding:20px 16px; border-left:1px solid var(--rule-hair);"></div>
     </div>
   </div>
@@ -102,7 +103,7 @@ const { compare } = getLandingContent(locale)
       </div>
     ))}
     <div style="border-top:1px solid var(--rule-strong); padding-top:16px; display:flex; flex-direction:column; gap:10px;">
-      <a href="#" class="btn btn--secondary btn--lg btn--block">{t.cta_install}</a>
+      <a href={LINKS.selfHost} class="btn btn--secondary btn--lg btn--block">{t.cta_install}</a>
     </div>
   </div>
 </section>

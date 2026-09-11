@@ -12,6 +12,7 @@
 // name) — the nav is the one place not explicitly listed, flagged in the
 // handoff notes.
 import { getDictionary, type Locale } from '../../i18n'
+import { LINKS } from '../../data/links'
 
 interface Props {
   locale: Locale
@@ -32,10 +33,10 @@ const logoHeightDesktop = 22
       <a href="#how" style="color:var(--text-body);">{t.nav_how}</a>
       <a href="#plans" style="color:var(--text-body);">{t.nav_plans}</a>
       <a href="#data" style="color:var(--text-body);">{t.nav_data}</a>
-      <a href="#oss" style="color:var(--text-body);">GitHub</a>
+      <a href={LINKS.repo} style="color:var(--text-body);">GitHub</a>
     </nav>
     <div style="grid-column:10 / span 3; display:flex; gap:12px; justify-content:flex-end;">
-      <a href="#" class="btn btn--ghost btn--sm">{t.cta_install}</a>
+      <a href={LINKS.selfHost} class="btn btn--ghost btn--sm">{t.cta_install}</a>
     </div>
   </header>
 </div>
