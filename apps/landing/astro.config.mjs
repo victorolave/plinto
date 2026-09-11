@@ -6,6 +6,12 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   output: 'static',
 
+  // CONFIRM THIS BEFORE PUBLISHING. Without `site`, Astro.site is undefined
+  // and the canonical link, the hreflang pair and the Open Graph image are
+  // all emitted against the building machine's origin — localhost in
+  // development — which breaks link previews and misleads crawlers.
+  site: 'https://plinto.app',
+
   // Spanish is the default and lives at the root ('/'); English lives under
   // '/en/'. prefixDefaultLocale: false keeps '/' un-prefixed instead of
   // redirecting it to '/es/'.
