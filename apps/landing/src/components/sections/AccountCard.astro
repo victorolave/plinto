@@ -1,0 +1,67 @@
+---
+// One account card, `.m-acc`. `compact` drops the row's "..." icon button
+// and bumps the balance figure to 22px, exactly as the design's mobile
+// step-1 mockup does (the desktop one keeps the button and the default
+// --amt--lg size).
+import type { AccountCard } from '../../data/landing-content'
+
+interface Props {
+  a: AccountCard
+  balanceLabel: string
+  compact?: boolean
+  revealIndex?: number
+}
+
+const { a, balanceLabel, compact = false, revealIndex } = Astro.props
+const revealStyle = revealIndex === undefined ? undefined : `--reveal-i:${revealIndex};`
+const rootStyle = [revealStyle, compact ? 'min-height:0;' : undefined].filter(Boolean).join(' ') || undefined
+---
+
+<div class="m-acc" data-reveal={revealIndex === undefined ? undefined : true} style={rootStyle}>
+  <div class="m-acc-head">
+    <span class="m-icon">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d={a.p1} />
+        <path d={a.p2} />
+        <path d={a.p3} />
+      </svg>
+    </span>
+    <div style="min-width:0; flex:1;">
+      <div class="m-name">{a.name}</div>
+      <div class="m-acc-type">{a.type}</div>
+    </div>
+    {
+      !compact && (
+        <span class="m-iconbtn">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 5h.01" />
+            <path d="M12 12h.01" />
+            <path d="M12 19h.01" />
+          </svg>
+        </span>
+      )
+    }
+  </div>
+  <div class="m-acc-bal">
+    <span class="m-eyebrow">{balanceLabel}</span>
+    <span class="m-amt m-amt--lg" style={compact ? 'font-size:22px;' : undefined}>
+      {a.amount}
+    </span>
+  </div>
+</div>

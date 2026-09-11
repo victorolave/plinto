@@ -1,0 +1,116 @@
+---
+// "05 · Community y Cloud" — the eleven-row comparison table.
+//
+// Cloud deviation (Plinto Cloud is not a real product yet — decided by
+// the project owner):
+//   - All eleven rows (c1–c11) and both columns stay: the comparison
+//     itself is not touched.
+//   - The Cloud column header drops the price (`priceMonthly`,
+//     `priceYearly`, `per_month`, `per_year` are gone) and shows a
+//     "Coming soon" badge instead (`t.cloud_soon`), reusing `.m-badge` —
+//     already in the ported mockup CSS — rather than inventing a new
+//     badge style.
+//   - The footer row drops `price_note` entirely (per the brief) and
+//     drops the Cloud column's button (`cta_cloud`, "Probar Plinto
+//     Cloud"). The grid cells stay empty rather than collapsing the
+//     grid, so the table's column alignment does not shift.
+//   - Community keeps "Gratis" and its button (`cta_install`) — the
+//     brief only calls out removing Cloud's CTA. Community's note now
+//     reads `t.free_note` ("AGPL-3.0 · docker compose up") on both
+//     desktop and mobile — the design only wrote that fuller note in an
+//     artboard this port does not use (the main table hardcoded a bare
+//     "docker compose up" on desktop and nothing at all on mobile); this
+//     applies the brief's explicit instruction ("conserva su nota
+//     'AGPL-3.0 · docker compose up'") consistently across breakpoints.
+import { getDictionary, type Locale } from '../../i18n'
+import { getLandingContent } from '../../data/landing-content'
+import { LINKS } from '../../data/links'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = getDictionary(locale).landing
+const { compare } = getLandingContent(locale)
+---
+
+<!-- The anchor lives on this wrapper, not on the desktop <section>:
+     that one is display:none below 1024px, so #plans had no box to
+     scroll to on a phone and every deep link silently did nothing. -->
+<div id="plans">
+<!-- ================= DESKTOP ================= -->
+<div class="hidden lg:block">
+<section style="padding:104px 40px; border-top:2px solid var(--rule-strong); display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; row-gap:56px;">
+  <div style="grid-column:1 / span 5;">
+    <span class="plinto-eyebrow" style="margin-bottom:24px;">05 · {t.plans_eyebrow}</span>
+    <h2 style="font-size:48px; line-height:1.04; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0;">{t.plans_title}</h2>
+    <p style="font-size:18px; color:var(--text-muted); margin:32px 0 0; max-width:36ch;">{t.plans_phrase}</p>
+  </div>
+  <div style="grid-column:6 / span 7;">
+    <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr; border-top:2px solid var(--rule-strong);">
+      <div style="padding:20px 0 24px;"></div>
+      <div style="padding:20px 16px 24px; border-left:1px solid var(--rule-hair);">
+        <span class="plinto-eyebrow" style="margin-bottom:8px;">Community</span>
+        <div class="plinto-money" style="font-size:22px; font-weight:500; color:var(--text-strong);">{t.free}</div>
+        <div style="font-size:13px; color:var(--text-muted); margin-top:4px;">{t.free_note}</div>
+      </div>
+      <div style="padding:20px 16px 24px; border-left:1px solid var(--rule-hair); position:relative;">
+        <span style="position:absolute; top:-2px; left:-1px; right:0; height:2px; background:var(--red-500);"></span>
+        <span class="plinto-eyebrow" style="margin-bottom:8px;">Cloud</span>
+        <span class="m-badge m-badge--neutral" data-reveal style={`--reveal-i:${compare.length * 2 + 2}; margin-top:4px;`}>{t.cloud_soon}</span>
+      </div>
+    </div>
+    {compare.map((c, i) => (
+      <div data-reveal style={`--reveal-i:${i * 2}; display:grid; grid-template-columns:1.4fr 1fr 1fr; border-top:1px solid var(--rule-hair);`}>
+        <div style="padding:14px 0; font-size:15px; color:var(--text-strong);">{c.f}</div>
+        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center; gap:10px;"><span data-reveal aria-hidden="true" style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; flex:none; background:${c.cBg}; border:1px solid ${c.cBd};`}></span><span style="font-size:13px; color:var(--text-muted); line-height:1.3;">{c.cText}</span></div>
+        <div style="padding:14px 16px; border-left:1px solid var(--rule-hair); display:flex; align-items:center; gap:10px;"><span data-reveal aria-hidden="true" style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; flex:none; background:${c.lBg}; border:1px solid ${c.lBd};`}></span><span style="font-size:13px; color:var(--text-muted); line-height:1.3;">{c.lText}</span></div>
+      </div>
+    ))}
+    <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr; border-top:1px solid var(--rule-strong);">
+      <div style="padding:20px 0;"></div>
+      <div style="padding:20px 16px; border-left:1px solid var(--rule-hair);"><a href={LINKS.selfHost} class="btn btn--secondary btn--block">{t.cta_install}</a></div>
+      <div style="padding:20px 16px; border-left:1px solid var(--rule-hair);"></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ================= MOBILE ================= -->
+<div class="lg:hidden">
+<section style="padding:56px 20px; border-top:2px solid var(--rule-strong); display:flex; flex-direction:column; gap:32px;">
+  <div>
+    <span class="plinto-eyebrow" style="margin-bottom:16px;">05 · {t.plans_eyebrow}</span>
+    <h2 style="font-size:32px; line-height:1.05; letter-spacing:-0.03em; font-weight:500; color:var(--text-strong); margin:0;">{t.plans_title}</h2>
+    <p style="font-size:16px; color:var(--text-muted); margin:20px 0 0;">{t.plans_phrase}</p>
+  </div>
+  <div>
+    <div style="display:grid; grid-template-columns:1.3fr 1fr 1fr; border-top:2px solid var(--rule-strong);">
+      <div></div>
+      <div style="padding:12px 8px 16px; border-left:1px solid var(--rule-hair);">
+        <span class="plinto-eyebrow" style="margin-bottom:6px;">Community</span>
+        <div class="plinto-money" style="font-size:15px; font-weight:500; color:var(--text-strong);">{t.free}</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">{t.free_note}</div>
+      </div>
+      <div style="padding:12px 8px 16px; border-left:1px solid var(--rule-hair); position:relative;">
+        <span style="position:absolute; top:-2px; left:-1px; right:0; height:2px; background:var(--red-500);"></span>
+        <span class="plinto-eyebrow" style="margin-bottom:6px;">Cloud</span>
+        <span class="m-badge m-badge--neutral" data-reveal style={`--reveal-i:${compare.length * 2 + 2}; margin-top:2px;`}>{t.cloud_soon}</span>
+      </div>
+    </div>
+    {compare.map((c, i) => (
+      <div data-reveal style={`--reveal-i:${i * 2}; display:grid; grid-template-columns:1.3fr 1fr 1fr; border-top:1px solid var(--rule-hair);`}>
+        <div style="padding:12px 0; font-size:14px; color:var(--text-strong);">{c.f}</div>
+        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center; gap:10px;"><span data-reveal aria-hidden="true" style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; flex:none; background:${c.cBg}; border:1px solid ${c.cBd};`}></span><span style="font-size:12px; color:var(--text-muted); line-height:1.3;">{c.cText}</span></div>
+        <div style="padding:12px 8px; border-left:1px solid var(--rule-hair); display:flex; align-items:center; gap:10px;"><span data-reveal aria-hidden="true" style={`--reveal-i:${i * 2 + 1}; width:10px; height:10px; display:block; flex:none; background:${c.lBg}; border:1px solid ${c.lBd};`}></span><span style="font-size:12px; color:var(--text-muted); line-height:1.3;">{c.lText}</span></div>
+      </div>
+    ))}
+    <div style="border-top:1px solid var(--rule-strong); padding-top:16px; display:flex; flex-direction:column; gap:10px;">
+      <a href={LINKS.selfHost} class="btn btn--secondary btn--lg btn--block">{t.cta_install}</a>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
