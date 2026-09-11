@@ -1,0 +1,42 @@
+---
+import '../styles/global.css'
+import { getLocaleFromUrl } from '../i18n'
+
+interface Props {
+  title: string
+  description: string
+}
+
+const { title, description } = Astro.props
+const locale = getLocaleFromUrl(Astro.url)
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin)
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="icon" href="/horizontal.png" type="image/png" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content="/horizontal.png" />
+    <meta property="og:locale" content={locale === 'es' ? 'es_ES' : 'en_US'} />
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="/horizontal.png" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

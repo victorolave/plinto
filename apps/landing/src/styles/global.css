@@ -1,0 +1,146 @@
+/* ============================================================
+   PLINTO · LANDING — fonts, tokens, Tailwind theme bridge
+   ------------------------------------------------------------
+   Self-hosted Archivo + DM Mono (via fontsource) so the landing never
+   makes a runtime request to Google Fonts, matching apps/web's next/font
+   setup. --font-archivo and --font-dm-mono are declared here exactly as
+   apps/web exposes them, so the shared tokens work unmodified.
+   ============================================================ */
+@import '@fontsource/archivo/400.css';
+@import '@fontsource/archivo/500.css';
+@import '@fontsource/archivo/600.css';
+@import '@fontsource/archivo/700.css';
+@import '@fontsource/dm-mono/400.css';
+@import '@fontsource/dm-mono/500.css';
+
+:root {
+  --font-archivo: 'Archivo';
+  --font-dm-mono: 'DM Mono';
+}
+
+/* The single source of truth for color, type scale, spacing, radius,
+   elevation and motion. See docs/design/foundation.md. */
+@import '@plinto/design-tokens';
+
+@import 'tailwindcss';
+
+/* ============================================================
+   Bridge: Tailwind's own theme namespace mapped onto the real tokens,
+   via var(), so the utilities never redefine a value themselves.
+   ------------------------------------------------------------
+   NOTE: --font-sans and --font-mono are NOT set to var(--font-sans) /
+   var(--font-mono) here — those are the exact names @plinto/design-tokens
+   already declares at :root, and Tailwind's own theme namespace happens
+   to use the same two names. Self-referencing a custom property is a
+   cycle and resolves to nothing, so this points at the underlying font
+   tokens (--font-archivo / --font-dm-mono) instead, which is what
+   --font-sans / --font-mono are themselves built from.
+   ============================================================ */
+@theme {
+  /* ---- fonts ---- */
+  --font-sans: var(--font-archivo), 'Helvetica Neue', Helvetica, Arial,
+    sans-serif;
+  --font-mono: var(--font-dm-mono), 'SFMono-Regular', Menlo, Consolas,
+    monospace;
+
+  /* ---- color: raw palette ---- */
+  --color-white: var(--white);
+  --color-black: var(--black);
+  --color-neutral-0: var(--neutral-0);
+  --color-neutral-50: var(--neutral-50);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+  --color-red-50: var(--red-50);
+  --color-red-100: var(--red-100);
+  --color-red-200: var(--red-200);
+  --color-red-300: var(--red-300);
+  --color-red-400: var(--red-400);
+  --color-red-500: var(--red-500);
+  --color-red-600: var(--red-600);
+  --color-red-700: var(--red-700);
+  --color-red-800: var(--red-800);
+  --color-green-500: var(--green-500);
+  --color-green-600: var(--green-600);
+  --color-amber-500: var(--amber-500);
+
+  /* ---- color: semantic ---- */
+  --color-surface-page: var(--surface-page);
+  --color-surface-card: var(--surface-card);
+  --color-surface-inset: var(--surface-inset);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-surface-ink: var(--surface-ink);
+  --color-surface-accent: var(--surface-accent);
+  --color-surface-chrome: var(--surface-chrome);
+  --color-surface-chrome-raised: var(--surface-chrome-raised);
+
+  --color-text-strong: var(--text-strong);
+  --color-text-body: var(--text-body);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-disabled: var(--text-disabled);
+  --color-text-on-ink: var(--text-on-ink);
+  --color-text-on-accent: var(--text-on-accent);
+  --color-text-accent: var(--text-accent);
+  --color-chrome-text-strong: var(--chrome-text-strong);
+  --color-chrome-text-muted: var(--chrome-text-muted);
+  --color-chrome-text-subtle: var(--chrome-text-subtle);
+
+  --color-border-hair: var(--border-hair);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-action-primary: var(--action-primary);
+  --color-action-primary-hover: var(--action-primary-hover);
+  --color-action-primary-active: var(--action-primary-active);
+  --color-action-primary-text: var(--action-primary-text);
+  --color-action-accent: var(--action-accent);
+  --color-action-accent-hover: var(--action-accent-hover);
+  --color-action-accent-active: var(--action-accent-active);
+  --color-action-accent-text: var(--action-accent-text);
+
+  --color-status-positive: var(--status-positive);
+  --color-status-negative: var(--status-negative);
+  --color-status-danger: var(--status-danger);
+  --color-status-warning: var(--status-warning);
+  --color-status-info: var(--status-info);
+
+  /* ---- radius: the system is square. every step ties back to the same
+     zero token — never a hardcoded 0 — so a future non-zero brand change
+     only has to happen in one place. ---- */
+  --radius-xs: var(--radius-none);
+  --radius-sm: var(--radius-none);
+  --radius-md: var(--radius-none);
+  --radius-lg: var(--radius-none);
+  --radius-xl: var(--radius-none);
+  --radius-2xl: var(--radius-none);
+  --radius-3xl: var(--radius-none);
+  --radius-4xl: var(--radius-none);
+
+  /* ---- spacing: named steps on the real 4px-grid tokens. The grid is not
+     a clean linear multiplier past --space-6 (7 -> 32px, 8 -> 40px, ...),
+     so these are named to match the tokens' own suffixes rather than
+     relying on Tailwind's default `--spacing * n` scale. ---- */
+  --spacing-0: var(--space-0);
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-7: var(--space-7);
+  --spacing-8: var(--space-8);
+  --spacing-9: var(--space-9);
+  --spacing-10: var(--space-10);
+  --spacing-11: var(--space-11);
+  --spacing-12: var(--space-12);
+}

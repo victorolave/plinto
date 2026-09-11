@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { getDictionary } from '../../i18n'
+
+const t = getDictionary('en')
+---
+
+<BaseLayout title={t.meta.title} description={t.meta.description}>
+  <main>
+    <h1>{t.hero.tagline}</h1>
+  </main>
+</BaseLayout>
