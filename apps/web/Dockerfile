@@ -43,6 +43,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
+COPY packages/design-tokens/package.json packages/design-tokens/package.json
 
 # This installs the whole workspace, including @plinto/api, whose postinstall
 # runs `prisma generate` — that needs the schema (and reads the migrations

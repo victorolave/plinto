@@ -4,6 +4,44 @@ Every release, newest first. Plinto follows
 [Semantic Versioning](docs/versioning.md); an entry that needs manual steps
 says so in its first line.
 
+## [0.2.1] — 2026-09-11
+
+Corrections only, no new capability: `docker compose pull && docker compose up -d`.
+**Nothing about a running installation changes** — the API, the environment
+variables, the compose file and the database schema are untouched, and both
+images behave exactly as they did in `0.2.0`.
+
+### Fixed
+
+- **`docs/design/foundation.md` described a design system that was never in the
+  code.** It documented Montserrat, `#FD5447` and a shadcn theme configured
+  through Tailwind. What ships is Archivo and DM Mono, a brand red of `#E8492C`,
+  a border radius of zero everywhere on purpose, and no Tailwind at all.
+  Anyone building UI from that document produced something that did not look
+  like Plinto. Rewritten against the tokens that actually ship.
+- **The README ruled out something the project had not ruled out.** It said
+  there was no billing code "and none is planned", while
+  [the roadmap](docs/roadmap.md) said a hosted offering "if it happens, is a
+  separate product". Both now say the same thing.
+- Both Dockerfiles now declare `packages/design-tokens/package.json` in the
+  layer that copies manifests ahead of `pnpm install`. The build worked without
+  it, but only because pnpm left a dangling symlink that the later source copy
+  happened to fill in.
+
+### Changed
+
+- The design tokens moved out of `apps/web/src/styles/tokens/` into a
+  `@plinto/design-tokens` workspace package, so the app and the marketing site
+  read one source instead of drifting apart. Internal structure only: no token
+  value changed, and nothing outside the repository referenced that path.
+
+### Added
+
+- **A marketing site, in `apps/landing`.** It is not part of the self-hosted
+  product: it ships in no image, and a self-hoster runs nothing new. It is
+  listed here because it lives in this repository, not because the release
+  delivers it to you.
+
 ## [0.2.0] — 2026-09-10
 
 New capability, no manual steps: `docker compose pull && docker compose up -d`.
