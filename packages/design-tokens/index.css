@@ -1,0 +1,13 @@
+/* ============================================================
+   PLINTO · DESIGN TOKENS
+   ------------------------------------------------------------
+   Barrel import. Order matters: later files consume tokens
+   defined by earlier ones (typography and base both reference
+   colors, elevation references nothing else, base references
+   spacing and typography).
+   ============================================================ */
+@import './colors.css';
+@import './typography.css';
+@import './spacing.css';
+@import './elevation.css';
+@import './base.css';

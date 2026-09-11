@@ -96,6 +96,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@plinto/design-tokens':
+        specifier: workspace:*
+        version: link:../../packages/design-tokens
       '@plinto/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -163,6 +166,8 @@ importers:
       vitest:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@20.19.27)(jsdom@29.1.1)(terser@5.44.1)
+
+  packages/design-tokens: {}
 
   packages/shared:
     dependencies:

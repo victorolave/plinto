@@ -1,0 +1,14 @@
+{
+  "name": "@plinto/design-tokens",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./index.css",
+    "./colors.css": "./colors.css",
+    "./typography.css": "./typography.css",
+    "./spacing.css": "./spacing.css",
+    "./elevation.css": "./elevation.css",
+    "./base.css": "./base.css"
+  }
+}
