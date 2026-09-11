@@ -1,0 +1,136 @@
+---
+// Hero: eyebrow + H1, sub + CTA + small print, and the product itself
+// (sidebar + topbar + the Obligaciones page) shown at 1360px inside a
+// clipped 660px-tall frame on desktop, and as a phone-width shell with a
+// bottom nav on mobile.
+//
+// Cloud deviation: the design stacks two CTAs here (primary `cta_cloud`,
+// secondary `cta_install`). Cloud is not a real product yet, so only
+// `cta_install` remains — kept in its original "secondary" styling
+// (the design never styled `cta_install` as primary anywhere), rather
+// than promoting it to primary now that it is alone. Flagged in the
+// handoff notes in case you want it emphasized instead.
+import { getDictionary, type Locale } from '../../i18n'
+import { getLandingContent } from '../../data/landing-content'
+import ObligationRow from './ObligationRow.astro'
+import { LINKS } from '../../data/links'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = getDictionary(locale).landing
+const { obligations, obligationsShort, sum } = getLandingContent(locale)
+---
+
+<!-- ================= DESKTOP ================= -->
+<div class="hidden lg:block">
+<section class="plinto-grid" data-screen-label="Hero" style="padding:96px 40px 104px; display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; row-gap:64px; align-items:end;">
+  <div style="grid-column:1 / span 7; display:flex; flex-direction:column; gap:40px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span style="width:10px; height:10px; background:var(--red-500); display:block;"></span>
+      <span class="plinto-eyebrow" style="display:inline;">{t.hero_eyebrow}</span>
+    </div>
+    <h1 data-reveal style="--reveal-i:0; font-size:84px; line-height:0.98; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0; text-wrap:balance;">{t.hero_title}</h1>
+  </div>
+  <div style="grid-column:9 / span 4; display:flex; flex-direction:column; gap:32px;">
+    <p data-reveal style="--reveal-i:1; font-size:22px; line-height:1.4; letter-spacing:-0.01em; color:var(--text-muted); margin:0;">{t.hero_sub}</p>
+    <div data-reveal style="--reveal-i:2; display:flex; flex-direction:column; gap:10px; align-items:stretch;">
+      <a href={LINKS.selfHost} class="btn btn--secondary btn--lg btn--block">{t.cta_install}</a>
+    </div>
+    <div data-reveal style="--reveal-i:3; display:flex; gap:16px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted);">
+      <span>AGPL-3.0</span><span>·</span><span>docker compose up</span><span>·</span><span>{t.hero_note}</span>
+    </div>
+  </div>
+
+  <!-- The product, as it renders at 1360px: sidebar + top bar + Obligaciones page -->
+  <div data-scrub="hero" style="grid-column:1 / span 12; height:660px; overflow:hidden; border:1px solid var(--border-default); border-bottom:2px solid var(--rule-strong);">
+    <div class="m-app">
+      <aside class="m-sb">
+        <div class="m-sb-brand"><img src="/horizontal-white.png" alt="Plinto" width="92" height="28" /></div>
+        <div class="m-ts">
+          <span class="m-ts-mark">{t.hh_initial}</span>
+          <span style="min-width:0; display:flex; flex-direction:column; gap:2px;"><span class="m-ts-name">{t.hh_name}</span><span class="m-ts-role">{t.hh_label}</span></span>
+          <svg class="m-ts-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+        </div>
+        <nav class="m-nav">
+          <span class="m-ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"></path><path d="M5 10v10h14V10"></path></svg>{t.nav_overview}</span>
+          <span class="m-ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"></path><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6"></path><path d="M14.7 13a1.3 1.3 0 1 0 2.6 0a1.3 1.3 0 1 0-2.6 0"></path></svg>{t.nav_accounts}</span>
+          <span class="m-ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg>{t.nav_tx}</span>
+          <span class="m-ni is-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0"></path><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0"></path><path d="M11.6 12h.8"></path></svg>{t.nav_obligations}</span>
+          <span class="m-ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6 4-4 8 8"></path><path d="M17 17h4v-4"></path></svg>{t.nav_debts}</span>
+          <span class="m-ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path><path d="M2 10h20"></path></svg>{t.nav_credit}</span>
+          <span class="m-ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 3 12V5a2 2 0 0 1 2-2h7a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.6z"></path><path d="M7 7.5h1"></path></svg>{t.nav_categories}</span>
+        </nav>
+        <div class="m-sb-foot">
+          <span class="m-ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>{t.nav_settings}</span>
+          <span class="m-ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0"></path><path d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2-2.4 3.4"></path><path d="M12 17h.01"></path></svg>{t.nav_help}</span>
+          <div class="m-user">
+            <span class="m-user-avatar">{t.user_initials}</span>
+            <span style="min-width:0;"><div class="m-user-name">{t.user_name}</div><div class="m-user-email">{t.user_email}</div></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+          </div>
+        </div>
+      </aside>
+      <div class="m-main">
+        <header class="m-topbar"><div><div class="m-topbar-title">{t.ob_title}</div><div class="m-topbar-sub">{t.ob_sub}</div></div></header>
+        <div class="m-page">
+          <div class="m-head">
+            <div class="m-period">
+              <span class="m-iconbtn m-iconbtn--ring"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></span>
+              <strong>{t.period}</strong>
+              <span class="m-iconbtn m-iconbtn--ring"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+            </div>
+            <span class="m-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>{t.ob_oneoff}</span>
+          </div>
+          <div class="m-stats">
+            <div class="m-stat m-stat--accent"><div class="m-stat-top"><span class="m-stat-label">{t.sum_total}</span><span class="m-tag">COP</span></div><span class="m-amt m-amt--lg">{sum.total}</span></div>
+            <div class="m-stat"><div class="m-stat-top"><span class="m-stat-label">{t.sum_paid}</span><span class="m-tag">COP</span></div><span class="m-amt m-amt--lg">{sum.paid}</span></div>
+            <div class="m-stat"><div class="m-stat-top"><span class="m-stat-label">{t.sum_out}</span><span class="m-tag">COP</span></div><span class="m-amt m-amt--lg">{sum.out}</span></div>
+          </div>
+          <div class="m-card m-card--flush">
+            <div class="m-list">
+              {obligations.map((o) => <ObligationRow o={o} variant="full" />)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ================= MOBILE ================= -->
+<div class="lg:hidden">
+<section class="plinto-grid" style="padding:56px 20px 48px; display:flex; flex-direction:column; gap:28px;">
+  <div style="display:flex; align-items:center; gap:10px;"><span style="width:8px; height:8px; background:var(--red-500); display:block;"></span><span class="plinto-eyebrow" style="display:inline;">{t.hero_eyebrow}</span></div>
+  <h1 data-reveal style="--reveal-i:0; font-size:40px; line-height:1.02; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0;">{t.hero_title}</h1>
+  <p data-reveal style="--reveal-i:1; font-size:18px; line-height:1.4; color:var(--text-muted); margin:0;">{t.hero_sub}</p>
+  <div data-reveal style="--reveal-i:2; display:flex; flex-direction:column; gap:10px;">
+    <a href={LINKS.selfHost} class="btn btn--secondary btn--lg btn--block">{t.cta_install}</a>
+  </div>
+  <!-- The product on a phone: top bar, Obligaciones page, bottom nav -->
+  <div data-scrub="hero" style="margin-top:12px; height:620px; overflow:hidden; border:1px solid var(--border-default); border-bottom:2px solid var(--rule-strong);">
+    <div class="m-app m-app--mobile" style="height:620px;">
+      <header class="m-topbar"><div><div class="m-topbar-title">{t.ob_title}</div><div class="m-topbar-sub">{t.ob_sub}</div></div></header>
+      <div class="m-page">
+        <div class="m-head">
+          <div class="m-period"><span class="m-iconbtn m-iconbtn--ring"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></span><strong>{t.period}</strong><span class="m-iconbtn m-iconbtn--ring"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span></div>
+        </div>
+        <div class="m-stat m-stat--accent"><div class="m-stat-top"><span class="m-stat-label">{t.sum_total}</span><span class="m-tag">COP</span></div><span class="m-amt m-amt--lg">{sum.total}</span></div>
+        <div class="m-card m-card--flush"><div class="m-list">
+          {obligationsShort.map((o) => <ObligationRow o={o} variant="compact" />)}
+        </div></div>
+      </div>
+      <nav class="m-bnav">
+        <span class="m-bni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"></path><path d="M5 10v10h14V10"></path></svg>{t.bn_home}</span>
+        <span class="m-bni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"></path><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6"></path></svg>{t.nav_accounts}</span>
+        <span class="m-badd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span>
+        <span class="m-bni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg>{t.nav_tx}</span>
+        <span class="m-bni is-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h.01"></path><path d="M12 12h.01"></path><path d="M19 12h.01"></path></svg>{t.bn_more}</span>
+      </nav>
+    </div>
+  </div>
+</section>
+</div>

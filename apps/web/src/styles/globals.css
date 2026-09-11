@@ -4,11 +4,11 @@
    are driven by the design tokens so the brand can be restyled
    globally by editing tokens/*.
    ============================================================ */
-@import './tokens/colors.css';
-@import './tokens/typography.css';
-@import './tokens/spacing.css';
-@import './tokens/elevation.css';
-@import './tokens/base.css';
+@import '@plinto/design-tokens/colors.css';
+@import '@plinto/design-tokens/typography.css';
+@import '@plinto/design-tokens/spacing.css';
+@import '@plinto/design-tokens/elevation.css';
+@import '@plinto/design-tokens/base.css';
 
 /* ============================================================
    Primitives — layout helpers

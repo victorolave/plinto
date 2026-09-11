@@ -1,0 +1,86 @@
+---
+// One obligation row, exactly as obligations-panel.tsx (and the design's
+// own `.m-row` markup) renders it. Three variants because the design
+// itself renders three different DOMs for the same data:
+//   - "full": name (+ Repeat icon when recurring), meta, amount, badge,
+//     the row's own "..." icon button. Hero desktop + step 3 desktop.
+//   - "compact": amount and badge stacked instead of inline, no recurring
+//     icon, no icon button. Hero mobile + step 3 mobile.
+//   - "plain": like "full" but without the recurring icon slot and
+//     without the icon button. Step 2's dimmed backdrop list.
+import type { ObligationRow } from '../../data/landing-content'
+
+interface Props {
+  o: ObligationRow
+  variant: 'full' | 'compact' | 'plain'
+  revealIndex?: number
+}
+
+const { o, variant, revealIndex } = Astro.props
+const revealStyle = revealIndex === undefined ? undefined : `--reveal-i:${revealIndex};`
+const revealAttr = revealIndex === undefined ? undefined : true
+---
+
+{
+  variant === 'compact' ? (
+    <div class="m-row" data-reveal={revealAttr} style={revealStyle}>
+      <div class="m-row-main">
+        <div class="m-name">{o.name}</div>
+        <div class="m-meta">{o.meta}</div>
+      </div>
+      <div class="m-right" style="flex-direction:column; align-items:flex-end; gap:6px;">
+        <span class="m-amt m-amt--sm" style="font-weight:500;">
+          {o.amount}
+        </span>
+        <span class={`m-badge m-badge--${o.tone}`}>{o.status}</span>
+      </div>
+    </div>
+  ) : (
+    <div class="m-row" data-reveal={revealAttr} style={revealStyle}>
+      <div class="m-row-main">
+        <div class="m-name">
+          {o.name}
+          {variant === 'full' && (
+            <svg
+              style={`display:${o.recurring ? 'inline-flex' : 'none'}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M17 2l4 4-4 4" />
+              <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+              <path d="M7 22l-4-4 4-4" />
+              <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+            </svg>
+          )}
+        </div>
+        <div class="m-meta">{o.meta}</div>
+      </div>
+      <div class="m-right">
+        <span class="m-amt m-amt--md">{o.amount}</span>
+        <span class={`m-badge m-badge--${o.tone}`}>{o.status}</span>
+        {variant === 'full' && (
+          <span class="m-iconbtn">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 5h.01" />
+              <path d="M12 12h.01" />
+              <path d="M12 19h.01" />
+            </svg>
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
