@@ -38,5 +38,8 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin)
   </head>
   <body>
     <slot />
+    <script>
+      import '../scripts/motion.ts'
+    </script>
   </body>
 </html>
