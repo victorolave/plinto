@@ -45,6 +45,8 @@ export interface Dictionary {
     }
     shell: {
       addTransaction: string
+      householdName: string
+      exampleEmail: string
       logOut: string
       title: Record<string, string>
       subtitle: Record<string, string>
@@ -128,6 +130,8 @@ export const dictionaries: Record<Locale, Dictionary> = {
       },
       shell: {
         addTransaction: 'Agregar movimiento',
+        householdName: 'Hogar de ejemplo',
+        exampleEmail: 'hogar@example.com',
         logOut: 'Cerrar sesión',
         title: {
           overview: 'Panel',
@@ -214,6 +218,8 @@ export const dictionaries: Record<Locale, Dictionary> = {
       },
       shell: {
         addTransaction: 'Add transaction',
+        householdName: 'Example household',
+        exampleEmail: 'household@example.com',
         logOut: 'Log out',
         title: {
           overview: 'Dashboard',
