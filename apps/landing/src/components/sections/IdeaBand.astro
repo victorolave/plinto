@@ -14,20 +14,20 @@ const t = getDictionary(locale).landing
 <div class="hidden lg:block">
 <section style="background:var(--surface-ink); color:var(--text-on-ink); padding:104px 40px; display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px;">
   <div style="grid-column:1 / span 2; display:flex; flex-direction:column; gap:16px;">
-    <span style="width:40px; height:40px; background:var(--red-500); display:block;"></span>
-    <span style="font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; opacity:.6;">01 · {t.band_eyebrow}</span>
+    <span data-reveal style="--reveal-i:0; width:40px; height:40px; background:var(--red-500); display:block;"></span>
+    <span data-reveal style="--reveal-i:1; font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; opacity:.6;">01 · {t.band_eyebrow}</span>
   </div>
   <div style="grid-column:3 / span 9; display:flex; flex-direction:column; gap:32px;">
-    <h2 style="font-size:56px; line-height:1.02; letter-spacing:-0.035em; font-weight:500; color:var(--text-on-ink); margin:0; text-wrap:balance;">{t.band_title}</h2>
-    <p style="font-size:22px; line-height:1.4; letter-spacing:-0.01em; opacity:.7; max-width:52ch; margin:0;">{t.band_body}</p>
+    <h2 data-reveal style="--reveal-i:2; font-size:56px; line-height:1.02; letter-spacing:-0.035em; font-weight:500; color:var(--text-on-ink); margin:0; text-wrap:balance;">{t.band_title}</h2>
+    <p data-reveal style="--reveal-i:3; font-size:22px; line-height:1.4; letter-spacing:-0.01em; opacity:.7; max-width:52ch; margin:0;">{t.band_body}</p>
   </div>
 </section>
 </div>
 
 <div class="lg:hidden">
 <section style="background:var(--surface-ink); color:var(--text-on-ink); padding:56px 20px; display:flex; flex-direction:column; gap:24px;">
-  <span style="width:28px; height:28px; background:var(--red-500); display:block;"></span>
-  <h2 style="font-size:32px; line-height:1.05; letter-spacing:-0.03em; font-weight:500; color:var(--text-on-ink); margin:0;">{t.band_title}</h2>
-  <p style="font-size:16px; line-height:1.45; opacity:.7; margin:0;">{t.band_body}</p>
+  <span data-reveal style="--reveal-i:0; width:28px; height:28px; background:var(--red-500); display:block;"></span>
+  <h2 data-reveal style="--reveal-i:1; font-size:32px; line-height:1.05; letter-spacing:-0.03em; font-weight:500; color:var(--text-on-ink); margin:0;">{t.band_title}</h2>
+  <p data-reveal style="--reveal-i:2; font-size:16px; line-height:1.45; opacity:.7; margin:0;">{t.band_body}</p>
 </section>
 </div>

@@ -9,12 +9,15 @@ interface Props {
   a: AccountCard
   balanceLabel: string
   compact?: boolean
+  revealIndex?: number
 }
 
-const { a, balanceLabel, compact = false } = Astro.props
+const { a, balanceLabel, compact = false, revealIndex } = Astro.props
+const revealStyle = revealIndex === undefined ? undefined : `--reveal-i:${revealIndex};`
+const rootStyle = [revealStyle, compact ? 'min-height:0;' : undefined].filter(Boolean).join(' ') || undefined
 ---
 
-<div class="m-acc" style={compact ? 'min-height:0;' : undefined}>
+<div class="m-acc" data-reveal={revealIndex === undefined ? undefined : true} style={rootStyle}>
   <div class="m-acc-head">
     <span class="m-icon">
       <svg
