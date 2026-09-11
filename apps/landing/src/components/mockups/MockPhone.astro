@@ -1,0 +1,192 @@
+---
+/**
+ * Static reproduction of the app on a phone, 390x844. Ported from:
+ *   - apps/web/src/components/layout/bottom-nav.tsx  (.bottom-nav, .bottom-nav-item,
+ *     .bottom-nav-add — PRIMARY = [overview, accounts], the add button, then
+ *     SECONDARY = [transactions], then the "More" toggle)
+ *   - apps/web/src/components/layout/top-bar.tsx      (.topbar, minus the
+ *     add action — real CSS hides .topbar-actions under 900px, the add
+ *     button lives in the bottom bar instead)
+ *   - apps/web/src/features/dashboard/components/dashboard-overview.tsx
+ *     (the mobile column: .stat-grid collapses to 1 column, .tx-row list,
+ *     the accounts .data-row list — all real classes below 900px per
+ *     .panel-grid's own media query)
+ *
+ * Approximated on purpose: the real bottom nav's "More" button opens a
+ * bottom sheet (.more-sheet) with the household switcher and the
+ * remaining sections — omitted here, since a sheet that is always closed
+ * has nothing to reproduce. FirstStepsCard (the onboarding checklist) is
+ * also omitted: it only renders for a household with nothing set up yet,
+ * which the example household isn't.
+ */
+import MockIcon from './MockIcon.astro'
+import { getDictionary, type Locale } from '../../i18n'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = getDictionary(locale).mockups
+
+const period = locale === 'es' ? 'septiembre de 2026' : 'September 2026'
+
+// Trimmed to what a 390x844 frame actually fits without scrolling: the real
+// dashboard shows up to 6 recent movements and 4 accounts (`.slice(0, 4)` in
+// dashboard-overview.tsx), but this frame is a fixed height, not a scrollable
+// viewport, so it takes the first 3 of each — same data, same markup, just
+// fewer rows.
+const recent = [
+  { title: 'Nómina mensual', account: 'Bancolombia Ahorros', income: true, amount: '7.800.000' },
+  { title: 'Homecenter', account: 'Bancolombia Ahorros', income: false, amount: '235.000' },
+  { title: 'Honorarios consultoría', account: 'Nequi', income: true, amount: '1.200.000' },
+]
+
+const accounts: { name: string; type: 'bank' | 'cash'; balance: string }[] = [
+  { name: 'Bancolombia Ahorros', type: 'bank', balance: '3.450.000' },
+  { name: 'Nequi', type: 'bank', balance: '1.280.000' },
+]
+---
+
+<div class="mk-scale-frame mk-scale-frame--phone">
+  <div class="mk-scale-inner">
+    <div class="mk-phone-device">
+      <header class="mk-phone-topbar">
+        <div>
+          <h1 class="mk-topbar-title" style="font-size: var(--text-lg)">{t.shell.title.overview}</h1>
+          <div class="mk-topbar-subtitle">{t.shell.subtitle.overview}</div>
+        </div>
+      </header>
+
+      <div class="mk-phone-scroll">
+        <span class="mk-eyebrow">{t.dashboard.monthBalances.replace('{month}', period)}</span>
+
+        <div class="mk-stat-card mk-stat-card--accent">
+          <div class="mk-stat-card-top">
+            <span class="mk-stat-icon-wrap"><MockIcon name="wallet" size={16} /></span>
+            <span class="mk-stat-label">{t.dashboard.available.replace('{currency}', 'COP')}</span>
+          </div>
+          <span class="mk-stat-value">$ 8.700.000</span>
+        </div>
+
+        <div class="mk-card mk-card--flush">
+          <div class="mk-card-header">
+            <span class="mk-card-title">{t.dashboard.recentActivity}</span>
+            <span class="mk-card-action">{t.dashboard.seeAll}</span>
+          </div>
+          <div class="mk-data-list">
+            {
+              recent.map((row) => (
+                <div class="mk-tx-row">
+                  <span class="mk-tx-icon">
+                    <MockIcon name={row.income ? 'briefcase' : 'cart'} size={16} />
+                  </span>
+                  <div class="mk-tx-main">
+                    <div class="mk-tx-title">{row.title}</div>
+                    <div class="mk-tx-meta">
+                      <span>{row.account}</span>
+                    </div>
+                  </div>
+                  <div class="mk-tx-right">
+                    <span class={`mk-amount mk-amount--sm ${row.income ? 'mk-amount--positive' : 'mk-amount--negative'}`}>
+                      {row.income ? '+' : '−'}$ {row.amount}
+                    </span>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        <div class="mk-card">
+          <div class="mk-card-header">
+            <span class="mk-card-title">{t.dashboard.accounts}</span>
+            <span class="mk-card-action">{t.dashboard.manage}</span>
+          </div>
+          <div class="mk-data-list">
+            {
+              accounts.map((account) => (
+                <div class="mk-data-row">
+                  <div class="mk-account-line">
+                    <span class="mk-account-icon">
+                      <MockIcon name={account.type === 'cash' ? 'cash' : 'bank'} size={16} />
+                    </span>
+                    <div>
+                      <div class="mk-data-row-name">{account.name}</div>
+                      <div class="mk-data-row-meta">{t.accountType[account.type]} · COP</div>
+                    </div>
+                  </div>
+                  <span class="mk-amount mk-amount--sm">$ {account.balance}</span>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+
+      <nav class="mk-bottom-nav" aria-label={t.nav.home}>
+        <span class="mk-bottom-nav-item is-active">
+          <MockIcon name="home" size={21} stroke={2.3} />
+          <span>{t.nav.home}</span>
+        </span>
+        <span class="mk-bottom-nav-item">
+          <MockIcon name="wallet" size={21} />
+          <span>{t.nav.accounts}</span>
+        </span>
+        <span class="mk-bottom-nav-add" aria-hidden="true">
+          <MockIcon name="plus" size={24} stroke={2.4} />
+        </span>
+        <span class="mk-bottom-nav-item">
+          <MockIcon name="list" size={21} />
+          <span>{t.nav.transactions}</span>
+        </span>
+        <span class="mk-bottom-nav-item">
+          <MockIcon name="menu" size={21} />
+          <span>{t.nav.more}</span>
+        </span>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<style>
+  .mk-stat-icon-wrap {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-chip);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--text-on-ink);
+    color: var(--text-on-ink);
+  }
+  .mk-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--pad-block) var(--pad-block) 0;
+    margin-bottom: var(--space-2);
+  }
+  .mk-card:not(.mk-card--flush) .mk-card-header {
+    padding: var(--pad-block) var(--pad-block) 0;
+  }
+  .mk-card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    color: var(--text-strong);
+    letter-spacing: var(--tracking-tight);
+  }
+  .mk-card-action {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .mk-account-line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+</style>

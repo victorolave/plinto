@@ -1,0 +1,150 @@
+---
+/**
+ * Static reproduction of the movements ("Movimientos") screen content,
+ * meant to be rendered inside <AppShell active="transactions">. Ported from:
+ *   - apps/web/src/features/transactions/components/transactions-panel.tsx
+ *     (.balance-strip, .tx-toolbar, .tx-filters)
+ *   - apps/web/src/components/ui/tabs.tsx           (.tabs / .tab / .tab-count)
+ *   - apps/web/src/features/transactions/components/transaction-row.tsx
+ *     (.tx-row and its children — the row markup this mockup copies exactly)
+ *   - apps/web/src/components/ui/pagination.tsx     (.pagination)
+ *
+ * Approximated on purpose: the toolbar's secondary actions (Transferir,
+ * Préstamo, Financiado) and the recurring-rules section below the ledger
+ * are omitted — they open drawers with real forms that have no static
+ * equivalent worth freezing for an animation. The search/account/date
+ * filter controls are static look-alikes (no working `<input>`/`<select>`
+ * behaviour), since nothing here runs client JS.
+ *
+ * Each `.mk-tx-row` carries `style="--row-index: N"` (0-9) so the landing's
+ * CSS can stagger the rows into view without any JS math.
+ */
+import MockIcon from './MockIcon.astro'
+import { getDictionary, type Locale } from '../../i18n'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = getDictionary(locale).mockups
+
+const monthShort = locale === 'es' ? 'sept' : 'Sep'
+const dateLabel = (day: number) => (locale === 'es' ? `${day} ${monthShort}` : `${monthShort} ${day}`)
+
+const balances = [
+  { name: 'Bancolombia Ahorros', amount: '$ 3.450.000', negative: false },
+  { name: 'Nequi', amount: '$ 1.280.000', negative: false },
+  { name: 'Davivienda Ahorros', amount: '$ 5.900.000', negative: false },
+  { name: 'Efectivo', amount: '$ 320.000', negative: false },
+  { name: 'Crédito libre inversión Bancolombia', amount: '$ 4.150.000', negative: true },
+]
+
+const rows = [
+  { day: 30, title: 'Nómina mensual', account: 'Bancolombia Ahorros', income: true, amount: '7.800.000' },
+  { day: 26, title: 'Homecenter', account: 'Bancolombia Ahorros', income: false, amount: '235.000' },
+  { day: 24, title: 'Honorarios consultoría', account: 'Nequi', income: true, amount: '1.200.000' },
+  { day: 19, title: 'Domicilio Rappi', account: 'Nequi', income: false, amount: '45.000' },
+  { day: 18, title: 'Frisby', account: 'Efectivo', income: false, amount: '62.000' },
+  { day: 17, title: 'Uber', account: 'Nequi', income: false, amount: '28.400' },
+  { day: 15, title: 'Mercado Éxito', account: 'Bancolombia Ahorros', income: false, amount: '312.500' },
+  { day: 14, title: 'Netflix', account: 'Davivienda Ahorros', income: false, amount: '44.900' },
+  { day: 5, title: 'Arriendo', account: 'Bancolombia Ahorros', income: false, amount: '2.300.000' },
+  { day: 3, title: 'Farmatodo', account: 'Efectivo', income: false, amount: '78.900' },
+]
+
+const totalCount = 71
+const incomeCount = 16
+const expenseCount = totalCount - incomeCount
+
+const range = t.pagination.range
+  .replace('{start}', '1')
+  .replace('{end}', '10')
+  .replace('{total}', String(totalCount))
+---
+
+<div class="mk-balance-strip" aria-label={t.transactions.accountBalances}>
+  {
+    balances.map((balance) => (
+      <div class="mk-balance-pill">
+        <span class="mk-balance-pill-name">{balance.name}</span>
+        <span class="mk-amount mk-amount--sm">
+          {balance.negative ? '−' : ''}
+          {balance.amount}
+        </span>
+      </div>
+    ))
+  }
+</div>
+
+<div class="mk-tx-toolbar">
+  <div class="mk-tabs" role="tablist">
+    <span class="mk-tab is-active" role="tab" aria-selected="true">
+      {t.transactions.filterAll}
+      <span class="mk-tab-count">{totalCount}</span>
+    </span>
+    <span class="mk-tab" role="tab" aria-selected="false">
+      {t.transactions.filterIncome}
+      <span class="mk-tab-count">{incomeCount}</span>
+    </span>
+    <span class="mk-tab" role="tab" aria-selected="false">
+      {t.transactions.filterExpense}
+      <span class="mk-tab-count">{expenseCount}</span>
+    </span>
+  </div>
+  <div class="mk-tx-toolbar-actions">
+    <span class="mk-btn">
+      <MockIcon name="plus" size={18} />
+      {t.shell.addTransaction}
+    </span>
+  </div>
+</div>
+
+<div class="mk-tx-filters">
+  <div class="mk-input-group">
+    <span class="mk-input-group-icon"><MockIcon name="search" size={16} /></span>
+    <span class="mk-input">{t.transactions.searchPlaceholder}</span>
+  </div>
+  <span class="mk-select">{t.transactions.allAccounts}</span>
+  <span class="mk-select">{locale === 'es' ? 'Este mes' : 'This month'}</span>
+</div>
+
+<div class="mk-card mk-card--flush">
+  <div class="mk-data-list">
+    {
+      rows.map((row, index) => (
+        <div class="mk-tx-row" style={`--row-index: ${index}`}>
+          <span class="mk-tx-icon">
+            <MockIcon name={row.income ? 'briefcase' : 'cart'} size={18} />
+          </span>
+          <div class="mk-tx-main">
+            <div class="mk-tx-title">{row.title}</div>
+            <div class="mk-tx-meta">
+              <span>{dateLabel(row.day)}</span>
+              <span>·</span>
+              <span>{row.account}</span>
+            </div>
+          </div>
+          <div class="mk-tx-right">
+            <span class={`mk-amount mk-amount--sm ${row.income ? 'mk-amount--positive' : 'mk-amount--negative'}`}>
+              {row.income ? '+' : '−'}$ {row.amount}
+            </span>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<nav class="mk-pagination" aria-label="pagination">
+  <p class="mk-pagination-range">{range}</p>
+  <div class="mk-pagination-controls">
+    <span class="mk-pagination-step" data-disabled="true">‹</span>
+    <span class="mk-pagination-page is-current">1</span>
+    <span class="mk-pagination-page">2</span>
+    <span class="mk-pagination-page">3</span>
+    <span class="mk-pagination-gap">…</span>
+    <span class="mk-pagination-page">8</span>
+    <span class="mk-pagination-step">›</span>
+  </div>
+</nav>
