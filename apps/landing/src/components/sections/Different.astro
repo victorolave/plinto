@@ -1,0 +1,84 @@
+---
+// "04 · Lo distinto" — the four differentiators, plus "Una casa, tres
+// roles" (the household-members mockup). The design only shows the roles
+// mockup on desktop — mobile stops at the four diff cards — so that is
+// ported as-is, not added back in for mobile.
+import { getDictionary, type Locale } from '../../i18n'
+import { getLandingContent } from '../../data/landing-content'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = getDictionary(locale).landing
+const { diffs, roles } = getLandingContent(locale)
+---
+
+<!-- ================= DESKTOP ================= -->
+<div class="hidden lg:block">
+<section style="padding:104px 40px; border-top:2px solid var(--rule-strong); display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; row-gap:64px;">
+  <div style="grid-column:1 / span 7;">
+    <span class="plinto-eyebrow" style="margin-bottom:24px;">04 · {t.diff_eyebrow}</span>
+    <h2 style="font-size:48px; line-height:1.04; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0; text-wrap:balance;">{t.diff_title}</h2>
+  </div>
+  <div style="grid-column:1 / span 12; display:grid; grid-template-columns:repeat(4,1fr); column-gap:32px;">
+    {diffs.map((d) => (
+      <div style="border-top:1px solid var(--rule-strong); padding-top:20px; display:flex; flex-direction:column; gap:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-strong);"><path d={d.p1}></path><path d={d.p2}></path><path d={d.p3}></path><path d={d.p4}></path></svg>
+          <span class="plinto-money" style="font-size:13px; color:var(--text-muted);">{d.n}</span>
+        </div>
+        <h3 style="font-size:22px; line-height:1.2; letter-spacing:-0.02em; font-weight:500; color:var(--text-strong); margin:0;">{d.title}</h3>
+        <p style="font-size:15px; color:var(--text-muted); margin:0;">{d.body}</p>
+      </div>
+    ))}
+  </div>
+  <!-- household members, as the Ajustes › miembros list renders them -->
+  <div style="grid-column:1 / span 12; display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; align-items:start;">
+    <div style="grid-column:1 / span 4; padding-top:8px;">
+      <span class="plinto-eyebrow" style="margin-bottom:8px;">{t.roles_eyebrow}</span>
+      <h4 style="font-size:22px; font-weight:500; letter-spacing:-0.02em; margin:0; color:var(--text-strong);">{t.roles_title}</h4>
+    </div>
+    <div style="grid-column:5 / span 8;">
+      <div class="m-app" style="border:1px solid var(--border-hair);"><div class="m-main"><div class="m-page">
+        <div class="m-card m-card--flush">
+          <div class="m-card-head" style="padding:20px 24px 0; margin-bottom:8px;"><div><div class="m-card-title">{t.members_title}</div><div class="m-card-sub">{t.members_sub}</div></div><span class="m-btn m-btn--sm m-btn--secondary">{t.members_invite}</span></div>
+          <div class="m-list" style="padding:0 16px 8px;">
+            {roles.map((r) => (
+              <div class="m-row">
+                <span class="m-avatar">{r.ini}</span>
+                <div class="m-row-main"><div class="m-name">{r.name}</div><div class="m-meta">{r.desc}</div></div>
+                <div class="m-right"><span class={`m-badge m-badge--${r.tone}`}>{r.role}</span></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ================= MOBILE ================= -->
+<div class="lg:hidden">
+<section style="padding:56px 20px; border-top:2px solid var(--rule-strong); display:flex; flex-direction:column; gap:32px;">
+  <div>
+    <span class="plinto-eyebrow" style="margin-bottom:16px;">04 · {t.diff_eyebrow}</span>
+    <h2 style="font-size:32px; line-height:1.05; letter-spacing:-0.03em; font-weight:500; color:var(--text-strong); margin:0;">{t.diff_title}</h2>
+  </div>
+  <div style="display:flex; flex-direction:column;">
+    {diffs.map((d) => (
+      <div style="border-top:1px solid var(--rule-hair); padding:20px 0; display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-strong);"><path d={d.p1}></path><path d={d.p2}></path><path d={d.p3}></path><path d={d.p4}></path></svg>
+          <span class="plinto-money" style="font-size:12px; color:var(--text-muted);">{d.n}</span>
+        </div>
+        <h3 style="font-size:20px; line-height:1.2; letter-spacing:-0.02em; font-weight:500; color:var(--text-strong); margin:0;">{d.title}</h3>
+        <p style="font-size:15px; color:var(--text-muted); margin:0;">{d.body}</p>
+      </div>
+    ))}
+  </div>
+</section>
+
+</div>
