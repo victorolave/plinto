@@ -1,8 +1,10 @@
 ---
 // "07 · Código abierto" — body copy plus the three GitHub/license/
 // contributing links. The small label on the right of each link differs
-// between desktop and mobile in the design itself (e.g. "github.com/plinto"
-// vs "GitHub"), ported as-is.
+// between desktop and mobile in the design itself ("github.com/…" vs a bare
+// "GitHub"), ported as-is. The desktop label was corrected: the design wrote
+// "github.com/plinto", which is a real GitHub account belonging to someone
+// else — a reader typing it lands on a stranger's page.
 import { getDictionary, type Locale } from '../../i18n'
 import { LINKS } from '../../data/links'
 
@@ -24,7 +26,7 @@ const t = getDictionary(locale).landing
   <div style="grid-column:7 / span 6; display:flex; flex-direction:column; gap:32px;">
     <p data-reveal style="--reveal-i:1; font-size:20px; line-height:1.45; color:var(--text-body); margin:0;">{t.oss_body}</p>
     <div style="display:flex; flex-direction:column;">
-      <a href={LINKS.repo} data-reveal style="--reveal-i:2; display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-strong); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link1}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">github.com/plinto</span></a>
+      <a href={LINKS.repo} data-reveal style="--reveal-i:2; display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-strong); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link1}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">github.com/victorolave/plinto</span></a>
       <a href={LINKS.license} data-reveal style="--reveal-i:3; display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-hair); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link2}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">AGPL-3.0</span></a>
       <a href={LINKS.contributing} data-reveal style="--reveal-i:4; display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid var(--rule-hair); border-bottom:1px solid var(--rule-hair); font-size:16px; font-weight:500; color:var(--text-strong);"><span>{t.oss_link3}</span><span class="plinto-money" style="font-size:13px; color:var(--text-muted);">CONTRIBUTING.md</span></a>
     </div>
