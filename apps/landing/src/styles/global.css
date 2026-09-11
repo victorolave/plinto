@@ -31,6 +31,10 @@
    src/styles/buttons.css for provenance notes). */
 @import './buttons.css';
 
+/* Additive scroll motion on top of the design above — never changes
+   layout, color, type or spacing. See src/styles/motion.css. */
+@import './motion.css';
+
 @import 'tailwindcss';
 
 /* ============================================================
