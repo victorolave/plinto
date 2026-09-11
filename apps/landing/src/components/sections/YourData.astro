@@ -14,9 +14,13 @@ const { dataFacts } = getLandingContent(locale)
 const coverImg = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;'
 ---
 
+<!-- The anchor lives on this wrapper, not on the desktop <section>:
+     that one is display:none below 1024px, so #data had no box to
+     scroll to on a phone and every deep link silently did nothing. -->
+<div id="data">
 <!-- ================= DESKTOP ================= -->
 <div class="hidden lg:block">
-<section id="data" style="padding:104px 40px; border-top:2px solid var(--rule-strong); display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; row-gap:64px;">
+<section style="padding:104px 40px; border-top:2px solid var(--rule-strong); display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; row-gap:64px;">
   <div style="grid-column:1 / span 7;">
     <span class="plinto-eyebrow" style="margin-bottom:24px;">06 · {t.data_eyebrow}</span>
     <h2 data-reveal style="--reveal-i:0; font-size:64px; line-height:1.0; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0; max-width:18ch; text-wrap:balance;">{t.data_title}</h2>
@@ -58,4 +62,5 @@ const coverImg = 'position:absolute; inset:0; width:100%; height:100%; object-fi
   </div>
 </section>
 
+</div>
 </div>

@@ -28,7 +28,13 @@ function initReveals(): void {
         observer.unobserve(entry.target)
       }
     },
-    { rootMargin: '0px 0px -12% 0px', threshold: 0 },
+    // A FIXED offset, not a percentage. With '-12%' the effective bottom edge
+    // scales with the viewport, so an element anchored to the end of the
+    // document could sit permanently below it and never intersect: the footer's
+    // legal line stayed at opacity 0 forever at 1440x800 and 390x844, but
+    // revealed fine at 390x667. A constant cannot depend on window height, so
+    // the bug cannot come back on a screen nobody tested.
+    { rootMargin: '0px 0px -40px 0px', threshold: 0 },
   )
 
   for (const el of els) io.observe(el)

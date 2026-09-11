@@ -16,9 +16,13 @@ const { locale } = Astro.props
 const t = getDictionary(locale).landing
 ---
 
+<!-- The anchor lives on this wrapper, not on the desktop <section>:
+     that one is display:none below 1024px, so #oss had no box to
+     scroll to on a phone and every deep link silently did nothing. -->
+<div id="oss">
 <!-- ================= DESKTOP ================= -->
 <div class="hidden lg:block">
-<section id="oss" style="padding:104px 40px; border-top:2px solid var(--rule-strong); display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px;">
+<section style="padding:104px 40px; border-top:2px solid var(--rule-strong); display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px;">
   <div data-reveal style="--reveal-i:0; grid-column:1 / span 5;">
     <span class="plinto-eyebrow" style="margin-bottom:24px;">07 · {t.oss_eyebrow}</span>
     <h2 style="font-size:48px; line-height:1.04; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0; text-wrap:balance;">{t.oss_title}</h2>
@@ -49,4 +53,5 @@ const t = getDictionary(locale).landing
   </div>
 </section>
 
+</div>
 </div>
