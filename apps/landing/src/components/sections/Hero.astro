@@ -13,6 +13,7 @@
 import { getDictionary, type Locale } from '../../i18n'
 import { getLandingContent } from '../../data/landing-content'
 import ObligationRow from './ObligationRow.astro'
+import { LINKS } from '../../data/links'
 
 interface Props {
   locale: Locale
@@ -36,7 +37,7 @@ const { obligations, obligationsShort, sum } = getLandingContent(locale)
   <div style="grid-column:9 / span 4; display:flex; flex-direction:column; gap:32px;">
     <p data-reveal style="--reveal-i:1; font-size:22px; line-height:1.4; letter-spacing:-0.01em; color:var(--text-muted); margin:0;">{t.hero_sub}</p>
     <div data-reveal style="--reveal-i:2; display:flex; flex-direction:column; gap:10px; align-items:stretch;">
-      <a href="#" class="btn btn--secondary btn--lg btn--block">{t.cta_install}</a>
+      <a href={LINKS.selfHost} class="btn btn--secondary btn--lg btn--block">{t.cta_install}</a>
     </div>
     <div data-reveal style="--reveal-i:3; display:flex; gap:16px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted);">
       <span>AGPL-3.0</span><span>·</span><span>docker compose up</span><span>·</span><span>{t.hero_note}</span>
@@ -107,7 +108,7 @@ const { obligations, obligationsShort, sum } = getLandingContent(locale)
   <h1 data-reveal style="--reveal-i:0; font-size:40px; line-height:1.02; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0;">{t.hero_title}</h1>
   <p data-reveal style="--reveal-i:1; font-size:18px; line-height:1.4; color:var(--text-muted); margin:0;">{t.hero_sub}</p>
   <div data-reveal style="--reveal-i:2; display:flex; flex-direction:column; gap:10px;">
-    <a href="#" class="btn btn--secondary btn--lg btn--block">{t.cta_install}</a>
+    <a href={LINKS.selfHost} class="btn btn--secondary btn--lg btn--block">{t.cta_install}</a>
   </div>
   <!-- The product on a phone: top bar, Obligaciones page, bottom nav -->
   <div data-scrub="hero" style="margin-top:12px; height:620px; overflow:hidden; border:1px solid var(--border-default); border-bottom:2px solid var(--rule-strong);">
