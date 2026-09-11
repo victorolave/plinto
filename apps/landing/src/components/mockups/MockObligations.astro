@@ -1,0 +1,156 @@
+---
+/**
+ * Static reproduction of the obligations ("Obligaciones") screen content,
+ * meant to be rendered inside <AppShell active="obligations">. Ported from:
+ *   - apps/web/src/features/obligations/components/obligations-panel.tsx
+ *     (.categories-head period nav, STATUS_TONE badge-tone map, the
+ *     .data-row markup and its "· abonado {amount}" settled suffix — shown
+ *     whenever paidAmountMinor > 0, even on a FULLY paid obligation, which
+ *     is why Colegio and Arriendo below carry it too)
+ *   - apps/web/src/features/obligations/components/obligation-summary.tsx
+ *     (.stat-grid Total / Pagado / Pendiente tiles — only the outstanding
+ *     tile gets stat-card--accent, and only when it is > 0)
+ *
+ * Approximated on purpose: each real row also carries an <ActionsMenu/>
+ * (link/unlink payment dropdown) — omitted, since a menu with nothing to
+ * open has no static form worth freezing.
+ *
+ * Status -> badge tone is the real STATUS_TONE table, not a guess:
+ * pending -> neutral, partial -> warning, paid -> success, overdue -> danger.
+ */
+import MockIcon from './MockIcon.astro'
+import { getDictionary, type Locale } from '../../i18n'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = getDictionary(locale).mockups
+
+const period = locale === 'es' ? 'septiembre de 2026' : 'September 2026'
+
+const dueOn = (day: number) => t.obligations.dueOn.replace('{date}', String(day))
+
+const obligations = [
+  {
+    name: 'Colegio',
+    due: 3,
+    expected: '850.000',
+    paid: '850.000',
+    status: 'paid' as const,
+  },
+  {
+    name: 'Arriendo',
+    due: 5,
+    expected: '2.300.000',
+    paid: '2.300.000',
+    status: 'paid' as const,
+  },
+  {
+    name: 'Cuota moto Auteco',
+    due: 8,
+    expected: '410.000',
+    paid: '200.000',
+    status: 'partial' as const,
+  },
+  {
+    name: 'Administración conjunto',
+    due: 10,
+    expected: '320.000',
+    paid: null,
+    status: 'pending' as const,
+  },
+  {
+    name: 'EPM servicios',
+    due: 12,
+    expected: '385.000',
+    paid: null,
+    status: 'pending' as const,
+  },
+  {
+    name: 'Seguro vehículo SOAT',
+    due: 25,
+    expected: '620.000',
+    paid: null,
+    status: 'overdue' as const,
+  },
+]
+
+const statusLabel: Record<(typeof obligations)[number]['status'], string> = {
+  pending: t.obligations.statusPending,
+  partial: t.obligations.statusPartial,
+  paid: t.obligations.statusPaid,
+  overdue: t.obligations.statusOverdue,
+}
+---
+
+<div class="mk-obligations-head">
+  <div class="mk-period-nav">
+    <span class="mk-icon-btn-ghost" aria-hidden="true">
+      <MockIcon name="chevronRight" size={16} class="mk-icon-flip" />
+    </span>
+    <strong>{period}</strong>
+    <span class="mk-icon-btn-ghost" aria-hidden="true">
+      <MockIcon name="chevronRight" size={16} />
+    </span>
+  </div>
+  <span class="mk-btn">
+    <MockIcon name="plus" size={18} />
+    {t.obligations.oneOff}
+  </span>
+</div>
+
+<div class="mk-stat-grid">
+  <div class="mk-stat-card">
+    <div class="mk-stat-card-top">
+      <span class="mk-stat-label">{t.obligations.total}</span>
+      <span class="mk-currency-tag">COP</span>
+    </div>
+    <span class="mk-amount mk-amount--lg">$ 4.885.000</span>
+  </div>
+  <div class="mk-stat-card">
+    <div class="mk-stat-card-top">
+      <span class="mk-stat-label">{t.obligations.paid}</span>
+      <span class="mk-currency-tag">COP</span>
+    </div>
+    <span class="mk-amount mk-amount--lg">$ 3.350.000</span>
+  </div>
+  <div class="mk-stat-card mk-stat-card--accent">
+    <div class="mk-stat-card-top">
+      <span class="mk-stat-label">{t.obligations.outstanding}</span>
+      <span class="mk-currency-tag">COP</span>
+    </div>
+    <span class="mk-amount mk-amount--lg">$ 1.535.000</span>
+  </div>
+</div>
+
+<div class="mk-card mk-card--flush">
+  <div class="mk-data-list">
+    {
+      obligations.map((obligation) => (
+        <div class="mk-data-row">
+          <div style="min-width:0">
+            <div class="mk-data-row-name">{obligation.name}</div>
+            <div class="mk-data-row-meta">
+              {dueOn(obligation.due)}
+              {obligation.paid ? (
+                <>
+                  {' · '}
+                  {t.obligations.settled}{' '}
+                  <span class="mk-amount mk-amount--sm">$ {obligation.paid}</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+          <div class="mk-data-row-end">
+            <span class="mk-amount mk-amount--sm">$ {obligation.expected}</span>
+            <span class="mk-badge" data-status={obligation.status}>
+              {statusLabel[obligation.status]}
+            </span>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</div>

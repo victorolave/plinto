@@ -1,0 +1,142 @@
+---
+/**
+ * Static reproduction of the real desktop app window, for the landing to
+ * animate. Ported from:
+ *   - apps/web/src/components/layout/dashboard-shell.tsx  (.app-shell / .app-main / .app-scroll)
+ *   - apps/web/src/components/layout/sidebar.tsx           (.sidebar, .nav-item, .nav-item-marker)
+ *   - apps/web/src/components/layout/top-bar.tsx            (.topbar)
+ *   - apps/web/src/components/layout/dashboard-nav.ts       (the 7-item NAV table + section ids)
+ *
+ * Approximated on purpose (documented in the landing PR): the real sidebar
+ * also renders <TenantSwitcher/> (a household-switching dropdown) and reads
+ * user/session state from DashboardContext (dashboard-shell.tsx's provider).
+ * Both depend on live, client-side data that has no meaning in a static
+ * marketing mockup, so they're replaced here with a fixed example-household
+ * name — everything else (nav items, active marker, topbar) is the real
+ * markup and the real CSS, just static.
+ *
+ * Design width is fixed at 1360px; .mk-scale-frame--shell scales the whole
+ * thing down to fit any viewport without touching the internal layout.
+ */
+import MockIcon, { type MockIconName } from './MockIcon.astro'
+import { getDictionary, type Locale } from '../../i18n'
+
+export type ShellSection =
+  | 'overview'
+  | 'accounts'
+  | 'transactions'
+  | 'obligations'
+  | 'debts'
+  | 'credit'
+  | 'categories'
+
+interface Props {
+  locale: Locale
+  active: ShellSection
+  title: string
+  subtitle: string
+  /** Shows the "Agregar movimiento" primary action in the topbar. Default true. */
+  showAdd?: boolean
+  /**
+   * Design-pixel height of the 1360px-wide frame, at the content's natural
+   * (unscaled) size. Content height differs per page (a 10-row ledger vs a
+   * 6-row obligations board), and a pure-CSS scale-to-fit needs a real
+   * aspect-ratio to compute the scale from — so callers measure their own
+   * slotted content once and pass it here, rather than this component
+   * guessing a one-size-fits-all height that would either clip content or
+   * leave dead space below it.
+   */
+  frameHeight?: number
+}
+
+const { locale, active, title, subtitle, showAdd = true, frameHeight = 840 } = Astro.props
+const t = getDictionary(locale).mockups
+
+const NAV: { id: ShellSection; icon: MockIconName }[] = [
+  { id: 'overview', icon: 'home' },
+  { id: 'accounts', icon: 'wallet' },
+  { id: 'transactions', icon: 'list' },
+  { id: 'obligations', icon: 'target' },
+  { id: 'debts', icon: 'trendDown' },
+  { id: 'credit', icon: 'card' },
+  { id: 'categories', icon: 'tag' },
+]
+---
+
+<div class="mk-scale-frame mk-scale-frame--shell" style={`aspect-ratio: 1360 / ${frameHeight}`}>
+  <div class="mk-scale-inner" style={`height: ${frameHeight}px`}>
+    <div class="mk-app-shell">
+      <aside class="mk-sidebar">
+        <div class="mk-sidebar-brand">
+          <img src="/horizontal-white.png" alt="Plinto" width="92" height="28" />
+        </div>
+
+        <nav class="mk-sidebar-nav">
+          {
+            NAV.map((entry) => (
+              <span class={`mk-nav-item ${entry.id === active ? 'is-active' : ''}`.trim()}>
+                <span class="mk-nav-item-marker" />
+                <MockIcon name={entry.icon} size={19} stroke={entry.id === active ? 2.2 : 2} />
+                {t.nav[entry.id]}
+              </span>
+            ))
+          }
+        </nav>
+
+        <div class="mk-sidebar-footer">
+          <span class="mk-nav-item">
+            <span class="mk-nav-item-marker" />
+            <MockIcon name="settings" size={19} />
+            {t.nav.settings}
+          </span>
+          <span class="mk-nav-item">
+            <span class="mk-nav-item-marker" />
+            <MockIcon name="helpCircle" size={19} />
+            {t.nav.help}
+          </span>
+
+          <div class="mk-sidebar-user">
+            <span class="mk-sidebar-user-avatar">FL</span>
+            <div style="min-width:0; flex:1">
+              <div class="mk-sidebar-user-name">Familia López</div>
+              <div class="mk-sidebar-user-email">hola@ejemplo.com</div>
+            </div>
+            <MockIcon name="logOut" size={16} class="mk-sidebar-user-logout" />
+          </div>
+        </div>
+      </aside>
+
+      <div class="mk-app-main">
+        <header class="mk-topbar">
+          <div style="min-width:0">
+            <h1 class="mk-topbar-title">{title}</h1>
+            <div class="mk-topbar-subtitle">{subtitle}</div>
+          </div>
+          <div class="mk-topbar-actions">
+            {
+              showAdd && (
+                <span class="mk-btn">
+                  <MockIcon name="plus" size={18} />
+                  {t.shell.addTransaction}
+                </span>
+              )
+            }
+          </div>
+        </header>
+
+        <div class="mk-app-scroll">
+          <div class="mk-page">
+            <slot />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .mk-sidebar-user-logout {
+    flex-shrink: 0;
+    color: var(--chrome-text-subtle);
+  }
+</style>

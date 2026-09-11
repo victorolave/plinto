@@ -22,6 +22,11 @@
    elevation and motion. See docs/design/foundation.md. */
 @import '@plinto/design-tokens';
 
+/* Static app-UI mockups (mk- prefixed), ported from apps/web's real
+   component classes so the landing can animate a faithful reproduction
+   of the dashboard. See src/styles/mockups.css for provenance notes. */
+@import './mockups.css';
+
 @import 'tailwindcss';
 
 /* ============================================================
