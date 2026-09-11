@@ -1,0 +1,51 @@
+---
+// Site nav. Desktop: 12-col header with the anchor nav + CTA(s). Mobile:
+// logo + a static hamburger glyph — the design does not wire it to an
+// actual menu (no menu markup exists anywhere in landing.dc.html), so
+// this ports it exactly as drawn: decorative, not functional. A working
+// mobile menu is a follow-up, not part of this port.
+//
+// Cloud deviation: the design's nav carries two buttons, a ghost
+// `cta_install` and a primary `cta_cloud` ("Probar Plinto Cloud"). Cloud
+// is not a real product yet, so `cta_cloud` is dropped here too (not just
+// in the hero and the plans table, which is what the brief calls out by
+// name) — the nav is the one place not explicitly listed, flagged in the
+// handoff notes.
+import { getDictionary, type Locale } from '../../i18n'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = getDictionary(locale).landing
+const logoWidthDesktop = 72
+const logoHeightDesktop = 22
+---
+
+<div class="hidden lg:block">
+  <header style="height:60px; display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; align-items:center; padding:0 40px; border-bottom:1px solid var(--rule-hair); background:var(--surface-card);">
+    <div style="grid-column:1 / span 3; display:flex; align-items:center;">
+      <img src="/horizontal.png" alt="Plinto" width={logoWidthDesktop} height={logoHeightDesktop} style="height:22px; width:auto;" />
+    </div>
+    <nav style="grid-column:4 / span 6; display:flex; gap:32px; justify-content:center; font-size:14px;">
+      <a href="#how" style="color:var(--text-body);">{t.nav_how}</a>
+      <a href="#plans" style="color:var(--text-body);">{t.nav_plans}</a>
+      <a href="#data" style="color:var(--text-body);">{t.nav_data}</a>
+      <a href="#oss" style="color:var(--text-body);">GitHub</a>
+    </nav>
+    <div style="grid-column:10 / span 3; display:flex; gap:12px; justify-content:flex-end;">
+      <a href="#" class="btn btn--ghost btn--sm">{t.cta_install}</a>
+    </div>
+  </header>
+</div>
+
+<div class="lg:hidden">
+  <header style="height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; border-bottom:1px solid var(--rule-hair); background:var(--surface-card);">
+    <img src="/horizontal.png" alt="Plinto" width="85" height="26" style="height:26px; width:auto;" />
+    <div style="display:flex; flex-direction:column; gap:5px; width:22px;">
+      <span style="height:2px; background:var(--text-strong);"></span>
+      <span style="height:2px; background:var(--text-strong);"></span>
+    </div>
+  </header>
+</div>

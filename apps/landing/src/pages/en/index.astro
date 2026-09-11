@@ -1,12 +1,32 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import { getDictionary } from '../../i18n'
+import Header from '../../components/sections/Header.astro'
+import Hero from '../../components/sections/Hero.astro'
+import IdeaBand from '../../components/sections/IdeaBand.astro'
+import Problem from '../../components/sections/Problem.astro'
+import HowItWorks from '../../components/sections/HowItWorks.astro'
+import Different from '../../components/sections/Different.astro'
+import Plans from '../../components/sections/Plans.astro'
+import YourData from '../../components/sections/YourData.astro'
+import OpenSource from '../../components/sections/OpenSource.astro'
+import Footer from '../../components/sections/Footer.astro'
 
-const t = getDictionary('en')
+const locale = 'en' as const
+const t = getDictionary(locale)
 ---
 
 <BaseLayout title={t.meta.title} description={t.meta.description}>
+  <Header locale={locale} />
   <main>
-    <h1>{t.hero.tagline}</h1>
+    <Hero locale={locale} />
+    <IdeaBand locale={locale} />
+    <Problem locale={locale} />
+    <HowItWorks locale={locale} />
+    <Different locale={locale} />
+    <Plans locale={locale} />
+    <YourData locale={locale} />
+    <OpenSource locale={locale} />
   </main>
+  <Footer locale={locale} />
 </BaseLayout>
