@@ -52,6 +52,16 @@ interface Props {
 const { locale, active, title, subtitle, showAdd = true, frameHeight = 840 } = Astro.props
 const t = getDictionary(locale).mockups
 
+// Initials for the sidebar avatar, derived from the localised household name
+// so "Hogar de ejemplo" reads HE and "Example household" reads EH.
+const householdInitials = t.shell.householdName
+  .split(' ')
+  .filter((word) => word.length > 2)
+  .slice(0, 2)
+  .map((word) => word[0])
+  .join('')
+  .toUpperCase()
+
 const NAV: { id: ShellSection; icon: MockIconName }[] = [
   { id: 'overview', icon: 'home' },
   { id: 'accounts', icon: 'wallet' },
@@ -96,10 +106,10 @@ const NAV: { id: ShellSection; icon: MockIconName }[] = [
           </span>
 
           <div class="mk-sidebar-user">
-            <span class="mk-sidebar-user-avatar">FL</span>
+            <span class="mk-sidebar-user-avatar">{householdInitials}</span>
             <div style="min-width:0; flex:1">
-              <div class="mk-sidebar-user-name">Familia López</div>
-              <div class="mk-sidebar-user-email">hola@ejemplo.com</div>
+              <div class="mk-sidebar-user-name">{t.shell.householdName}</div>
+              <div class="mk-sidebar-user-email">{t.shell.exampleEmail}</div>
             </div>
             <MockIcon name="logOut" size={16} class="mk-sidebar-user-logout" />
           </div>
