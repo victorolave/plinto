@@ -1,0 +1,93 @@
+/* ============================================================
+   PLINTO · LANDING — buttons
+   ------------------------------------------------------------
+   The design (landing.dc.html) draws every CTA as
+   `PlintoDesignSystem_8c861d.Button`, a component from the Claude
+   Design tool's own bundle (_ds_bundle.js) — a design-tool script,
+   not content, so it has no CSS in the design file to port.
+
+   The real button it stands in for already exists in the product:
+   apps/web/src/styles/globals.css `.btn` / `.btn--secondary` /
+   `.btn--ghost` / `.btn--sm`. Ported here verbatim (same tokens,
+   same states) instead of inventing a new button, so the landing's
+   CTAs are the same control the app itself uses.
+
+   `.btn--lg` is the one addition: the design uses a `size="lg"`
+   button (hero, plans) that apps/web's own button component does
+   not define. Built from the same --control-lg / --text-lg tokens
+   the rest of the scale already uses.
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--control-md);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  border-color: var(--action-primary);
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+.btn:hover {
+  background: var(--action-primary-hover);
+  border-color: var(--action-primary-hover);
+  color: var(--action-primary-text);
+  text-decoration: none;
+}
+.btn:active {
+  background: var(--action-primary-active);
+  border-color: var(--action-primary-active);
+}
+.btn--secondary {
+  background: transparent;
+  color: var(--text-strong);
+  border-color: var(--border-strong);
+}
+.btn--secondary:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+  border-color: var(--border-strong);
+}
+.btn--secondary:active {
+  background: var(--surface-active);
+  border-color: var(--border-strong);
+}
+.btn--ghost {
+  background: transparent;
+  color: var(--text-body);
+  border-color: transparent;
+}
+.btn--ghost:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+  border-color: transparent;
+}
+.btn--ghost:active {
+  background: var(--surface-active);
+  border-color: transparent;
+}
+.btn--sm {
+  height: var(--control-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+.btn--lg {
+  height: var(--control-lg);
+  padding: 0 var(--space-5);
+  font-size: var(--text-lg);
+}
+.btn--block {
+  width: 100%;
+}
