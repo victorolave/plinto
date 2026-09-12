@@ -269,7 +269,33 @@ Complete all relevant checklist items. This helps ensure code quality:
 #### Screenshots / Demo
 For UI changes, include before/after screenshots or a demo. This helps reviewers understand visual changes quickly.
 
-#### Breaking Changes
+#### One author per commit
+
+Commit messages here carry one name. Assistants and agents write code in this
+repository, and that is fine — the person reviewing and merging is the author of
+what lands, so the trailers stay for what trailers are for.
+
+Concretely, a commit message must not contain:
+
+- `Co-Authored-By:` naming an assistant rather than a person
+- a "generated with" footer added by a tool
+
+A human `Co-Authored-By:` is welcome; that is what the trailer is for.
+
+Two things enforce this. A local hook, which you install once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+And the `Commit messages` job in CI, which inspects only the commits your pull
+request introduces. The hook is the convenience — it runs before you push, and
+`--no-verify` skips it. The CI job is the one that holds.
+
+If a commit already carries a trailer, amend it (`git commit --amend`) or
+rebase to rewrite the messages before pushing.
+
+### Breaking Changes
 If your PR introduces breaking changes:
 - Mark the checkbox
 - Clearly describe what breaks and how to migrate

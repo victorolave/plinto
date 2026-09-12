@@ -18,6 +18,58 @@ permissions:
   contents: read
 
 jobs:
+  commit-hygiene:
+    name: Commit messages
+    runs-on: ubuntu-latest
+
+    # Agents write code in this repository and the person decides what lands,
+    # so the commits carry one name. Three commits reached a published release
+    # with a Co-Authored-By line an agent added on its own, and nothing caught
+    # it — .githooks/commit-msg catches it locally, but a hook only runs where
+    # somebody configured it and --no-verify skips it. This is the check that
+    # holds.
+    #
+    # Only the commits the change itself introduces are inspected. Rewriting
+    # history to satisfy a new rule is not something a CI job should ask for.
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The merge-base needs both sides, so the shallow default is not enough.
+          fetch-depth: 0
+
+      - name: Reject AI attribution in the new commits
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          range="$(git merge-base "$BASE" "$HEAD")..$HEAD"
+          trailers='^[[:space:]]*(co-authored-by|signed-off-by|assisted-by|generated-by)[[:space:]]*:.*(claude|anthropic|copilot|chatgpt|openai|gemini|cursor|codex|devin|aider)'
+          footers='generated with \[?(claude|copilot|cursor|codex)|🤖 generated'
+
+          bad=0
+          for sha in $(git rev-list "$range"); do
+            body="$(git log -1 --format='%B' "$sha")"
+            hit="$(printf '%s' "$body" | grep -inE "$trailers|$footers" || true)"
+            if [ -n "$hit" ]; then
+              echo "::error::$(git log -1 --format='%h %s' "$sha") carries AI attribution"
+              printf '%s\n' "$hit" | sed 's/^/    /'
+              bad=1
+            fi
+          done
+
+          if [ "$bad" -ne 0 ]; then
+            echo ""
+            echo "Commit messages in this repository carry one author. Drop the"
+            echo "trailer and amend, or rebase to rewrite the messages."
+            exit 1
+          fi
+
+          echo "$(git rev-list --count "$range") commit(s) checked, all clean."
+
   verify:
     name: Test, lint and build
     runs-on: ubuntu-latest

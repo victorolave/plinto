@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+# Reject AI attribution in commit messages.
+#
+# This repository is authored by a person. Agents write code here, and the
+# person decides what lands — so the commits carry one name, and the trailers
+# stay for what trailers are for. Three commits reached a published release
+# carrying a Co-Authored-By line an agent added on its own; this exists so a
+# fourth cannot.
+#
+# Installed by pointing git at this directory once per clone:
+#
+#     git config core.hooksPath .githooks
+#
+# A hook is a convenience, not the enforcement: it only runs where somebody
+# configured it, and --no-verify skips it. The check that actually holds is
+# the one in .github/workflows/ci.yml, which no local setting can bypass.
+
+msg_file="$1"
+
+trailers='^[[:space:]]*(co-authored-by|signed-off-by|assisted-by|generated-by)[[:space:]]*:.*(claude|anthropic|copilot|chatgpt|openai|gemini|cursor|codex|devin|aider)'
+footers='generated with \[?(claude|copilot|cursor|codex)|🤖 generated'
+
+if grep -qiE "$trailers" "$msg_file"; then
+  echo "commit-msg: this message carries an AI attribution trailer." >&2
+  echo "" >&2
+  grep -inE "$trailers" "$msg_file" | sed 's/^/  /' >&2
+  echo "" >&2
+  echo "Remove the line and commit again. See CONTRIBUTING.md." >&2
+  exit 1
+fi
+
+if grep -qiE "$footers" "$msg_file"; then
+  echo "commit-msg: this message carries an AI-generated footer." >&2
+  echo "" >&2
+  grep -inE "$footers" "$msg_file" | sed 's/^/  /' >&2
+  echo "" >&2
+  echo "Remove the line and commit again. See CONTRIBUTING.md." >&2
+  exit 1
+fi
+
+exit 0
