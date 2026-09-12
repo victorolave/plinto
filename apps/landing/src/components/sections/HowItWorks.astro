@@ -1,0 +1,189 @@
+---
+// "03 · Cómo funciona" — the three steps: accounts, the one-off obligation
+// drawer, and the resulting timeline with derived status.
+import { getDictionary, type Locale } from '../../i18n'
+import { getLandingContent } from '../../data/landing-content'
+import ObligationRow from './ObligationRow.astro'
+import AccountCard from './AccountCard.astro'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = getDictionary(locale).landing
+const {
+  accounts,
+  accountsShort,
+  accTotal,
+  obligationsBehind,
+  timeline,
+  timelineShort,
+  sum,
+  i1,
+  i2,
+  i3,
+  fAmountV,
+} = getLandingContent(locale)
+
+const chevronDown = (
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><path d="M6 9l6 6 6-6"></path></svg>'
+)
+---
+
+<!-- The anchor lives on this wrapper, not on the desktop <section>:
+     that one is display:none below 1024px, so #how had no box to
+     scroll to on a phone and every deep link silently did nothing. -->
+<div id="how">
+<!-- ================= DESKTOP ================= -->
+<div class="hidden lg:block">
+<section style="padding:104px 40px 40px; border-top:2px solid var(--rule-strong); display:flex; flex-direction:column; gap:64px;">
+  <div style="display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px;">
+    <div style="grid-column:1 / span 6;">
+      <span class="plinto-eyebrow" style="margin-bottom:24px;">03 · {t.how_eyebrow}</span>
+      <h2 style="font-size:48px; line-height:1.04; letter-spacing:-0.035em; font-weight:500; color:var(--text-strong); margin:0;">{t.how_title}</h2>
+    </div>
+  </div>
+
+  <!-- Step 1: accounts -->
+  <div data-reveal style="--reveal-i:0; display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; align-items:start; padding:48px 0; border-top:1px solid var(--rule-hair);">
+    <div style="grid-column:1 / span 1; display:flex; flex-direction:column; gap:16px;">
+      <span style="font-family:var(--font-mono); font-size:48px; line-height:1; letter-spacing:-0.02em; color:var(--text-strong);">1</span>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><path d={i1.p1}></path><path d={i1.p2}></path><path d={i1.p3}></path><path d={i1.p4}></path></svg>
+    </div>
+    <div style="grid-column:2 / span 4; display:flex; flex-direction:column; gap:16px;">
+      <h3 style="font-size:28px; line-height:1.15; letter-spacing:-0.02em; font-weight:500; color:var(--text-strong); margin:0;">{t.step1_title}</h3>
+      <p style="font-size:16px; color:var(--text-muted); margin:0; max-width:36ch;">{t.step1_body}</p>
+    </div>
+    <div style="grid-column:7 / span 6;">
+      <div class="m-app" style="border:1px solid var(--border-hair);">
+        <div class="m-main">
+          <header class="m-topbar"><div><div class="m-topbar-title">{t.nav_accounts}</div><div class="m-topbar-sub">{t.acc_sub}</div></div></header>
+          <div class="m-page">
+            <div>
+              <div class="m-sec-head"><span class="m-tag">COP</span><span class="m-card-title">{t.acc_count}</span><div class="m-sec-total"><span class="m-eyebrow">{t.acc_avail}</span><span class="m-amt m-amt--lg">{accTotal.total}</span></div></div>
+              <div class="m-acc-grid">
+                {accounts.map((a, i) => <AccountCard a={a} balanceLabel={t.acc_balance} revealIndex={i} />)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: obligations input (the "Obligación puntual" drawer over the page) -->
+  <div data-reveal style="--reveal-i:0; display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; align-items:start; padding:48px 0; border-top:1px solid var(--rule-hair);">
+    <div style="grid-column:1 / span 1; display:flex; flex-direction:column; gap:16px;">
+      <span style="font-family:var(--font-mono); font-size:48px; line-height:1; letter-spacing:-0.02em; color:var(--text-strong);">2</span>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><path d={i2.p1}></path><path d={i2.p2}></path><path d={i2.p3}></path><path d={i2.p4}></path></svg>
+    </div>
+    <div style="grid-column:2 / span 4; display:flex; flex-direction:column; gap:16px;">
+      <h3 style="font-size:28px; line-height:1.15; letter-spacing:-0.02em; font-weight:500; color:var(--text-strong); margin:0;">{t.step2_title}</h3>
+      <p style="font-size:16px; color:var(--text-muted); margin:0; max-width:36ch;">{t.step2_body}</p>
+    </div>
+    <div style="grid-column:7 / span 6; position:relative; background:var(--surface-page); border:1px solid var(--border-hair); overflow:hidden;">
+      <div style="padding:24px; opacity:.35;">
+        <div class="m-head"><div class="m-period"><strong>{t.period}</strong></div><span class="m-btn m-btn--sm">{t.ob_oneoff}</span></div>
+        <div class="m-card m-card--flush" style="margin-top:16px;"><div class="m-list">
+          {obligationsBehind.map((o) => <ObligationRow o={o} variant="plain" />)}
+        </div></div>
+      </div>
+      <div style="position:absolute; inset:0; background:rgba(10,10,10,.45); display:flex; justify-content:flex-end;">
+        <div class="m-drawer">
+          <div class="m-drawer-head">
+            <div><div class="m-card-title">{t.ob_oneoff}</div><div class="m-card-sub">{t.dr_desc}</div></div>
+            <span class="m-iconbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg></span>
+          </div>
+          <div class="m-drawer-body">
+            <div class="m-field"><span class="m-eyebrow">{t.f_name}</span><div class="m-input"><span style="display:inline-flex; align-items:center; gap:2px;">{t.f_name_v}<span class="m-caret"></span></span></div></div>
+            <div class="m-form-grid">
+              <div class="m-field"><span class="m-eyebrow">{t.f_amount}</span><div class="m-input m-input--mono">{fAmountV}</div></div>
+              <div class="m-field"><span class="m-eyebrow">{t.f_currency}</span><div class="m-input">COP<Fragment set:html={chevronDown} /></div></div>
+            </div>
+            <div class="m-field"><span class="m-eyebrow">{t.f_due}</span><div class="m-input m-input--mono">{t.f_due_v}</div><span class="m-hint">{t.f_due_hint}</span></div>
+          </div>
+          <div class="m-drawer-foot"><span class="m-btn m-btn--secondary">{t.f_cancel}</span><span class="m-btn">{t.f_submit}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: result -->
+  <div data-reveal style="--reveal-i:0; display:grid; grid-template-columns:repeat(12,1fr); column-gap:32px; align-items:start; padding:48px 0 64px; border-top:1px solid var(--rule-hair);">
+    <div style="grid-column:1 / span 1; display:flex; flex-direction:column; gap:16px;">
+      <span style="font-family:var(--font-mono); font-size:48px; line-height:1; letter-spacing:-0.02em; color:var(--text-strong);">3</span>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><path d={i3.p1}></path><path d={i3.p2}></path><path d={i3.p3}></path><path d={i3.p4}></path></svg>
+    </div>
+    <div style="grid-column:2 / span 4; display:flex; flex-direction:column; gap:16px;">
+      <h3 style="font-size:28px; line-height:1.15; letter-spacing:-0.02em; font-weight:500; color:var(--text-strong); margin:0;">{t.step3_title}</h3>
+      <p style="font-size:16px; color:var(--text-muted); margin:0; max-width:36ch;">{t.step3_body}</p>
+    </div>
+    <div style="grid-column:7 / span 6;">
+      <div class="m-app" style="border:1px solid var(--border-hair);"><div class="m-main"><div class="m-page">
+        <div class="m-stats">
+          <div class="m-stat m-stat--accent"><div class="m-stat-top"><span class="m-stat-label">{t.sum_total}</span><span class="m-tag">COP</span></div><span class="m-amt m-amt--lg">{sum.total}</span></div>
+          <div class="m-stat"><div class="m-stat-top"><span class="m-stat-label">{t.sum_out}</span><span class="m-tag">COP</span></div><span class="m-amt m-amt--lg">{sum.out}</span></div>
+        </div>
+        <div class="m-card m-card--flush"><div class="m-list">
+          {timeline.map((o, i) => <ObligationRow o={o} variant="full" revealIndex={i} />)}
+        </div></div>
+      </div></div></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ================= MOBILE ================= -->
+<div class="lg:hidden">
+<section style="padding:56px 20px; border-top:2px solid var(--rule-strong); display:flex; flex-direction:column; gap:40px;">
+  <div>
+    <span class="plinto-eyebrow" style="margin-bottom:16px;">03 · {t.how_eyebrow}</span>
+    <h2 style="font-size:32px; line-height:1.05; letter-spacing:-0.03em; font-weight:500; color:var(--text-strong); margin:0;">{t.how_title}</h2>
+  </div>
+
+  <div data-reveal style="--reveal-i:0; display:flex; flex-direction:column; gap:16px; border-top:1px solid var(--rule-hair); padding-top:24px;">
+    <span class="plinto-money" style="font-size:32px; color:var(--text-strong); line-height:1;">1</span>
+    <h3 style="font-size:22px; line-height:1.2; letter-spacing:-0.02em; font-weight:500; color:var(--text-strong); margin:0;">{t.step1_title}</h3>
+    <p style="font-size:15px; color:var(--text-muted); margin:0;">{t.step1_body}</p>
+    <div class="m-app m-app--mobile" style="border:1px solid var(--border-hair); margin-top:8px;">
+      <div class="m-page">
+        <div class="m-sec-head" style="margin-bottom:0;"><span class="m-tag">COP</span><span class="m-card-title" style="font-size:18px;">{t.acc_count}</span><div class="m-sec-total"><span class="m-amt m-amt--md">{accTotal.total}</span></div></div>
+        {accountsShort.map((a, i) => <AccountCard a={a} balanceLabel={t.acc_balance} compact revealIndex={i} />)}
+      </div>
+    </div>
+  </div>
+
+  <div data-reveal style="--reveal-i:0; display:flex; flex-direction:column; gap:16px; border-top:1px solid var(--rule-hair); padding-top:24px;">
+    <span class="plinto-money" style="font-size:32px; color:var(--text-strong); line-height:1;">2</span>
+    <h3 style="font-size:22px; line-height:1.2; letter-spacing:-0.02em; font-weight:500; color:var(--text-strong); margin:0;">{t.step2_title}</h3>
+    <p style="font-size:15px; color:var(--text-muted); margin:0;">{t.step2_body}</p>
+    <div class="m-drawer" style="width:100%; box-shadow:none; border:1px solid var(--border-hair); margin-top:8px;">
+      <div class="m-drawer-head" style="padding:16px;">
+        <div><div class="m-card-title" style="font-size:18px;">{t.ob_oneoff}</div><div class="m-card-sub">{t.dr_desc}</div></div>
+        <span class="m-iconbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg></span>
+      </div>
+      <div class="m-drawer-body" style="padding:16px; gap:16px;">
+        <div class="m-field"><span class="m-eyebrow">{t.f_name}</span><div class="m-input">{t.f_name_v}</div></div>
+        <div class="m-form-grid" style="gap:12px;">
+          <div class="m-field"><span class="m-eyebrow">{t.f_amount}</span><div class="m-input m-input--mono">{fAmountV}</div></div>
+          <div class="m-field"><span class="m-eyebrow">{t.f_currency}</span><div class="m-input">COP<Fragment set:html={chevronDown} /></div></div>
+        </div>
+        <div class="m-field"><span class="m-eyebrow">{t.f_due}</span><div class="m-input m-input--mono">{t.f_due_v}</div><span class="m-hint">{t.f_due_hint}</span></div>
+      </div>
+      <div class="m-drawer-foot" style="padding:16px;"><span class="m-btn" style="width:100%;">{t.f_submit}</span></div>
+    </div>
+  </div>
+
+  <div data-reveal style="--reveal-i:0; display:flex; flex-direction:column; gap:16px; border-top:1px solid var(--rule-hair); padding-top:24px;">
+    <span class="plinto-money" style="font-size:32px; color:var(--text-strong); line-height:1;">3</span>
+    <h3 style="font-size:22px; line-height:1.2; letter-spacing:-0.02em; font-weight:500; color:var(--text-strong); margin:0;">{t.step3_title}</h3>
+    <p style="font-size:15px; color:var(--text-muted); margin:0;">{t.step3_body}</p>
+    <div class="m-card m-card--flush" style="margin-top:8px;"><div class="m-list" style="padding:0 8px;">
+      {timelineShort.map((o, i) => <ObligationRow o={o} variant="compact" revealIndex={i} />)}
+    </div></div>
+  </div>
+</section>
+
+</div>
+</div>

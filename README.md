@@ -248,8 +248,9 @@ each is written down in the **[roadmap](docs/roadmap.md)**:
    one invented one, because a combined total needs exchange rates Plinto does
    not store.
 
-There is no billing code in this repository and none is planned. Community is
-self-hosted and free.
+There is no billing code in this repository today, and Community is
+self-hosted and free. A hosted offering, if it happens, is a separate product
+and does not change what Community delivers.
 
 ---
 

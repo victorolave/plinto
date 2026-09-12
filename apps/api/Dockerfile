@@ -49,6 +49,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
+COPY packages/design-tokens/package.json packages/design-tokens/package.json
 
 # apps/api's postinstall runs `prisma generate`, which needs the schema (and
 # reads the migrations directory) to exist before `pnpm install` runs it —
