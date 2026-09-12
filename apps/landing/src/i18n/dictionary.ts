@@ -174,6 +174,7 @@ export interface LandingCopy {
   oss_link3: string
   // Footer
   foot_docs: string
+  foot_lang: string
   foot_license: string
   foot_tm: string
   // Example household dataset (names, not translated content)
@@ -451,6 +452,9 @@ export const dictionaries: Record<Locale, Dictionary> = {
       oss_link2: 'Leer la licencia',
       oss_link3: 'Cómo contribuir',
       foot_docs: 'Documentación',
+      // The other language, named in itself: a reader who needs English
+      // recognises 'English' even when the page around it is Spanish.
+      foot_lang: 'English',
       foot_license: 'Licencia',
       foot_tm: 'Plinto es marca registrada de su autor. El código es libre bajo AGPL-3.0.',
       o1: 'Colegio',
@@ -708,6 +712,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       oss_link2: 'Read the license',
       oss_link3: 'How to contribute',
       foot_docs: 'Documentation',
+      foot_lang: 'Español',
       foot_license: 'License',
       foot_tm: 'Plinto is a registered trademark of its author. The code is free under AGPL-3.0.',
       o1: 'School',

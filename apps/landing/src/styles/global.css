@@ -157,3 +157,22 @@
   --spacing-11: var(--space-11);
   --spacing-12: var(--space-12);
 }
+
+/* ============================================================
+   Focus on the dark islands.
+   ------------------------------------------------------------
+   base.css states one focus ring for everything: 2px of
+   var(--focus-outer). That token follows the THEME, resolving to
+   near-black in daylight — which is correct on a light page and
+   invisible on the ink-backed footer and idea band, where it draws a
+   1:1 ring on its own background. A keyboard user tabbing through the
+   four footer links simply lost the cursor.
+
+   apps/web hit the same thing on its black sidebar and answered it by
+   restating the ring in chrome terms. Same answer here, but bound to
+   the surface rather than to a list of selectors, so a new control on
+   an ink block inherits it instead of needing to be remembered.
+   ============================================================ */
+[data-surface='ink'] {
+  --focus-outer: var(--text-on-ink);
+}
