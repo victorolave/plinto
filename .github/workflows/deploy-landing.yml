@@ -1,0 +1,79 @@
+name: Deploy landing
+
+# The marketing site is not part of the self-hosted product: it ships in no
+# image and a release does not deliver it. Tying it to a version tag would mean
+# cutting a release to fix a typo, so it deploys from `develop`, which every
+# pull request has to leave green.
+#
+# Path-filtered on purpose. Most work in this repository never touches the
+# landing, and a deploy that runs on every API commit is noise that teaches
+# people to ignore it.
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'apps/landing/**'
+      - 'packages/design-tokens/**'
+      - '.github/workflows/deploy-landing.yml'
+  # Publishing the same commit again has to be possible without an empty commit.
+  workflow_dispatch:
+
+# A second push supersedes the first: an older build of an older commit is not
+# something anyone wants reaching production late. No cancel-in-progress on the
+# deploy itself, so a half-finished upload is never abandoned.
+concurrency:
+  group: deploy-landing
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and publish to Cloudflare Pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the pnpm version from `packageManager` in package.json, so this
+      # never drifts from what the repository declares.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Fails the deploy rather than publishing a page with type errors in it.
+      - name: Check
+        run: pnpm --filter @plinto/landing lint
+
+      - name: Build
+        run: pnpm --filter @plinto/landing build
+
+      # Publishing a build whose canonical, hreflang and Open Graph URLs point
+      # at localhost would be worse than not publishing: the page would look
+      # fine and quietly tell every crawler the wrong thing. `site` is set in
+      # astro.config.mjs, so this asserts the built artifact rather than trusting
+      # the config was not edited.
+      - name: Refuse to publish a build that points at localhost
+        run: |
+          set -euo pipefail
+          if grep -rlq 'localhost' apps/landing/dist --include='*.html'; then
+            echo "::error::the built pages reference localhost"
+            grep -rn 'localhost' apps/landing/dist --include='*.html' | head -5
+            exit 1
+          fi
+          grep -q 'rel="canonical" href="https://plintoapp.com' apps/landing/dist/index.html
+          echo "canonical and absolute URLs look right"
+
+      - name: Publish
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/landing/dist --project-name=plinto-landing --branch=main
