@@ -6,6 +6,8 @@
   
   <p><strong>An open-source household finance manager designed to replace spreadsheets with a structured, long-term solution.</strong></p>
 
+  <p><a href="https://plintoapp.com"><strong>plintoapp.com</strong></a> — what it looks like, and who it is for</p>
+
   <p>
     <a href="https://github.com/victorolave/plinto/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/victorolave/plinto?color=%23111111"></a>
     <a href="LICENSE"><img alt="License AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-%23111111"></a>
