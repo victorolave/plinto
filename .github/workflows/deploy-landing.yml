@@ -71,9 +71,25 @@ jobs:
           grep -q 'rel="canonical" href="https://plintoapp.com' apps/landing/dist/index.html
           echo "canonical and absolute URLs look right"
 
+      # wrangler is a devDependency of @plinto/landing, so the version that
+      # publishes is the one the lockfile pins rather than whatever an action
+      # resolves at run time.
+      #
+      # cloudflare/wrangler-action was tried first and cannot work here: it
+      # detects pnpm and runs `pnpm add wrangler`, which pnpm refuses at the
+      # root of a workspace without -w (ERR_PNPM_ADDING_TO_ROOT). Calling
+      # wrangler directly removes the moving part.
+      #
+      # --filter runs in apps/landing, so `dist` is that package's own output.
+      # --branch=main marks the upload as production: the project's production
+      # branch is `main` even though the source of truth is `develop`, because
+      # Pages has no notion of this repository's branch flow.
       - name: Publish
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy apps/landing/dist --project-name=plinto-landing --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pnpm --filter @plinto/landing exec \
+            wrangler pages deploy dist \
+            --project-name=plinto-landing \
+            --branch=main
